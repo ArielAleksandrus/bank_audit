@@ -5,6 +5,58 @@
 <table class="table" *ngIf="parser">
 	<thead>
 		<tr>
+			<th [colspan]="parser.parsedHeaders.length">RECEITAS (SIMPLIFICADO)</th>
+		</tr>
+		<tr>
+			<th>Tipo (cred/deb/outros)</th>
+			<th>Origem (master/visa/outros)</th>
+			<th>Valor Total</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr *ngFor="let keyVal of parser.sumReceita.cred | keyvalue">
+			<td>Crédito</td>
+			<td>{{keyVal["key"]}}</td>
+			<td>{{keyVal["value"] | currency:'BRL'}}</td>
+		</tr>
+		<tr class="mustard">
+			<td>Crédito</td>
+			<td>TOTAL</td>
+			<td>{{parser.sumReceita.cred.total | currency:'BRL'}}</td>
+		</tr>
+		<tr *ngFor="let keyVal of parser.sumReceita.deb | keyvalue">
+			<td>Débito</td>
+			<td>{{keyVal["key"]}}</td>
+			<td>{{keyVal["value"] | currency:'BRL'}}</td>
+		</tr>
+		<tr class="mustard">
+			<td>Débito</td>
+			<td>TOTAL</td>
+			<td>{{parser.sumReceita.deb.total | currency:'BRL'}}</td>
+		</tr>
+		<tr *ngFor="let keyVal of parser.sumReceita.outros | keyvalue">
+			<td>Outros</td>
+			<td>{{keyVal["key"]}}</td>
+			<td>{{keyVal["value"] | currency:'BRL'}}</td>
+		</tr>
+		<tr class="mustard">
+			<td>Outros</td>
+			<td>TOTAL</td>
+			<td>{{parser.sumReceita.outros.total | currency:'BRL'}}</td>
+		</tr>
+		<tr class="mustard">
+			<td>TOTAL DE RECEITAS</td>
+			<td>-</td>
+			<td>{{parser.sumReceita.total | currency:'BRL'}}</td>
+		</tr>
+	</tbody>
+</table>
+
+<br/>
+
+<table class="table" *ngIf="parser">
+	<thead>
+		<tr>
 			<th [colspan]="parser.parsedHeaders.length">RECEITAS</th>
 		</tr>
 		<tr>

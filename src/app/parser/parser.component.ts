@@ -31,8 +31,8 @@ export class ParserComponent {
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       this.excelData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-      console.log('Excel data:', this.excelData);
       this.parser = new SicoobParser(this.excelData, 'excel');
+      console.log(this.parser);
     }
     
     reader.readAsBinaryString(file);

@@ -25,6 +25,28 @@ export class SicoobParser {
 		outros: []
 	};
 
+	sumReceita = {
+		cred: {
+			visa: 0,
+			master: 0,
+			elo: 0,
+			outros: 0,
+			total: 0
+		},
+		deb: {
+			visa: 0,
+			master: 0,
+			elo: 0,
+			outros: 0,
+			total: 0
+		},
+		outros: {
+			uncategorized: 0,
+			total: 0
+		},
+		total: 0
+	};
+
 	constructor(dataArr: any[], dataType: 'excel') {
 		this.dataArr = dataArr;
 		this.parsedHeaders = [];
@@ -42,10 +64,10 @@ export class SicoobParser {
 			console.error("SicoobParser: dataArr is too small");
 		}
 
-		this.parseExcelHeader();
-		this.parseExcelRows();
+		this._parseExcelHeader();
+		this._parseExcelRows();
 	}
-	parseExcelHeader() {
+	private _parseExcelHeader() {
 		this.parsedHeaders = [];
 		// row 0 shows us the header columns
 		for(let key in this.dataArr[0]) {
@@ -55,7 +77,7 @@ export class SicoobParser {
 			this.parsedHeaders.push(this.dataArr[0][key]);
 		}
 	}
-	parseExcelRows() {
+	private _parseExcelRows() {
 		this.parsedRows = [];
 		// rows with less than header.count cols are information like "Saldo do Dia: " and is not considered
 		const colsQty = this.parsedHeaders.length; // __rowNum__ is not counted in Utils.countKeys
@@ -77,10 +99,11 @@ export class SicoobParser {
 
 			this.parsedRows.push(aux);
 		}
-		this.fixPaymentValue();
-		this.classifyDescription();
+		this._fixPaymentValue();
+		this._classifyDescription();
+		this._sumReceita();
 	}
-	fixPaymentValue() {
+	private _fixPaymentValue() {
 		const valorIdx = this.parsedHeaders.indexOf("VALOR");
 
 		for(let row of this.parsedRows) {
@@ -99,7 +122,8 @@ export class SicoobParser {
 			row[valorIdx] = Number.parseFloat(valStr);
 		}
 	}
-	getDescriptionType(desc: string) {
+
+	private _getDescriptionType(desc: string) {
 		for(let type in this.descriptions) {
 			//@ts-ignore
 			for(let match of this.descriptions[type]) {
@@ -114,7 +138,7 @@ export class SicoobParser {
 		}
 		return "outros";
 	}
-	classifyDescription() {
+	private _classifyDescription() {
 		this.organizedData = {
 			boleto: [],
 			receita: [],
@@ -125,12 +149,61 @@ export class SicoobParser {
 
 		for(let row of this.parsedRows) {
 			const desc = row[histIdx];
-			const type = this.getDescriptionType(desc);
+			const type = this._getDescriptionType(desc);
 			row.push(type);
 
 			let auxType = type.split(" ")[0];
 			//@ts-ignore
 			this.organizedData[auxType].push(row);
+		}
+	}
+	private _sumReceita() {
+		const histIdx = this.parsedHeaders.indexOf("HISTÓRICO");
+		const valorIdx = this.parsedHeaders.indexOf("VALOR");
+		this.sumReceita = {
+			cred: {
+				visa: 0,
+				master: 0,
+				elo: 0,
+				outros: 0,
+				total: 0
+			},
+			deb: {
+				visa: 0,
+				master: 0,
+				elo: 0,
+				outros: 0,
+				total: 0
+			},
+			outros: {
+				uncategorized: 0,
+				total: 0
+			},
+			total: 0
+		};
+		const map = {
+			"CR COMPRAS MAESTRO": {deb: "master"},
+			"CR COMPRAS MASTERCARD": {cred: "master"},
+			"CR COMPRAS VISA ELECTRON": {deb: "visa"},
+			"CR COMPRAS VISA": {cred: "visa"},
+			"CR COMPRAS DEB OUTRAS BANDEIRAS": {deb: "outros"},
+			"CR COMPRAS CRE OUTRAS BANDEIRAS": {cred: "outros"},
+		}
+
+		for(let row of this.organizedData.receita) {
+			const desc = row[histIdx];
+			let match: any = map[desc];
+
+			if(!match) {
+				match = {outros: "uncategorized"}
+			}
+			const credOrDeb = Object.keys(match)[0];
+			const companyName = match[credOrDeb];
+			//@ts-ignore
+			this.sumReceita[credOrDeb][companyName] += row[valorIdx];
+			//@ts-ignore
+			this.sumReceita[credOrDeb]["total"] += row[valorIdx];
+			this.sumReceita["total"] += row[valorIdx];
 		}
 	}
 }
