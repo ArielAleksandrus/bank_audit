@@ -1,6 +1,25 @@
+.field-label {
+	display: block;
+	font-weight: bold;
+}
 .hidden {
 	visibility: hidden;
 }
-.mustard {
+.title th {
+	text-align: center;
+}
+.mustard td{
 	background-color: #f2eb80;
+}
+.grass td{
+	background-color: #9fd283;
+}
+.send-comprovante {
+	position: relative;
+	button {
+    position: absolute;
+    bottom: 0;
+    right: 0.8em;
+    border-radius: 0;
+  }
 }

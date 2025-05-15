@@ -7,10 +7,12 @@ import { Utils } from '../helpers/utils';
  */
 
 export class SicoobParser {
-	dataArr: any[];
+	dataArr: any[] = [];
 
-	parsedHeaders: string[];
-	parsedRows: any[];
+	parsedHeaders: string[] = [];
+	parsedRows: any[] = [];
+
+	valueColIdx: number = 0;
 
 	descriptions = {
 		boleto: ["DÉB.TIT", "DÉB.TÍT", "DÉB. PAGAMENTO DE BOLETO"],
@@ -46,8 +48,17 @@ export class SicoobParser {
 		},
 		total: 0
 	};
+	comprovantesArr: {
+		documento: string,
+		beneficiario: string,
+		data: string,
+		valor: number
+	}[] = [];
 
-	constructor(dataArr: any[], dataType: 'excel') {
+	constructor() {
+
+	}
+	parseExtrato(dataArr: any[], dataType: 'excel'){
 		this.dataArr = dataArr;
 		this.parsedHeaders = [];
 		this.parsedRows = [];
@@ -58,6 +69,27 @@ export class SicoobParser {
 		}
 		}
 	}
+	parseComprovantes(text: string) {
+		this.comprovantesArr = [];
+		let boletosRawArr = text.split("Número do agendamento");
+
+		for(let i = 1; i < boletosRawArr.length; i++) {
+			let boletoRaw = boletosRawArr[i];
+
+			let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1].split("\n")[0];
+			if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
+				beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
+			this.comprovantesArr.push({
+				documento: boletoRaw.split('\t')[1].split('\n')[0],
+				beneficiario: beneficiario,
+				data: boletoRaw.split("Datas\nRealizado\t")[1].split(" às ")[0],
+				valor: Number.parseFloat(boletoRaw.split("\nPago\tR$ ")[1].split("\n")[0].replace('.','').replace(',','.'))
+			});
+		}
+		this._addBeneficiario();
+
+		return this.comprovantesArr;
+	}
 
 	parseExcel() {
 		if(!this.dataArr || this.dataArr.length < 2) {
@@ -65,7 +97,23 @@ export class SicoobParser {
 		}
 
 		this._parseExcelHeader();
+		this.valueColIdx = this.parsedHeaders.indexOf("VALOR");
 		this._parseExcelRows();
+		this._addBeneficiario();
+	}
+
+	private _addBeneficiario() {
+		if(this.parsedRows.length == 0 || this.comprovantesArr.length == 0)
+			return;
+
+		const documentoIdx = this.parsedHeaders.indexOf("DOCUMENTO");
+		const histIdx = this.parsedHeaders.indexOf("HISTÓRICO");
+
+		for(let row of this.organizedData.boleto) {
+			let comprovanteObj = Utils.findById(row[documentoIdx], this.comprovantesArr, 'documento');
+			//@ts-ignore
+			row[histIdx] = comprovanteObj.beneficiario;
+		}
 	}
 	private _parseExcelHeader() {
 		this.parsedHeaders = [];
@@ -109,11 +157,7 @@ export class SicoobParser {
 		for(let row of this.parsedRows) {
 			let valStr = row[valorIdx];
 			let nbSpace = String.fromCharCode(160);
-			valStr = valStr.replace(".","").replace(",",".").replace(" ","").replace(nbSpace,""); // '- 16.309,27 D' will become '-16309.27D'
-			if(valStr[valStr.length - 1] == "D") { // if is 'D', which is debit, check if the minus sign is first. '130D' will become '-130D'
-				if(valStr[0] != '-')
-					valStr = "-" + valStr;
-			}
+			valStr = valStr.replace(".","").replace(",",".").replace(" ","").replace("-","").replace(nbSpace,""); // '- 16.309,27 D' will become '-16309.27D'
 			
 			// remove 'C' and 'D' letters
 			valStr = valStr.split("C").join("");
@@ -151,6 +195,8 @@ export class SicoobParser {
 			const desc = row[histIdx];
 			const type = this._getDescriptionType(desc);
 			row.push(type);
+			if(type == "boleto")
+				row.push([]); // tags array
 
 			let auxType = type.split(" ")[0];
 			//@ts-ignore

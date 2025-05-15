@@ -1,11 +1,20 @@
-<input id="extrato_file" type="file" accept=".xls,.xlsx" (change)="extratoFileChanged($event)"/>
-
+<div class="row">
+	<div class="col-lg-4">
+		<label class="field-label">Extrato (Excel)</label>
+		<input id="extrato_file" type="file" accept=".xls,.xlsx" (change)="extratoFileChanged($event)"/>
+	</div>
+	<div class="col-lg-4 send-comprovante">
+		<label class="field-label">Texto comprovantes</label>
+		<textarea id="comprovanteTxt" class="form-control" rows="5" placeholder="Cole aqui o texto dos comprovantes do mes"></textarea>
+		<button class="btn btn-md btn-primary" (click)="sendComprovante()">ENVIAR</button>
+	</div>
+</div>
 <br/>
 
 <table class="table" *ngIf="parser">
 	<thead>
-		<tr>
-			<th [colspan]="parser.parsedHeaders.length">RECEITAS (SIMPLIFICADO)</th>
+		<tr class="title">
+			<th colspan="3">RECEITAS (SIMPLIFICADO)</th>
 		</tr>
 		<tr>
 			<th>Tipo (cred/deb/outros)</th>
@@ -44,7 +53,7 @@
 			<td>TOTAL</td>
 			<td>{{parser.sumReceita.outros.total | currency:'BRL'}}</td>
 		</tr>
-		<tr class="mustard">
+		<tr class="grass">
 			<td>TOTAL DE RECEITAS</td>
 			<td>-</td>
 			<td>{{parser.sumReceita.total | currency:'BRL'}}</td>
@@ -56,16 +65,25 @@
 
 <table class="table" *ngIf="parser">
 	<thead>
-		<tr>
-			<th [colspan]="parser.parsedHeaders.length">RECEITAS</th>
+		<tr class="title">
+			<th [attr.colspan]="parser.parsedHeaders.length+1">
+				RECEITAS &nbsp;&nbsp;
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!receitaCollapsed" (click)="receitaCollapsed = !receitaCollapsed">
+					{{receitaCollapsed ? "EXPANDIR" : "RECOLHER"}}
+				</button>
+			</th>
 		</tr>
-		<tr>
+		<tr #collapse="ngbCollapse" [(ngbCollapse)]="receitaCollapsed">
 			<th *ngFor="let header of parser.parsedHeaders">{{header}}</th>
+			<th>TIPO</th>
 		</tr>
 	</thead>
-	<tbody>
+	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="receitaCollapsed">
 		<tr *ngFor="let row of parser.organizedData.receita">
-			<td *ngFor="let col of row">{{col}}</td>
+			<td *ngFor="let col of row; let i = index">
+				<span *ngIf="i == parser.valueColIdx">{{col | currency:'BRL'}}</span>
+				<span *ngIf="i != parser.valueColIdx">{{col}}</span>
+			</td>
 		</tr>
 	</tbody>
 </table>
@@ -74,16 +92,34 @@
 
 <table class="table" *ngIf="parser">
 	<thead>
-		<tr>
-			<th [colspan]="parser.parsedHeaders.length">BOLETOS</th>
+		<tr class="title">
+			<th [attr.colspan]="parser.parsedHeaders.length+2">
+				BOLETOS &nbsp;&nbsp;
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!boletoCollapsed" (click)="boletoCollapsed = !boletoCollapsed">
+					{{boletoCollapsed ? "EXPANDIR" : "RECOLHER"}}
+				</button>
+			</th>
 		</tr>
-		<tr>
+		<tr #collapse="ngbCollapse" [(ngbCollapse)]="boletoCollapsed">
 			<th *ngFor="let header of parser.parsedHeaders">{{header}}</th>
+			<th>TIPO</th>
+			<th>TAGS</th>
 		</tr>
 	</thead>
-	<tbody>
+	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="boletoCollapsed">
 		<tr *ngFor="let row of parser.organizedData.boleto">
-			<td *ngFor="let col of row">{{col}}</td>
+			<td>{{row[0]}}</td> <!-- Data -->
+			<td>{{row[1]}}</td> <!-- Documento -->
+			<td>{{row[2]}}</td> <!-- Historico (Descricao) -->
+			<td>{{row[3] | currency:'BRL'}}</td> <!-- Valor -->
+			<td>{{row[4]}}</td> <!-- Tipo (boleto/pix/etc) -->
+			<td>
+				<ng-select [items]="availableTags"
+								addTag="true"
+								[multiple]="true"
+								placeholder="Selecione"
+								[(ngModel)]="row[row.length - 1]"></ng-select>
+			</td> <!-- Tags -->
 		</tr>
 	</tbody>
 </table>
