@@ -1,0 +1,37 @@
+<input id="extrato_file" type="file" accept=".xls,.xlsx" (change)="extratoFileChanged($event)"/>
+
+<br/>
+
+<table class="table" *ngIf="parser">
+	<thead>
+		<tr>
+			<th [colspan]="parser.parsedHeaders.length">RECEITAS</th>
+		</tr>
+		<tr>
+			<th *ngFor="let header of parser.parsedHeaders">{{header}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr *ngFor="let row of parser.organizedData.receita">
+			<td *ngFor="let col of row">{{col}}</td>
+		</tr>
+	</tbody>
+</table>
+
+<br/>
+
+<table class="table" *ngIf="parser">
+	<thead>
+		<tr>
+			<th [colspan]="parser.parsedHeaders.length">BOLETOS</th>
+		</tr>
+		<tr>
+			<th *ngFor="let header of parser.parsedHeaders">{{header}}</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr *ngFor="let row of parser.organizedData.boleto">
+			<td *ngFor="let col of row">{{col}}</td>
+		</tr>
+	</tbody>
+</table>
