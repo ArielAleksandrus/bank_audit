@@ -1,6 +1,15 @@
 import { Utils } from '../helpers/utils';
 
 /**
+ * boleto rows should be organized in this way:
+ * col 0: date payed
+ * col 1: bank identification number
+ * col 2: supplier  name
+ * col 3: total value
+ * col 4: to be added, the type of entry: boleto
+ * col 5: to be added, an array that contains the tags
+ * 
+ * 
  * EXCEL ASSUMPTIONS:
  * 	1. first row will contain header cols, and one of them will be named VALOR and other will be HISTÓRICO
  * 	
@@ -11,8 +20,6 @@ export class SicoobParser {
 
 	parsedHeaders: string[] = [];
 	parsedRows: any[] = [];
-
-	valueColIdx: number = 0;
 
 	descriptions = {
 		boleto: ["DÉB.TIT", "DÉB.TÍT", "DÉB. PAGAMENTO DE BOLETO"],
@@ -97,7 +104,6 @@ export class SicoobParser {
 		}
 
 		this._parseExcelHeader();
-		this.valueColIdx = this.parsedHeaders.indexOf("VALOR");
 		this._parseExcelRows();
 		this._addBeneficiario();
 	}

@@ -6,7 +6,7 @@
 	<div class="col-lg-4 send-comprovante">
 		<label class="field-label">Texto comprovantes</label>
 		<textarea id="comprovanteTxt" class="form-control" rows="5" placeholder="Cole aqui o texto dos comprovantes do mes"></textarea>
-		<button class="btn btn-md btn-primary" (click)="sendComprovante()">ENVIAR</button>
+		<button class="btn btn-md btn-primary" (click)="setComprovante()">ENVIAR</button>
 	</div>
 </div>
 <br/>
@@ -81,8 +81,8 @@
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="receitaCollapsed">
 		<tr *ngFor="let row of parser.organizedData.receita">
 			<td *ngFor="let col of row; let i = index">
-				<span *ngIf="i == parser.valueColIdx">{{col | currency:'BRL'}}</span>
-				<span *ngIf="i != parser.valueColIdx">{{col}}</span>
+				<span *ngIf="i == 3">{{col | currency:'BRL'}}</span>
+				<span *ngIf="i != 3">{{col}}</span>
 			</td>
 		</tr>
 	</tbody>
@@ -118,7 +118,8 @@
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
-								[(ngModel)]="row[row.length - 1]"></ng-select>
+								[(ngModel)]="row[5].tags"
+								(change)="tagChanged(row, $event, 'boleto')"></ng-select>
 			</td> <!-- Tags -->
 		</tr>
 	</tbody>
