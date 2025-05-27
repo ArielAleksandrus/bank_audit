@@ -1,15 +1,8 @@
 import { Utils } from '../helpers/utils';
-
+import { Boleto } from '../models/boleto';
+import { Purchase } from '../models/purchase';
+import { Income } from '../models/income';
 /**
- * boleto rows should be organized in this way:
- * col 0: date payed
- * col 1: bank identification number
- * col 2: supplier  name
- * col 3: total value
- * col 4: to be added, the type of entry: boleto
- * col 5: to be added, an array that contains the tags
- * 
- * 
  * EXCEL ASSUMPTIONS:
  * 	1. first row will contain header cols, and one of them will be named VALOR and other will be HISTÓRICO
  * 	
@@ -18,21 +11,31 @@ import { Utils } from '../helpers/utils';
 export class SicoobParser {
 	dataArr: any[] = [];
 
+	boletos: Boleto[] = [];
+	purchases: Purchase[] = [];
+	incomes: Income[] = [];
+
 	parsedHeaders: string[] = [];
 	parsedRows: any[] = [];
 
 	descriptions = {
 		boleto: ["DÉB.TIT", "DÉB.TÍT", "DÉB. PAGAMENTO DE BOLETO"],
-		receita: ["CR COMPRAS"],
+		receita_cartao: ["CR COMPRAS"],
+		receita_pix: ["PIX RECEBIDO"],
 		seguro: ["DÉB. CONV. SEGURO"]
+		// anything else will be either 'receita' (if value > 0) or 'despesa' (if value <= 0)
 	};
 
-	organizedData = {
-		boleto: [],
-		receita: [],
-		seguro: [],
-		outros: []
+	////// TODO: CHECK IF UNCHANGED
+	boletoColsIndexes = {
+		date: 0,
+		bank_identification: 1,
+		description: 2,
+		value: 3,
+		type: 4,
+		tags: 5
 	};
+	////////////
 
 	sumReceita = {
 		cred: {
@@ -49,21 +52,27 @@ export class SicoobParser {
 			outros: 0,
 			total: 0
 		},
-		outros: {
-			uncategorized: 0,
+		outros_cartoes: {
 			total: 0
 		},
+		total_cartoes: 0,
+		pix: 0,
 		total: 0
 	};
 	comprovantesArr: {
 		documento: string,
 		beneficiario: string,
-		data: string,
+		cnpj: string,
+		data_pagamento: string,
+		data_vencimento: string,
 		valor: number
 	}[] = [];
 
 	constructor() {
 
+	}
+	recalculateIncome() {
+		this._sumReceita();
 	}
 	parseExtrato(dataArr: any[], dataType: 'excel'){
 		this.dataArr = dataArr;
@@ -86,10 +95,17 @@ export class SicoobParser {
 			let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1].split("\n")[0];
 			if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
 				beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
+
+			let supplierCnpj = boletoRaw.split('CPF/CNPJ\t')[1].split('\n')[0];
+			if(supplierCnpj)
+				supplierCnpj = supplierCnpj.replace('.','').replace('-','').replace('/','');
+
 			this.comprovantesArr.push({
 				documento: boletoRaw.split('\t')[1].split('\n')[0],
 				beneficiario: beneficiario,
-				data: boletoRaw.split("Datas\nRealizado\t")[1].split(" às ")[0],
+				cnpj: supplierCnpj,
+				data_pagamento: boletoRaw.split("Datas\nRealizado\t")[1].split(" às ")[0],
+				data_vencimento: boletoRaw.split("Vencimento\t")[1].split("\n")[0],
 				valor: Number.parseFloat(boletoRaw.split("\nPago\tR$ ")[1].split("\n")[0].replace('.','').replace(',','.'))
 			});
 		}
@@ -112,13 +128,12 @@ export class SicoobParser {
 		if(this.parsedRows.length == 0 || this.comprovantesArr.length == 0)
 			return;
 
-		const documentoIdx = this.parsedHeaders.indexOf("DOCUMENTO");
-		const histIdx = this.parsedHeaders.indexOf("HISTÓRICO");
-
-		for(let row of this.organizedData.boleto) {
-			let comprovanteObj = Utils.findById(row[documentoIdx], this.comprovantesArr, 'documento');
-			//@ts-ignore
-			row[histIdx] = comprovanteObj.beneficiario;
+		for(let boleto of this.boletos) {
+			let comprovanteObj = Utils.findById(boleto.bank_identification, this.comprovantesArr, 'documento');
+			boleto.payment_date = Utils.datePtBrToISO(comprovanteObj.data_pagamento) || '1900-10-10';
+			boleto.expiration_date = Utils.datePtBrToISO(comprovanteObj.data_vencimento) || '1900-10-10';
+			boleto.supplier_cnpj = comprovanteObj.cnpj;
+			boleto.supplier_name = comprovanteObj.beneficiario;
 		}
 	}
 	private _parseExcelHeader() {
@@ -163,8 +178,11 @@ export class SicoobParser {
 		for(let row of this.parsedRows) {
 			let valStr = row[valorIdx];
 			let nbSpace = String.fromCharCode(160);
-			valStr = valStr.replace(".","").replace(",",".").replace(" ","").replace("-","").replace(nbSpace,""); // '- 16.309,27 D' will become '-16309.27D'
-			
+			valStr = valStr.replace(".","").replace(",",".").replace(" ","").replace(nbSpace,""); // '- 16.309,27 D' will become '-16309.27D'
+			if(valStr.indexOf("D") > -1) {
+				if(valStr[0] != '-')
+					valStr = '-' + valStr;
+			}
 			// remove 'C' and 'D' letters
 			valStr = valStr.split("C").join("");
 			valStr = valStr.split("D").join("");
@@ -173,45 +191,92 @@ export class SicoobParser {
 		}
 	}
 
-	private _getDescriptionType(desc: string) {
+	private _getDescriptionType(desc: string, value: string|number) {
 		for(let type in this.descriptions) {
 			//@ts-ignore
 			for(let match of this.descriptions[type]) {
+				if(type == "receita_cartao" && !!desc.split(match)[1]) {
+					return "receita_cartao" + desc.split(match)[1];
+				}
 				if(desc.indexOf(match) > -1) {
-					if(type == "receita") {
-						return "receita" + (desc.split(match)[1] || '');
-					}
-
 					return type;
 				}
 			}
 		}
-		return "outros";
+
+		let val = Number(value);
+		if(val > 0)
+			return "receita"
+		else
+			return "despesa";
 	}
 	private _classifyDescription() {
-		this.organizedData = {
-			boleto: [],
-			receita: [],
-			seguro: [],
-			outros: []
-		};
-		const histIdx = this.parsedHeaders.indexOf("HISTÓRICO");
+		const descIdx = this.boletoColsIndexes.description;
+		const valueIdx = this.boletoColsIndexes.value;
+		const identificationIdx = this.boletoColsIndexes.bank_identification;
+		const dateIdx = this.boletoColsIndexes.date;
 
 		for(let row of this.parsedRows) {
-			const desc = row[histIdx];
-			const type = this._getDescriptionType(desc);
-			row.push(type);
-			if(type == "boleto")
-				row.push([]); // tags array
+			const desc = row[descIdx];
+			const type = this._getDescriptionType(desc, row[valueIdx]);
+			
+			if(row[descIdx].indexOf("SALDO") == 0)
+				continue;
 
-			let auxType = type.split(" ")[0];
-			//@ts-ignore
-			this.organizedData[auxType].push(row);
+			if(type == "boleto" || type == "despesa") {
+				let purchase = <Purchase>{
+					id: -Math.floor(Math.random() * 1000000),
+					company_id: 0, // server will set this for us
+					supplier_id: 0, // server will set this for us
+					supplier_name: desc,
+					base_value: -row[valueIdx], // 'despesa' and 'boleto' values are negative. we will fix this now. 
+					delivery_fee: 0,
+					total: -row[valueIdx] // 'despesa' and 'boleto' values are negative. we will fix this now. 
+				};
+				if(type == "boleto") {
+					let boleto = <Boleto>{
+						id: -Math.floor(Math.random() * 1000000),
+						purchase_id: 0, // we will set this later
+						bank_name: "sicoob",
+						bank_identification: row[identificationIdx],
+						// expiration_date: we don't know this yet
+						// issue_date: we don't know this yet
+						value: -row[valueIdx], // 'despesa' and 'boleto' values are negative. we will fix this now. 
+						// installments: we don't know this yet
+						payment_date: Utils.datePtBrToISO(row[dateIdx]),
+						supplier_name: row[descIdx]
+					};
+					boleto.auxTags = [];
+					purchase.boletos = [boleto];
+					this.boletos.push(boleto);
+				}
+				this.purchases.push(purchase);
+			} else if(type && type.indexOf("receita") > -1) {
+				let cardType: string|null = type.split("receita_cartao ")[1];
+				let income: Income = <Income>{
+					id: -Math.floor(Math.random() * 1000000),
+					company_id: 0, // server will set this for us
+					date_received: Utils.datePtBrToISO(row[dateIdx]),
+					origin: desc,
+					bank_name: "sicoob",
+					// bank_identification: we don't know this yet
+					// income_type: we might not know this yet
+					value: row[valueIdx]
+				};
+
+				if(cardType) {
+					income.origin = cardType;
+					income.income_type = 'cartao';
+				} else if(type == 'receita_pix') {
+					income.income_type = 'pix';
+				}
+				this.incomes.push(income);
+			} else {
+				console.error("SicoobParser->classifyDescription: row is not receita nor despesa", row);
+			}
 		}
 	}
 	private _sumReceita() {
-		const histIdx = this.parsedHeaders.indexOf("HISTÓRICO");
-		const valorIdx = this.parsedHeaders.indexOf("VALOR");
 		this.sumReceita = {
 			cred: {
 				visa: 0,
@@ -227,35 +292,56 @@ export class SicoobParser {
 				outros: 0,
 				total: 0
 			},
-			outros: {
-				uncategorized: 0,
+			outros_cartoes: {
 				total: 0
 			},
+			total_cartoes: 0,
+			pix: 0,
 			total: 0
 		};
 		const map = {
-			"CR COMPRAS MAESTRO": {deb: "master"},
-			"CR COMPRAS MASTERCARD": {cred: "master"},
-			"CR COMPRAS VISA ELECTRON": {deb: "visa"},
-			"CR COMPRAS VISA": {cred: "visa"},
-			"CR COMPRAS DEB OUTRAS BANDEIRAS": {deb: "outros"},
-			"CR COMPRAS CRE OUTRAS BANDEIRAS": {cred: "outros"},
+			"MAESTRO": {deb: "master"},
+			"MASTERCARD": {cred: "master"},
+			"VISA ELECTRON": {deb: "visa"},
+			"VISA": {cred: "visa"},
+			"DEB OUTRAS BANDEIRAS": {deb: "outros"},
+			"CRE OUTRAS BANDEIRAS": {cred: "outros"}
 		}
 
-		for(let row of this.organizedData.receita) {
-			const desc = row[histIdx];
-			let match: any = map[desc];
+		for(let income of this.incomes) {
+			let value = Number(income.value);
 
-			if(!match) {
-				match = {outros: "uncategorized"}
+			switch(income.income_type) {
+			case("cartao"): {
+				//@ts-ignore
+				let match: any = map[income.origin];
+				for(let key in map) {
+					if(income.origin.indexOf(key) > -1) {
+						//@ts-ignore
+						match = map[key];
+						break;
+					}
+				}
+
+				if(!match) {
+					console.log("SicoobParser->sumReceita: Uncategorized type: " + income.origin, income);
+				} else {
+					const credOrDeb = Object.keys(match)[0];
+					const companyName = match[credOrDeb];
+					//@ts-ignore
+					this.sumReceita[credOrDeb][companyName] += Number(income.value);
+					//@ts-ignore
+					this.sumReceita[credOrDeb]["total"] += Number(income.value);
+				}
+				break;
 			}
-			const credOrDeb = Object.keys(match)[0];
-			const companyName = match[credOrDeb];
-			//@ts-ignore
-			this.sumReceita[credOrDeb][companyName] += row[valorIdx];
-			//@ts-ignore
-			this.sumReceita[credOrDeb]["total"] += row[valorIdx];
-			this.sumReceita["total"] += row[valorIdx];
+			case("pix"): {
+				this.sumReceita.pix += value;
+				break;
+			}
+			}
+
+			this.sumReceita["total"] += Number(income.value);
 		}
 	}
 }

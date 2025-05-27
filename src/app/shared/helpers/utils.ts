@@ -39,6 +39,68 @@ export const Utils = {
 		
 		return Object.keys(obj).length;
 	},
+  dateToString(date: Date | string, is_rails_timestamp: boolean = false, show_time: boolean = true): string|null {
+    if(date == null)
+        return null;
+
+    if(typeof date == 'string') {
+        date = new Date(date);
+    }
+    if(is_rails_timestamp) {
+        date = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000));
+    }
+    let formatted_date = date.toISOString().substr(0, 10).split('-').reverse().join('/');
+    let time = date.toISOString().substr(11, 8);
+
+    if(show_time) {
+        return formatted_date + ' ' + time;
+    } else {
+        return formatted_date;
+    }
+  },
+  dateToISO(date: Date | string, zeroedTimezone: boolean = false): string|null {
+    if(date == null)
+        return null;
+    
+    if(typeof date == 'string') {
+        date = new Date(date);
+    }
+    if(zeroedTimezone) {
+      date = new Date(date.getTime() + (date.getTimezoneOffset() * 60 * 1000)); 
+    }
+    
+    let month: any = date.getMonth() + 1;
+    if(month < 10) {
+      month = "0" + month;
+    }
+    let day: any = date.getDate();
+    if(day < 10) {
+      day = "0" + day;
+    }
+    let hours: any = date.getHours();
+    if(hours < 10) {
+      hours = "0" + hours;
+    }
+    let minutes: any = date.getMinutes();
+    if(minutes < 10) {
+      minutes = "0" + minutes;
+    }
+    let seconds: any = date.getSeconds();
+    if(seconds < 10) {
+      seconds = "0" + seconds;
+    }
+    return `${date.getFullYear()}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  },
+  datePtBrToISO(date: string): string|null {
+    if(date == null) {
+      return null;
+    }
+    
+    let sections: string[] = date.split(/-|\/|\./);
+    let year = sections[2].split(' ')[0];
+    let time = sections[2].split(' ')[1];
+    return `${year}-${sections[1]}-${sections[0]}${!!time ? ' ' + time : ''}`;
+  },
   equals( x: any, y: any ) {
     if ( x === y ) return true;
       // if both x and y are null or undefined and exactly the same
@@ -86,5 +148,28 @@ export const Utils = {
       }
     }
     return null;
+  },
+  pushIfNotExists(arr: Array<any>, toPush: any, field?: string): boolean {
+    let found: boolean = false;
+    for(let el of arr) {
+      if(field) {
+        if(el[field] == toPush[field]) {
+          found = true;
+          break;
+        }
+      } else {
+        if(Utils.equals(el, toPush)) {
+          found = true;
+          break;
+        }
+      }
+    }
+
+    if(found) {
+      return false;
+    } else {
+      arr.push(toPush);
+      return true;
+    }
   }
 }
