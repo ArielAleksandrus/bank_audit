@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 
 import * as XLSX from 'xlsx';
 
+import { BalanceParser } from '../shared/parsers/balance-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -39,20 +40,21 @@ export class ParserComponent {
 
   selectedBank?: 'sicoob';
   excelData: any[] = [];
-  parser: any;
+  parser: BalanceParser;
 
   availableTags: Tag[] = [];
 
   receitaCollapsed: boolean = true;
   boletoCollapsed: boolean = true;
+  despesaCollapsed: boolean = true;
 
   propagate: boolean = true;
   propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags do boleto serão copiadas para todos os boletos deste fornecedor";
 
   constructor (private api: ApiService) {
+    this.parser = new SicoobParser(); // pick any parser to begin with. user can change it later
   }
   ngOnInit() {
-    this.parser = new SicoobParser();
     this._loadCompany();
     //TODO: replace token to user-defined token received via input and stored in localstorage
     this.api.setAuth({token: this.company.token});
@@ -83,6 +85,7 @@ export class ParserComponent {
       this.parser.parseExtrato(this.excelData, 'excel');
       this.checkIfBoletosExist();
       this.checkIfIncomesExist();
+      this.checkIfPurchasesExist();
     }
     
     reader.readAsBinaryString(file);
@@ -99,14 +102,22 @@ export class ParserComponent {
     this.checkIfBoletosExist();
   }
 
-  tagChanged(obj: any/*Boleto|Income|Purchase*/, tags: Tag[], objType: 'boleto') {
+  tagChanged(obj: Boleto|Purchase, tags: Tag[], objType: 'boleto'|'purchase') {
     let tagsAttr: string = 'none';
     let comparisonAttr: string = 'none';
+    let dataArr: any[];
 
     switch(objType) {
     case("boleto"): {
       tagsAttr = 'auxTags';
       comparisonAttr = 'supplier_name';
+      dataArr = this.parser.boletos;
+      break;
+    }
+    case("purchase"): {
+      tagsAttr = 'tags';
+      comparisonAttr = 'supplier_name';
+      dataArr = this.parser.purchases;
       break;
     }
     }
@@ -117,10 +128,11 @@ export class ParserComponent {
       }
     }
 
+    //@ts-ignore
     obj[tagsAttr] = tags;
 
     if(this.propagate)
-      this._propagateTags(obj, tagsAttr, comparisonAttr, this.parser.boletos);
+      this._propagateTags(obj, tagsAttr, comparisonAttr, dataArr);
   }
 
   removeIncome(income: Income) {
@@ -143,10 +155,9 @@ export class ParserComponent {
   }
 
   send() {
-    //TODO: save work in receita and other tables
-
-    this.saveBoletos();
-    this.saveIncomes();
+    //this.saveBoletos();
+    //this.saveIncomes();
+    this.savePurchases();
   }
 
   saveBoletos(idx: number = 0) {
@@ -200,53 +211,88 @@ export class ParserComponent {
       );
     });
   }
-
-  checkIfBoletosExist(idx: number = 0) {
-    if(idx >= this.parser.boletos.length)
-      return;
-
-    let boleto = this.parser.boletos[idx];
-    let params = {
-      boleto: {
-        bank_identification: boleto.bank_identification,
-        bank_name: boleto.bank_name,
-        value: boleto.value,
-        payment_date: boleto.payment_date,
-        supplier_name: boleto.supplier_name
+  savePurchases(idx: number = 0) {
+    return new Promise((resolve, reject) => {
+      if(idx >= this.parser.purchases.length) {
+        resolve(true);
+        return;
       }
-    }
-    this.api.show('boletos', 'exists', params).subscribe(
-      (res: Boleto|null) => {
-        if(res && res.id) {
-          this.parser.boletos[idx] = res;
-        }
 
-        this.checkIfBoletosExist(idx + 1);
+      let purchase = Utils.clone(this.parser.purchases[idx]);
+
+      let req: any = null;
+      if(purchase.id > 0) {
+        req = this.api.update('purchases', purchase.id, {purchase});
+      } else {
+        req = this.api.create('purchases', {purchase});
+      }
+
+      req.subscribe(
+        (res: Purchase) => {
+          this.parser.purchases[idx] = res;
+          resolve(this.savePurchases(idx + 1));
+        },
+        (err: any) => {
+          console.error("Could not save purchase: ", purchase, err);
+          reject(err);
+        }
+      );
+    });
+  }
+
+  checkIfBoletosExist() {
+    let params = {
+      boletos: Boleto.arrayExistsParams(this.parser.boletos)
+    }
+
+    this.api.req('boletos', params, {collection: 'exists'}, 'post').subscribe(
+      (res: Boleto[]) => {
+        for(let i = 0; i < this.parser.boletos.length; i++) {
+          if(res[i] && res[i].id > 0) {
+            this.parser.boletos[i] = res[i];
+          }
+        }
+      },
+      (err: any) => {
+        alert("Erro ao buscar boletos existentes");
+        console.error(err);
       }
     );
   }
-  checkIfIncomesExist(idx: number = 0) {
-    if(idx >= this.parser.incomes.length)
-      return;
-
-    let income: Income = this.parser.incomes[idx];
+  checkIfPurchasesExist() {
     let params = {
-      income: {
-        bank_name: income.bank_name,
-        bank_identification: income.bank_identification,
-        value: income.value,
-        date_received: income.date_received,
-        origin: income.origin,
-        income_type: income.income_type
-      }
+      purchases: Purchase.arrayExistsParams(this.parser.purchases)
     }
-    this.api.show('incomes', 'exists', params).subscribe(
-      (res: Boleto|null) => {
-        if(res && res.id) {
-          this.parser.incomes[idx] = res;
-        }
 
-        this.checkIfIncomesExist(idx + 1);
+    this.api.req('purchases', params, {collection: 'exists'}, 'post').subscribe(
+      (res: Purchase[]) => {
+        for(let i = 0; i < this.parser.purchases.length; i++) {
+          if(res[i] && res[i].id > 0) {
+            this.parser.purchases[i] = res[i];
+          }
+        }
+      },
+      (err: any) => {
+        alert("Erro ao buscar boletos existentes");
+        console.error(err);
+      }
+    );
+  }
+  checkIfIncomesExist() {
+    let params = {
+      incomes: Income.arrayExistsParams(this.parser.incomes)
+    }
+    this.api.req('incomes', params, {collection: 'exists'}, 'post').subscribe(
+      (res: Income[]) => {
+        for(let i = 0; i < this.parser.incomes.length; i++) {
+          if(res[i] && res[i].id > 0) {
+            this.parser.incomes[i] = res[i];
+          }
+        }
+      },
+      (err: any) => {
+        alert("Erro ao buscar receitas existentes");
+        console.error(err);
       }
     );
   }

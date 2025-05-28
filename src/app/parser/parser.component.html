@@ -147,6 +147,50 @@
 	</tbody>
 </table>
 
+<br/>
+
+<table class="table" *ngIf="parser">
+	<thead>
+		<tr class="title">
+			<th colspan="6">
+				OUTRAS DESPESAS &nbsp;&nbsp;
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!despesaCollapsed" (click)="despesaCollapsed = !despesaCollapsed">
+					{{despesaCollapsed ? "EXPANDIR" : "RECOLHER"}}
+				</button>
+			</th>
+		</tr>
+		<tr #collapse="ngbCollapse" [(ngbCollapse)]="despesaCollapsed">
+			<th>DATA DESPESA</th>
+			<th>FORNECEDOR</th>
+			<th>TOTAL</th>
+			<th>BANCO</th>
+			<th>TAGS &nbsp; 
+				<span class="form-switch">
+					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
+					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
+				</span>
+			</th>
+		</tr>
+	</thead>
+	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="despesaCollapsed">
+		<tr *ngFor="let purchase of parser.purchases">
+			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
+			<td>{{purchase.supplier_name}}</td>
+			<td>{{purchase.total | currency:'BRL'}}</td>
+			<td>{{purchase.bank_name}}</td>
+			<td>
+				<ng-select [items]="availableTags"
+								addTag="true"
+								[multiple]="true"
+								placeholder="Selecione"
+								bindLabel="name"
+								[ngModel]="purchase.tags"
+								(change)="tagChanged(purchase, $event, 'purchase')"></ng-select>
+			</td> <!-- Tags -->
+		</tr>
+	</tbody>
+</table>
+
 <div>
 	<button class="btn btn-lg btn-primary" (click)="send()">SALVAR</button>
 </div>

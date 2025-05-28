@@ -1,19 +1,19 @@
+import { BalanceParser } from './balance-parser';
+
 import { Utils } from '../helpers/utils';
 import { Boleto } from '../models/boleto';
 import { Purchase } from '../models/purchase';
 import { Income } from '../models/income';
+
+
 /**
  * EXCEL ASSUMPTIONS:
  * 	1. first row will contain header cols, and one of them will be named VALOR and other will be HISTÓRICO
  * 	
  */
 
-export class SicoobParser {
+export class SicoobParser extends BalanceParser {
 	dataArr: any[] = [];
-
-	boletos: Boleto[] = [];
-	purchases: Purchase[] = [];
-	incomes: Income[] = [];
 
 	parsedHeaders: string[] = [];
 	parsedRows: any[] = [];
@@ -37,28 +37,6 @@ export class SicoobParser {
 	};
 	////////////
 
-	sumReceita = {
-		cred: {
-			visa: 0,
-			master: 0,
-			elo: 0,
-			outros: 0,
-			total: 0
-		},
-		deb: {
-			visa: 0,
-			master: 0,
-			elo: 0,
-			outros: 0,
-			total: 0
-		},
-		outros_cartoes: {
-			total: 0
-		},
-		total_cartoes: 0,
-		pix: 0,
-		total: 0
-	};
 	comprovantesArr: {
 		documento: string,
 		beneficiario: string,
@@ -69,12 +47,12 @@ export class SicoobParser {
 	}[] = [];
 
 	constructor() {
-
+		super();
 	}
-	recalculateIncome() {
+	override recalculateIncome() {
 		this._sumReceita();
 	}
-	parseExtrato(dataArr: any[], dataType: 'excel'){
+	override parseExtrato(dataArr: any[], dataType: 'excel'): void{
 		this.dataArr = dataArr;
 		this.parsedHeaders = [];
 		this.parsedRows = [];
@@ -85,7 +63,7 @@ export class SicoobParser {
 		}
 		}
 	}
-	parseComprovantes(text: string) {
+	override parseComprovantes(text: string): any {
 		this.comprovantesArr = [];
 		let boletosRawArr = text.split("Número do agendamento");
 
@@ -132,6 +110,8 @@ export class SicoobParser {
 			let comprovanteObj = Utils.findById(boleto.bank_identification, this.comprovantesArr, 'documento');
 			boleto.payment_date = Utils.datePtBrToISO(comprovanteObj.data_pagamento) || '1900-10-10';
 			boleto.expiration_date = Utils.datePtBrToISO(comprovanteObj.data_vencimento) || '1900-10-10';
+			// a data da compra não é a data do pagamento, porém esta informação é obrigatória e não consta no comprovante!
+			boleto.issue_date = boleto.payment_date;
 			boleto.supplier_cnpj = comprovanteObj.cnpj;
 			boleto.supplier_name = comprovanteObj.beneficiario;
 		}
@@ -223,18 +203,21 @@ export class SicoobParser {
 			if(row[descIdx].indexOf("SALDO") == 0)
 				continue;
 
-			if(type == "boleto" || type == "despesa") {
-				let purchase = <Purchase>{
+			if(type == "boleto" || type == "despesa" || type == "seguro") {
+				let purchase = new Purchase({
 					id: -Math.floor(Math.random() * 1000000),
 					company_id: 0, // server will set this for us
 					supplier_id: 0, // server will set this for us
 					supplier_name: desc,
+					purchase_date: Utils.datePtBrToISO(row[dateIdx]),
+					bank_name: "sicoob",
 					base_value: -row[valueIdx], // 'despesa' and 'boleto' values are negative. we will fix this now. 
 					delivery_fee: 0,
 					total: -row[valueIdx] // 'despesa' and 'boleto' values are negative. we will fix this now. 
-				};
+				});
+
 				if(type == "boleto") {
-					let boleto = <Boleto>{
+					let boleto = new Boleto({
 						id: -Math.floor(Math.random() * 1000000),
 						purchase_id: 0, // we will set this later
 						bank_name: "sicoob",
@@ -245,15 +228,18 @@ export class SicoobParser {
 						// installments: we don't know this yet
 						payment_date: Utils.datePtBrToISO(row[dateIdx]),
 						supplier_name: row[descIdx]
-					};
+					});
 					boleto.auxTags = [];
 					purchase.boletos = [boleto];
 					this.boletos.push(boleto);
+				} else {
+					// boleto's purchase was already added to boletos.
+					// any other purchase will be stored in purchases variable
+					this.purchases.push(purchase);
 				}
-				this.purchases.push(purchase);
 			} else if(type && type.indexOf("receita") > -1) {
 				let cardType: string|null = type.split("receita_cartao ")[1];
-				let income: Income = <Income>{
+				let income: Income = new Income({
 					id: -Math.floor(Math.random() * 1000000),
 					company_id: 0, // server will set this for us
 					date_received: Utils.datePtBrToISO(row[dateIdx]),
@@ -262,7 +248,7 @@ export class SicoobParser {
 					// bank_identification: we don't know this yet
 					// income_type: we might not know this yet
 					value: row[valueIdx]
-				};
+				});
 
 				if(cardType) {
 					income.origin = cardType;
@@ -272,7 +258,7 @@ export class SicoobParser {
 				}
 				this.incomes.push(income);
 			} else {
-				console.error("SicoobParser->classifyDescription: row is not receita nor despesa", row);
+				console.error("SicoobParser->classifyDescription: row is not receita nor despesa. it is: " + type, row);
 			}
 		}
 	}
