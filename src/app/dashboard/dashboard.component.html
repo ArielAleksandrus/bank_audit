@@ -1,1 +1,20 @@
 <p>dashboard works!</p>
+
+<ngb-datepicker [displayMonths]="2"
+								[dayTemplate]="dayTemplate"
+								outsideDays="hidden"
+								(dateSelect)="onDateSelection($event)"/>
+<ng-template #dayTemplate let-date let-focused="focused">
+	<span
+		class="custom-day"
+		[class.focused]="focused"
+		[class.range]="isRange(date)"
+		[class.faded]="isHovered(date) || isInside(date)"
+		(mouseenter)="hoveredDate = date"
+		(mouseleave)="hoveredDate = null"
+	>
+		{{ date.day }}
+	</span>
+</ng-template>
+
+<button class="btn btn-lg btn-primary" (click)="queryEntries()">PESQUISAR</button>

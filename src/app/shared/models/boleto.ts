@@ -62,4 +62,25 @@ export class Boleto {
 		}
 		return arr;
 	}
+
+	public static queryParams(attr: 'payment_date', val: any) {
+		let params: any = {};
+
+		switch(attr) {
+		case("payment_date"): {
+			if(Array.isArray(val)) {
+				params.q_interval = {
+					"payment_date": [`>=${val[0]}`, `<=${val[1]}`]
+				}
+			} else {
+				params.q = {
+					"payment_date": val
+				}
+			}
+			break;
+		}
+		}
+
+		return params;
+	}
 }
