@@ -39,6 +39,13 @@ export class Purchase {
 		this.created_at = jsonData.created_at;
 		this.updated_at = jsonData.updated_at;
 	}
+	public static fromJsonArray(jsonArr: any[]) {
+		let res = [];
+		for(let data of jsonArr) {
+			res.push(new Purchase(data));
+		}
+		return res;
+	}
 
 	existsParams() {
 		return {

@@ -37,6 +37,13 @@ export class Boleto {
 		this.supplier_cnpj = jsonData.supplier_cnpj;
 		this.auxTags = jsonData.auxTags;
 	}
+	public static fromJsonArray(jsonArr: any[]) {
+		let res = [];
+		for(let data of jsonArr) {
+			res.push(new Boleto(data));
+		}
+		return res;
+	}
 
 	existsParams() {
 		return {
@@ -61,26 +68,5 @@ export class Boleto {
 			arr.push(obj.existsParams());
 		}
 		return arr;
-	}
-
-	public static queryParams(attr: 'payment_date', val: any) {
-		let params: any = {};
-
-		switch(attr) {
-		case("payment_date"): {
-			if(Array.isArray(val)) {
-				params.q_interval = {
-					"payment_date": [`>=${val[0]}`, `<=${val[1]}`]
-				}
-			} else {
-				params.q = {
-					"payment_date": val
-				}
-			}
-			break;
-		}
-		}
-
-		return params;
 	}
 }
