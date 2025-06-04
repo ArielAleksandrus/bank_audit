@@ -35,8 +35,6 @@ export class DashboardComponent {
   suppliers: Supplier[] = [];
 
   curAction: 'init'|'query'|'insert' = 'init';
-  insertType: 'purchase'|'income' = 'purchase';
-  selectedSupplier: Supplier = <Supplier>{name: '', cnpj: ''};
 
 
   constructor(private api: ApiService) {
@@ -56,9 +54,7 @@ export class DashboardComponent {
     this.curAction = 'init';
   }
   insertAction() {
-    this.fromDate = this.today;
-    this.curAction = 'insert';
-    this.loadSuppliers();
+    location.href = "/inserir";
   }
 
   queryEntries() {
@@ -168,15 +164,4 @@ export class DashboardComponent {
     );
   }
 
-  loadSuppliers() {
-    this.api.indexAll('suppliers').subscribe(
-      (res: Supplier[]) => {
-        this.suppliers = res;
-      }
-    );
-  }
-
-  changedNgSelectObj(obj: Supplier) {
-    this.selectedSupplier = new Supplier(obj);
-  }
 }

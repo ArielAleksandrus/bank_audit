@@ -1,0 +1,82 @@
+<div class="ins-container">
+	<h4>Insira a informação</h4>
+	<ngb-datepicker [displayMonths]="1"
+									outsideDays="hidden"
+									[maxDate]="today"
+									[(ngModel)]="fromDate"/>
+	<div class="ins-body">
+		<div class="ins-type-btns">
+			<button class="btn btn-sm btn-default btn-purchase"
+							[class.selected]="insertType == 'purchase'"
+							(click)="insertType = 'purchase'">saída</button>
+			<button class="btn btn-sm btn-default btn-income"
+							[class.selected]="insertType == 'income'"
+							(click)="insertType = 'income'">entrada</button>
+		</div>
+		<div *ngIf="insertType == 'purchase'">
+			<div>
+				<label class="field-label">Fornecedor:</label>
+        <ng-select id="ngssup" [items]="suppliers"
+                    bindLabel="name"
+                    autofocus
+                    bindValue="name"
+                    [(ngModel)]="selectedSupplier.name"
+                    (change)="changedNgSelectObj($event)"
+                    addTag="true">
+        </ng-select>
+			</div>
+			<div>
+				<label class="field-label">CNPJ (só números):</label>
+				<input type="text" [(ngModel)]="selectedSupplier.cnpj" class="form-control"/>
+			</div>
+			<div>
+				<label class="field-label">Banco: </label>
+        <ng-select id="ngsbank" [items]="banks"
+                    autofocus
+                    [(ngModel)]="selectedBank"
+                    addTag="true">
+        </ng-select>
+			</div>
+			<div>
+				<label class="field-label">Total de Parcelas: </label>
+        <input type="number" min="1" max="36" [(ngModel)]="installmentsQty" class="form-control"/>
+			</div>
+			<div>
+				<label class="field-label">Valor da parcela: </label>
+        <input type="number" min="0.01" [(ngModel)]="partialValue" class="form-control"/>
+			</div>
+			<div>
+				<label class="field-label">Tem boleto?</label> &nbsp; &nbsp;
+        <input type="checkbox" [(ngModel)]="hasBoleto" (change)="hasBoletoChanged()"/>
+			</div>
+			<div *ngIf="hasBoleto">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+							<th>Parcela</th>
+							<th>Vencimento</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr *ngFor="let bol of boletos">
+							<td>{{bol.installments}}</td>
+							<td>
+								<input type="text" class="form-control" [(ngModel)]="bol.expiration_date" mask="99/99/9999"/>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+		<!---------------------------------------->
+
+		<div *ngIf="insertType == 'income'">
+			
+		</div>
+	</div>
+	<div class="footer-buttons">
+		<button class="btn btn-lg btn-warning" (click)="back()">VOLTAR</button> &nbsp; &nbsp; &nbsp;
+		<button class="btn btn-lg btn-primary" (click)="send()" [disabled]="!fromDate">INSERIR</button>
+	</div>
+</div>

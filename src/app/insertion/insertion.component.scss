@@ -1,0 +1,30 @@
+.ins-container {
+	text-align: center;
+	max-width: 30em;
+	margin: auto;
+	
+	h4 {
+		padding: 1em 0;
+	}
+	.footer-buttons {
+		padding-top: 1em;
+	}
+
+	.ins-type-btns {
+		margin: 1em 0;
+		button {
+			border-radius: 0;
+		}
+		.btn-purchase {
+			border: 1px solid blue;
+			border-right: 0;
+		}
+		.btn-income {
+			border: 1px solid blue;
+		}
+		.selected {
+			background-color: darkblue;
+			color: #fafafa;
+		}
+	}
+}
