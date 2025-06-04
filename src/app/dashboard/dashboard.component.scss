@@ -16,3 +16,43 @@
 .custom-day.faded {
 	background-color: rgba(2, 117, 216, 0.5);
 }
+.actions {
+	text-align: center;
+	button {
+		margin-top: 2em;
+		font-size: 2em;
+		border-radius: 0;
+		width: 10em;
+	}
+}
+.dp-container, .ins-container {
+	text-align: center;
+	h4 {
+		padding: 1em 0;
+	}
+	.footer-buttons {
+		padding-top: 1em;
+	}
+}
+.ins-container {
+	max-width: 30em;
+	margin: auto;
+
+	.ins-type-btns {
+		margin: 1em 0;
+		button {
+			border-radius: 0;
+		}
+		.btn-purchase {
+			border: 1px solid blue;
+			border-right: 0;
+		}
+		.btn-income {
+			border: 1px solid blue;
+		}
+		.selected {
+			background-color: darkblue;
+			color: #fafafa;
+		}
+	}
+}

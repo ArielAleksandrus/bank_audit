@@ -1,7 +1,10 @@
 import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 import { NgbCalendar, NgbDatepickerModule, NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
+
 
 import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
@@ -10,10 +13,11 @@ import { Company } from '../shared/models/company';
 import { Boleto } from '../shared/models/boleto';
 import { Income } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
+import { Supplier } from '../shared/models/supplier';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [NgbDatepickerModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgbDatepickerModule, NgSelectModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -28,6 +32,12 @@ export class DashboardComponent {
   boletos: Boleto[] = [];
   incomes: Income[] = [];
   purchases: Purchase[] = [];
+  suppliers: Supplier[] = [];
+
+  curAction: 'init'|'query'|'insert' = 'init';
+  insertType: 'purchase'|'income' = 'purchase';
+  selectedSupplier: Supplier = <Supplier>{name: '', cnpj: ''};
+
 
   constructor(private api: ApiService) {
     this.company = Company.loadCompany();
@@ -36,6 +46,19 @@ export class DashboardComponent {
       return;
     }
     api.setAuth({token: this.company.token});
+  }
+
+  resetAction() {
+    this.fromDate = this.toDate = this.hoveredDate = null;
+    this.boletos = [];
+    this.incomes = [];
+    this.purchases = [];
+    this.curAction = 'init';
+  }
+  insertAction() {
+    this.fromDate = this.today;
+    this.curAction = 'insert';
+    this.loadSuppliers();
   }
 
   queryEntries() {
@@ -125,8 +148,6 @@ export class DashboardComponent {
       this.toDate = null;
       this.fromDate = date;
     }
-
-    console.log(this.fromDate, this.toDate);
   }
   isHovered(date: NgbDate) {
     return (
@@ -145,5 +166,17 @@ export class DashboardComponent {
       this.isInside(date) ||
       this.isHovered(date)
     );
+  }
+
+  loadSuppliers() {
+    this.api.indexAll('suppliers').subscribe(
+      (res: Supplier[]) => {
+        this.suppliers = res;
+      }
+    );
+  }
+
+  changedNgSelectObj(obj: Supplier) {
+    this.selectedSupplier = new Supplier(obj);
   }
 }

@@ -1,9 +1,68 @@
-<p>dashboard works!</p>
+<div *ngIf="curAction == 'init'" class="actions">
+	<div>
+		<button class="btn btn-lg btn-primary" (click)="curAction = 'query'">CONSULTAR</button>
+	</div>
+	<div>
+		<button class="btn btn-lg btn-secondary" (click)="insertAction()">INSERIR</button>
+	</div>
+</div>
 
-<ngb-datepicker [displayMonths]="2"
-								[dayTemplate]="dayTemplate"
-								outsideDays="hidden"
-								(dateSelect)="onDateSelection($event)"/>
+
+<div class="dp-container" *ngIf="curAction == 'query'">
+	<h4>Selecione o período por data</h4>
+	<ngb-datepicker [displayMonths]="2"
+									[dayTemplate]="dayTemplate"
+									outsideDays="hidden"
+									(dateSelect)="onDateSelection($event)"/>
+	<div class="footer-buttons">
+		<button class="btn btn-lg btn-warning" (click)="resetAction()">VOLTAR</button> &nbsp; &nbsp; &nbsp;
+		<button class="btn btn-lg btn-primary" (click)="queryEntries()" [disabled]="!fromDate">PESQUISAR</button>
+	</div>
+</div>
+
+<div class="ins-container" *ngIf="curAction == 'insert'">
+	<h4>Insira a informação</h4>
+	<ngb-datepicker [displayMonths]="1"
+									outsideDays="hidden"
+									[maxDate]="today"
+									[(ngModel)]="fromDate"/>
+	<div class="ins-body">
+		<div class="ins-type-btns">
+			<button class="btn btn-sm btn-default btn-purchase"
+							[class.selected]="insertType == 'purchase'"
+							(click)="insertType = 'purchase'">saída</button>
+			<button class="btn btn-sm btn-default btn-income"
+							[class.selected]="insertType == 'income'"
+							(click)="insertType = 'income'">entrada</button>
+		</div>
+		<div *ngIf="insertType == 'purchase'">
+			<div>
+				<label class="field-label">Fornecedor:</label>
+        <ng-select id="ngssup" [items]="suppliers"
+                    bindLabel="name"
+                    autofocus
+                    bindValue="name"
+                    [(ngModel)]="selectedSupplier.name"
+                    (change)="changedNgSelectObj($event)"
+                    addTag="true">
+        </ng-select>
+			</div>
+			<div>
+				<label class="field-label">CNPJ (só números):</label>
+				<input type="text" [(ngModel)]="selectedSupplier.cnpj" class="form-control"/>
+			</div>
+		</div>
+		<div *ngIf="insertType == 'income'">
+			
+		</div>
+	</div>
+	<div class="footer-buttons">
+		<button class="btn btn-lg btn-warning" (click)="resetAction()">VOLTAR</button> &nbsp; &nbsp; &nbsp;
+		<button class="btn btn-lg btn-primary" (click)="queryEntries()" [disabled]="!fromDate">INSERIR</button>
+	</div>
+</div>
+
+<!-- Templates -->
 <ng-template #dayTemplate let-date let-focused="focused">
 	<span
 		class="custom-day"
@@ -16,5 +75,4 @@
 		{{ date.day }}
 	</span>
 </ng-template>
-
-<button class="btn btn-lg btn-primary" (click)="queryEntries()">PESQUISAR</button>
+<!----------------------->
