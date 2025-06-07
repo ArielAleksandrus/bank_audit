@@ -29,6 +29,7 @@ export class InsertionComponent {
 
   fromDate: NgbDate | null = null;
 
+  referrals: string[] = [];
   suppliers: Supplier[] = [];
   banks: string[] = [
     'banco do brasil',
@@ -46,15 +47,20 @@ export class InsertionComponent {
   ];
 
   insertType: 'purchase'|'income' = 'purchase';
-  selectedSupplier: Supplier = <Supplier>{name: '', cnpj: ''};
   selectedBank: string = '';
+  hasReferral: boolean = false;
 
-  partialValue?: number;
-  installmentsQty: number = 1;
-  hasBoleto: boolean = false;
+  purchase: Purchase;
   boletos: Boleto[] = [];
+  
+  income: Income;
 
   constructor(private api: ApiService) {
+    this.purchase = new Purchase({
+      installments: 1
+    });
+    this.income = new Income({});
+
     this.company = Company.loadCompany();
     if(!this.company) {
       location.href = "/login";
@@ -67,6 +73,7 @@ export class InsertionComponent {
 
   ngOnInit() {
     this.loadSuppliers();
+    this.loadReferrals();
   }
 
   loadSuppliers() {
@@ -76,37 +83,53 @@ export class InsertionComponent {
       }
     );
   }
+  loadReferrals() {
+    this.api.index('purchases', {}, {collection: 'referrals'}).subscribe(
+      (res: string[]) => {
+        this.referrals = res;
+      }
+    );
+  }
 
   changedNgSelectObj(obj: Supplier) {
-    this.selectedSupplier = new Supplier(obj);
+    if(!obj)
+      obj = <Supplier>{name: '', cnpj: ''};
+
+    this.purchase.supplier_name = obj.name;
+    this.purchase.supplier_cnpj = obj.cnpj;
   }
 
   back() {
     history.back();
   }
 
-  hasBoletoChanged() {
-    if(!this.fromDate)
-      return;
-
-    let fromStr = `${this.fromDate.day}/${this.fromDate.month}/${this.fromDate.year}`;
-    if(this.hasBoleto) {
-      this.boletos = [];
-      for(let i = 0; i < this.installmentsQty; i++) {
-        this.boletos.push(new Boleto({
-          supplier_name: this.selectedSupplier.name,
-          supplier_cnpj: this.selectedSupplier.cnpj,
-          bank_name: this.selectedBank,
-          value: this.partialValue,
-          installments: `${i+1}de${this.installmentsQty}`,
-          expiration_date: '',
-          issue_date: fromStr
-        }));
-      }
+  paymentTypeChanged() {
+    switch(this.purchase.payment_type) {
+    case("boleto"): {
+      this._genBoletos();
+      break;
+    }
     }
   }
 
   send() {
 
+  }
+
+  private _genBoletos() {
+    if(!this.fromDate || !(this.purchase.installments > 0))
+      return;
+
+    let fromStr = `${this.fromDate.day}/${this.fromDate.month}/${this.fromDate.year}`;
+    this.boletos = [];
+    for(let i = 0; i < this.purchase.installments; i++) {
+      this.boletos.push(new Boleto({
+        bank_name: this.selectedBank,
+        value: ((Number(this.purchase.base_value) || 0) / (this.purchase.installments || 1)).toFixed(2),
+        installments: `${i+1}de${this.purchase.installments}`,
+        expiration_date: '',
+        issue_date: fromStr
+      }));
+    }
   }
 }

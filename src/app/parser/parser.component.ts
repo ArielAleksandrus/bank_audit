@@ -171,19 +171,41 @@ export class ParserComponent {
 
       let boleto = Utils.clone(this.parser.boletos[idx]);
 
-      delete boleto.id;
-      this.api.create('purchases/from_boleto', {
-        boleto: boleto
-      }).subscribe(
-        (res: any) => {
+      if(boleto.purchase_id > 0) {
+        this.sendBoleto(boleto).then( res => {
+          this.parser.boletos[idx] = res;
           resolve(this.saveBoletos(idx + 1));
+        })
+      } else {
+        this.sendPurchase(Purchase.fromBoleto(boleto)).then( purchase => {
+          boleto.purchase_id = purchase.id;
+          this.sendBoleto(boleto).then( res => {
+            this.parser.boletos[idx] = res;
+            resolve(this.saveBoletos(idx + 1));
+          })
+        })
+      }
+    });
+  }
+  sendBoleto(boleto: Boleto): Promise<Boleto> {
+    return new Promise((resolve, reject) => {
+      let req: any = null;
+      if(boleto.id > 0) {
+        req = this.api.update('boletos', boleto.id, {boleto});
+      } else {
+        req = this.api.create('boletos', {boleto});
+      }
+
+      req.subscribe(
+        (res: Boleto) => {
+          resolve(res);
         },
         (err: any) => {
-          console.log(err);
+          console.error("Could not save boleto: ", boleto, err);
           reject(err);
         }
       );
-    });
+    })
   }
   saveIncomes(idx: number = 0) {
     return new Promise((resolve, reject) => {
@@ -213,7 +235,7 @@ export class ParserComponent {
       );
     });
   }
-  savePurchases(idx: number = 0) {
+  savePurchases(idx: number = 0): Promise<boolean> {
     return new Promise((resolve, reject) => {
       if(idx >= this.parser.purchases.length) {
         resolve(true);
@@ -222,6 +244,14 @@ export class ParserComponent {
 
       let purchase = Utils.clone(this.parser.purchases[idx]);
 
+      this.sendPurchase(purchase).then( res => {
+        this.parser.purchases[idx] = res;
+        resolve(this.savePurchases(idx + 1));
+      });
+    });
+  }
+  sendPurchase(purchase: Purchase): Promise<Purchase> {
+    return new Promise((resolve, reject) => {
       let req: any = null;
       if(purchase.id > 0) {
         req = this.api.update('purchases', purchase.id, {purchase});
@@ -231,15 +261,14 @@ export class ParserComponent {
 
       req.subscribe(
         (res: Purchase) => {
-          this.parser.purchases[idx] = res;
-          resolve(this.savePurchases(idx + 1));
+          resolve(res);
         },
         (err: any) => {
           console.error("Could not save purchase: ", purchase, err);
           reject(err);
         }
       );
-    });
+    })
   }
 
   checkIfBoletosExist() {

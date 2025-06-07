@@ -13,48 +13,73 @@
 							[class.selected]="insertType == 'income'"
 							(click)="insertType = 'income'">entrada</button>
 		</div>
+
+		<!-- Purchase fields -->
 		<div *ngIf="insertType == 'purchase'">
-			<div>
+			<div class="field-div">
 				<label class="field-label">Fornecedor:</label>
         <ng-select id="ngssup" [items]="suppliers"
                     bindLabel="name"
                     autofocus
                     bindValue="name"
-                    [(ngModel)]="selectedSupplier.name"
+                    [(ngModel)]="purchase.supplier_name"
                     (change)="changedNgSelectObj($event)"
                     addTag="true">
         </ng-select>
 			</div>
-			<div>
+			<div class="field-div">
 				<label class="field-label">CNPJ (só números):</label>
-				<input type="text" [(ngModel)]="selectedSupplier.cnpj" class="form-control"/>
+				<input type="text" [(ngModel)]="purchase.supplier_cnpj" class="form-control"/>
 			</div>
-			<div>
-				<label class="field-label">Banco: </label>
+			<div class="field-div">
+				<label class="field-label">Banco (de onde o dinheiro saiu): </label>
         <ng-select id="ngsbank" [items]="banks"
                     autofocus
                     [(ngModel)]="selectedBank"
                     addTag="true">
         </ng-select>
 			</div>
-			<div>
+			<div class="field-div">
+				<label class="field-label">Foi pago a terceiros? (ex: reembolso pago ao sócio)</label> &nbsp; &nbsp;
+        <input type="checkbox" [(ngModel)]="hasReferral"/>
+			</div>
+			<div *ngIf="hasReferral" class="field-div">
+				<label class="field-label">Nome de quem recebeu: </label>
+        <ng-select id="ngsbank" [items]="referrals"
+                    autofocus
+                    [(ngModel)]="purchase.referral"
+                    addTag="true">
+        </ng-select>
+			</div>
+			<div class="field-div">
 				<label class="field-label">Total de Parcelas: </label>
-        <input type="number" min="1" max="36" [(ngModel)]="installmentsQty" class="form-control"/>
+        <input type="number" min="1" max="36" [(ngModel)]="purchase.installments" class="form-control"/>
 			</div>
-			<div>
+			<div class="field-div">
 				<label class="field-label">Valor da parcela: </label>
-        <input type="number" min="0.01" [(ngModel)]="partialValue" class="form-control"/>
+        <input type="number" min="0.01" [(ngModel)]="purchase.base_value" class="form-control"/>
 			</div>
-			<div>
-				<label class="field-label">Tem boleto?</label> &nbsp; &nbsp;
-        <input type="checkbox" [(ngModel)]="hasBoleto" (change)="hasBoletoChanged()"/>
+			<div *ngIf="purchase.installments >= 1 && purchase.base_value > 0" class="field-div">
+				<label class="field-label">Forma de Pagamento</label>
+				<select [(ngModel)]="purchase.payment_type" (change)="paymentTypeChanged()" class="form-control">
+					<option value="" disabled>Selecione</option>
+					<option value="boleto">Boleto</option>
+					<option value="debit_card">Cartão de Débito</option>
+					<option value="credit_card">Cartão de Crédito</option>
+					<option value="pix">PIX</option>
+					<option value="check">Cheque</option>
+					<option value="cash">Dinheiro</option>
+					<option value="transfer">Transferência</option>
+					<option value="other">Outro</option>
+				</select>
 			</div>
-			<div *ngIf="hasBoleto">
+			<div *ngIf="purchase.payment_type == 'boleto' && boletos.length > 0" class="field-div">
 				<table class="table table-hover">
 					<thead>
 						<tr>
 							<th>Parcela</th>
 							<th>Vencimento</th>
+							<th>Valor</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -63,11 +88,19 @@
 							<td>
 								<input type="text" class="form-control" [(ngModel)]="bol.expiration_date" mask="99/99/9999"/>
 							</td>
+							<td>
+								<input type="text" class="form-control" [(ngModel)]="bol.value" mask="separator.2"/>
+							</td>
 						</tr>
 					</tbody>
 				</table>
 			</div>
+			<div class="field-div">
+				<label class="field-label">Observações:</label>
+				<textarea rows="5" class="form-control" [(ngModel)]="purchase.additional_info"></textarea>
+			</div>
 		</div>
+		<!--- --->
 
 		<!---------------------------------------->
 
