@@ -398,14 +398,8 @@ export class ParserComponent {
   private _loadTags() {
     this.availableTags = [];
 
-    const query = {
-      q: {
-        company_id: this.company.id
-      }
-    };
-
     return new Promise((resolve, reject) => {
-      this.api.indexAll('tags', query).subscribe(
+      this.api.indexAll('tags').subscribe(
         (res: any) => {
           this._addToAvailableTags(res);
           resolve(res);
@@ -415,7 +409,7 @@ export class ParserComponent {
           reject(err);
         }
       );
-    })
+    });
   }
   private _addToAvailableTags(tags: Tag[]) {
     let clone: Tag[] = Utils.clone(this.availableTags);

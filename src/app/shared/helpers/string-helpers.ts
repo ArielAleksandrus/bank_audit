@@ -48,5 +48,8 @@ export const StringHelpers = {
     }
 
     return res;
+  },
+  maskedPtbrDateToISO(date: string): string {
+    return date.split("").splice(4,4).join("") + "-" + date.split("").splice(2,2).join("") + "-" + date.split("").splice(0,2).join("");
   }
 }

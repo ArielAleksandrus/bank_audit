@@ -34,8 +34,7 @@
 			<div class="field-div">
 				<label class="field-label">Banco (de onde o dinheiro saiu): </label>
         <ng-select id="ngsbank" [items]="banks"
-                    autofocus
-                    [(ngModel)]="selectedBank"
+                    [(ngModel)]="purchase.bank_name"
                     addTag="true">
         </ng-select>
 			</div>
@@ -56,8 +55,17 @@
         <input type="number" min="1" max="36" [(ngModel)]="purchase.installments" class="form-control"/>
 			</div>
 			<div class="field-div">
-				<label class="field-label">Valor da parcela: </label>
+				<label class="field-label">Valor da compra: </label>
         <input type="number" min="0.01" [(ngModel)]="purchase.base_value" class="form-control"/>
+			</div>
+			<div class="field-div">
+				<label class="field-label">Tags: </label>
+				<ng-select [items]="availableTags"
+								addTag="true"
+								[multiple]="true"
+								placeholder="Selecione"
+								bindLabel="name"
+								[(ngModel)]="purchase.aux_tags"></ng-select>
 			</div>
 			<div *ngIf="purchase.installments >= 1 && purchase.base_value > 0" class="field-div">
 				<label class="field-label">Forma de Pagamento</label>
@@ -73,7 +81,7 @@
 					<option value="other">Outro</option>
 				</select>
 			</div>
-			<div *ngIf="purchase.payment_type == 'boleto' && boletos.length > 0" class="field-div">
+			<div *ngIf="purchase.payment_type == 'boleto' && purchase.boletos.length > 0" class="field-div">
 				<table class="table table-hover">
 					<thead>
 						<tr>
@@ -83,7 +91,7 @@
 						</tr>
 					</thead>
 					<tbody>
-						<tr *ngFor="let bol of boletos">
+						<tr *ngFor="let bol of purchase.boletos">
 							<td>{{bol.installments}}</td>
 							<td>
 								<input type="text" class="form-control" [(ngModel)]="bol.expiration_date" mask="99/99/9999"/>
@@ -105,11 +113,51 @@
 		<!---------------------------------------->
 
 		<div *ngIf="insertType == 'income'">
-			
+			<div class="field-div">
+				<label class="field-label">Valor do recebimento: </label>
+        <input type="number" min="0.01" [(ngModel)]="income.value" class="form-control"/>
+			</div>
+			<div class="field-div">
+				<label class="field-label">Origem (quem pagou):</label>
+				<input type="text" class="form-control" [(ngModel)]="income.origin"/>
+			</div>
+			<div class="field-div">
+				<label class="field-label">Banco (onde o dinheiro foi depositado): </label>
+        <ng-select id="ngsbank" [items]="banks"
+                    [(ngModel)]="income.bank_name"
+                    addTag="true">
+        </ng-select>
+			</div>
+			<div class="field-div">
+				<label class="field-label">Forma de Pagamento</label>
+				<select [(ngModel)]="income.income_type" class="form-control">
+					<option value="" disabled>Selecione</option>
+					<option value="cartao">Cartão</option>
+					<option value="cheque">Cheque</option>
+					<option value="dinheiro">Dinheiro</option>
+					<option value="pix">PIX</option>
+					<option value="outro">Outro</option>
+				</select>
+			</div>
+			<div class="field-div">
+				<label class="field-label">Observações:</label>
+				<textarea rows="5" class="form-control" [(ngModel)]="income.additional_info"></textarea>
+			</div>
 		</div>
 	</div>
 	<div class="footer-buttons">
 		<button class="btn btn-lg btn-warning" (click)="back()">VOLTAR</button> &nbsp; &nbsp; &nbsp;
-		<button class="btn btn-lg btn-primary" (click)="send()" [disabled]="!fromDate">INSERIR</button>
+		<button *ngIf="insertType == 'purchase'"
+						class="btn btn-lg btn-primary"
+						(click)="sendPurchase()"
+						[disabled]="!fromDate || !purchase.supplier_name || !purchase.bank_name || !purchase.payment_type || !purchase.base_value">INSERIR</button>
+		<button *ngIf="insertType == 'income'"
+						class="btn btn-lg btn-primary"
+						(click)="sendIncome()"
+						[disabled]="!fromDate || !income.origin || !income.bank_name || !income.income_type || !income.value">INSERIR</button>
 	</div>
+
+	<br/>
+	<hr/>
+	<br/>
 </div>
