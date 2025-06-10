@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { ChartModule } from 'primeng/chart';
+
 import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
 
@@ -11,11 +13,13 @@ import { Income } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
 import { Supplier } from '../shared/models/supplier';
 
+import { Reports } from '../shared/parsers/reports';
+
 import { Utils } from '../shared/helpers/utils';
 
 @Component({
   selector: 'app-report',
-  imports: [CommonModule],
+  imports: [CommonModule, ChartModule],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
 })
@@ -33,6 +37,8 @@ export class ReportComponent {
   fromPtbr: string;
   toPtbr?: string;
 
+  reports: Reports;
+
   selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
 
   constructor(private api: ApiService,
@@ -46,6 +52,8 @@ export class ReportComponent {
     this.to = snapshot.queryParams['ate'];
     if(this.to)
       this.toPtbr = (Utils.dateToString(this.to, false) || "").split(" ")[0];
+
+    this.reports = new Reports();
 
     this.company = Company.loadCompany();
     if(!this.company) {
@@ -77,6 +85,8 @@ export class ReportComponent {
     this.api.indexAll('boletos', params).subscribe(
       (res: {boletos: Boleto[]}) => {
         this.boletos = Boleto.fromJsonArray(res.boletos);
+        let tagReport = this.reports.boletoTagChart(this.boletos);
+        console.log(tagReport);
       }
     );
   }
