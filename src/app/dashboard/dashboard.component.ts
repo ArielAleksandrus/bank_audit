@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 import { NgbCalendar, NgbDatepickerModule, NgbDate } from '@ng-bootstrap/ng-bootstrap';
 import { FormsModule } from '@angular/forms';
@@ -29,18 +30,14 @@ export class DashboardComponent {
   fromDate: NgbDate | null = null;
   toDate: NgbDate | null = null;
 
-  boletos: Boleto[] = [];
-  incomes: Income[] = [];
-  purchases: Purchase[] = [];
-  suppliers: Supplier[] = [];
-
   curAction: 'init'|'query'|'insert' = 'init';
 
 
-  constructor(private api: ApiService) {
+  constructor(private api: ApiService,
+              private router: Router) {
     this.company = Company.loadCompany();
     if(!this.company) {
-      location.href = "/login";
+      this.router.navigate(['/login']);
       return;
     }
     api.setAuth({token: this.company.token});
@@ -48,76 +45,27 @@ export class DashboardComponent {
 
   resetAction() {
     this.fromDate = this.toDate = this.hoveredDate = null;
-    this.boletos = [];
-    this.incomes = [];
-    this.purchases = [];
     this.curAction = 'init';
   }
   insertAction() {
-    location.href = "/inserir";
+    this.router.navigate(['/inserir']);
   }
 
-  queryEntries() {
+  goToReports() {
     let fromStr = this.ngbDateToISO(this.fromDate);
     let toStr = this.ngbDateToISO(this.toDate);
     if(!fromStr)
       return;
 
-    this.boletos = [];
-    this.incomes = [];
-    this.purchases = [];
-    this.boletoQuery(fromStr, toStr);
-    this.incomeQuery(fromStr, toStr);
-    this.purchaseQuery(fromStr, toStr);
-  }
+    let params: any = {
+      desde: fromStr
+    };
+    if(toStr)
+      params.ate = toStr;
 
-  boletoQuery(fromStr: string, toStr: string | null) {
-    let params: any = {
-      q: {
-        "payment_date": fromStr
-      }
-    };
-    if(toStr) {
-      params = QueryHelpers.queryIntervalParams("payment_date", fromStr, toStr);
-    }
-
-    this.api.indexAll('boletos', params).subscribe(
-      (res: Boleto[]) => {
-        this.boletos = Boleto.fromJsonArray(res);
-      }
-    );
-  }
-  incomeQuery(fromStr: string, toStr: string | null) {
-    let params: any = {
-      q: {
-        "date_received": fromStr
-      }
-    };
-    if(toStr) {
-      params = QueryHelpers.queryIntervalParams("date_received", fromStr, toStr);
-    }
-    
-    this.api.indexAll('incomes', params).subscribe(
-      (res: Income[]) => {
-        this.incomes = Income.fromJsonArray(res);
-      }
-    );
-  }
-  purchaseQuery(fromStr: string, toStr: string | null) {
-    let params: any = {
-      q: {
-        "purchase_date": fromStr
-      }
-    };
-    if(toStr) {
-      params = QueryHelpers.queryIntervalParams("purchase_date", fromStr, toStr);
-    }
-    
-    this.api.indexAll('purchases', params).subscribe(
-      (res: Purchase[]) => {
-        this.purchases = Purchase.fromJsonArray(res);
-      }
-    );
+    this.router.navigate(['/relatorio'], {
+      queryParams: params
+    });
   }
 
   ngbDateToISO(date: NgbDate|null): string|null {

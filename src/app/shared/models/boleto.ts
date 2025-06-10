@@ -19,6 +19,7 @@ export class Boleto {
 	// set by our front end app to help us
 	supplier_cnpj: string;
 	auxTags: Tag[];
+	tagsStr: string;
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
@@ -36,6 +37,14 @@ export class Boleto {
 		this.updated_at = jsonData.updated_at;
 		this.supplier_cnpj = jsonData.supplier_cnpj;
 		this.auxTags = jsonData.auxTags;
+
+		this.tagsStr = "";
+		for(let tag of (this.auxTags || [])) {
+			this.tagsStr += tag.name + ", "
+		}
+		if(this.tagsStr.length > 2) {
+			this.tagsStr = this.tagsStr.split("").splice(0, this.tagsStr.length - 2).join("");
+		}
 	}
 	public static fromJsonArray(jsonArr: any[]) {
 		let res = [];

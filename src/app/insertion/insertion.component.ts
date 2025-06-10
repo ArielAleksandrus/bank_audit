@@ -80,8 +80,8 @@ export class InsertionComponent {
 
   loadSuppliers() {
     this.api.indexAll('suppliers').subscribe(
-      (res: Supplier[]) => {
-        this.suppliers = res;
+      (res: {suppliers: Supplier[]}) => {
+        this.suppliers = res.suppliers;
       }
     );
   }
@@ -95,8 +95,8 @@ export class InsertionComponent {
   loadTags() {
     this.availableTags = [];
     this.api.indexAll('tags').subscribe(
-      (res: Tag[]) => {
-        this.availableTags = res;
+      (res: {tags: Tag[]}) => {
+        this.availableTags = res.tags;
       }
     );
   }

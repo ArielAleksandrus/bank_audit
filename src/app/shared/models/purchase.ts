@@ -30,6 +30,8 @@ export class Purchase {
 	// set up by our front end app
 	supplier_name: string;
 	supplier_cnpj: string;
+	paymentTypePtbr: string = '?';
+	tagsStr: string;
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
@@ -51,6 +53,12 @@ export class Purchase {
 		this.additional_info = jsonData.additional_info;
 		this.created_at = jsonData.created_at;
 		this.updated_at = jsonData.updated_at;
+
+		this.tagsStr = "";
+		for(let tag of (this.tags || [])) {
+			this.tagsStr += tag.name + ";"
+		}
+		this.setPaymentTypePtbr();
 	}
 	public static fromJsonArray(jsonArr: any[]) {
 		let res = [];
@@ -67,6 +75,49 @@ export class Purchase {
 			base_value: this.base_value,
 			total: this.total
 		};
+	}
+	setPaymentTypePtbr() {
+		if(!this.payment_type)
+			this.paymentTypePtbr = '-';
+
+		switch(this.payment_type) {
+			case("boleto"): {
+				this.paymentTypePtbr = "boleto";
+				break;
+			}
+			case("cash"): {
+				this.paymentTypePtbr = "dinheiro";
+				break;
+			}
+			case("check"): {
+				this.paymentTypePtbr = "cheque";
+				break;
+			}
+			case("credit_card"): {
+				this.paymentTypePtbr = "crédito";
+				break;
+			}
+			case("debit_card"): {
+				this.paymentTypePtbr = "débito";
+				break;
+			}
+			case("pix"): {
+				this.paymentTypePtbr = "pix";
+				break;
+			}
+			case("transfer"): {
+				this.paymentTypePtbr = "transferência";
+				break;
+			}
+			case("other"): {
+				this.paymentTypePtbr = "outro";
+				break;
+			}
+			default: {
+				this.paymentTypePtbr = '?';
+				break;
+			}
+		}
 	}
 
 	public static arrayExistsParams(purchases: Purchase[]) {

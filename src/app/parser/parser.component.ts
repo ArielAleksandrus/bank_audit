@@ -277,10 +277,10 @@ export class ParserComponent {
     }
 
     this.api.req('boletos', params, {collection: 'exists'}, 'post').subscribe(
-      (res: Boleto[]) => {
+      (res: {boletos: Boleto[]}) => {
         for(let i = 0; i < this.parser.boletos.length; i++) {
-          if(res[i] && res[i].id > 0) {
-            this.parser.boletos[i] = res[i];
+          if(res.boletos[i] && res.boletos[i].id > 0) {
+            this.parser.boletos[i] = res.boletos[i];
           }
         }
       },
@@ -296,10 +296,10 @@ export class ParserComponent {
     }
 
     this.api.req('purchases', params, {collection: 'exists'}, 'post').subscribe(
-      (res: Purchase[]) => {
+      (res: {purchases: Purchase[]}) => {
         for(let i = 0; i < this.parser.purchases.length; i++) {
-          if(res[i] && res[i].id > 0) {
-            this.parser.purchases[i] = res[i];
+          if(res.purchases[i] && res.purchases[i].id > 0) {
+            this.parser.purchases[i] = res.purchases[i];
           }
         }
       },
@@ -314,10 +314,10 @@ export class ParserComponent {
       incomes: Income.arrayExistsParams(this.parser.incomes)
     }
     this.api.req('incomes', params, {collection: 'exists'}, 'post').subscribe(
-      (res: Income[]) => {
+      (res: {incomes: Income[]}) => {
         for(let i = 0; i < this.parser.incomes.length; i++) {
-          if(res[i] && res[i].id > 0) {
-            this.parser.incomes[i] = res[i];
+          if(res.incomes[i] && res.incomes[i].id > 0) {
+            this.parser.incomes[i] = res.incomes[i];
           }
         }
       },
@@ -401,8 +401,8 @@ export class ParserComponent {
     return new Promise((resolve, reject) => {
       this.api.indexAll('tags').subscribe(
         (res: any) => {
-          this._addToAvailableTags(res);
-          resolve(res);
+          this._addToAvailableTags(res.tags);
+          resolve(res.tags);
         },
         (err: any) => {
           console.log(err);
