@@ -52,6 +52,9 @@ export class ParserComponent {
   propagate: boolean = true;
   propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags do boleto serão copiadas para todos os boletos deste fornecedor";
 
+  sending: boolean = false;
+  sendingCount: number = 0;
+
   constructor (private api: ApiService) {
     this.parser = new SicoobParser(); // pick any parser to begin with. user can change it later
   }
@@ -158,9 +161,15 @@ export class ParserComponent {
   }
 
   send() {
-    this.saveBoletos();
-    this.saveIncomes();
-    this.savePurchases();
+    this.sendingCount = this.parser.boletos.length + this.parser.purchases.length + this.parser.incomes.length;
+    this.sending = true;
+    this.saveBoletos().then(res => {
+      this.saveIncomes().then(res2 => {
+        this.savePurchases().then(res3 => {
+          this.sending = false;
+        })
+      })
+    });
   }
 
   saveBoletos(idx: number = 0) {
@@ -169,6 +178,7 @@ export class ParserComponent {
         resolve(true);
         return;
       }
+      this.sendingCount -= 1;
 
       let boleto = Utils.clone(this.parser.boletos[idx]);
 
@@ -178,13 +188,16 @@ export class ParserComponent {
           resolve(this.saveBoletos(idx + 1));
         })
       } else {
-        this.sendPurchase(Purchase.fromBoleto(boleto)).then( purchase => {
+        // I had two boletos of Anapool, of the same value, payed at the same time
+        // 1 of them was connected to my restaurant, and the other to the pizza restaurant
+        // therefore, when creating boletos, we have to disable Purchase's anti-duplicate check
+        this.sendPurchase(Purchase.fromBoleto(boleto), false).then( purchase => {
           boleto.purchase_id = purchase.id;
           this.sendBoleto(boleto).then( res => {
             this.parser.boletos[idx] = res;
             resolve(this.saveBoletos(idx + 1));
           })
-        })
+        });
       }
     });
   }
@@ -214,6 +227,7 @@ export class ParserComponent {
         resolve(true);
         return;
       }
+      this.sendingCount -= 1;
 
       let income = Utils.clone(this.parser.incomes[idx]);
 
@@ -242,6 +256,7 @@ export class ParserComponent {
         resolve(true);
         return;
       }
+      this.sendingCount -= 1;
 
       let purchase = Utils.clone(this.parser.purchases[idx]);
 
@@ -251,13 +266,16 @@ export class ParserComponent {
       });
     });
   }
-  sendPurchase(purchase: Purchase): Promise<Purchase> {
+  sendPurchase(purchase: Purchase, avoidDuplicates: boolean = true): Promise<Purchase> {
     return new Promise((resolve, reject) => {
       let req: any = null;
       if(purchase.id > 0) {
         req = this.api.update('purchases', purchase.id, {purchase});
       } else {
-        req = this.api.create('purchases', {purchase});
+        req = this.api.create('purchases', {
+          purchase: purchase,
+          avoid_duplicates: avoidDuplicates
+        });
       }
 
       req.subscribe(

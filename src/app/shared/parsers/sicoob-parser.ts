@@ -74,6 +74,8 @@ export class SicoobParser extends BalanceParser {
 			if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
 				beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
 
+			beneficiario = beneficiario.replace("\t", "").replace("\n", "");
+
 			let supplierCnpj = boletoRaw.split('CPF/CNPJ\t')[1].split('\n')[0];
 			if(supplierCnpj)
 				supplierCnpj = supplierCnpj.replace('.','').replace('-','').replace('/','');

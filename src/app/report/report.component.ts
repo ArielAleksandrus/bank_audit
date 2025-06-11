@@ -13,7 +13,7 @@ import { Income } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
 import { Supplier } from '../shared/models/supplier';
 
-import { Reports } from '../shared/parsers/reports';
+import { Reports, TagClassification } from '../shared/parsers/reports';
 
 import { Utils } from '../shared/helpers/utils';
 
@@ -40,6 +40,8 @@ export class ReportComponent {
   reports: Reports;
 
   selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
+
+  tagData: any;
 
   constructor(private api: ApiService,
               private router: Router,
@@ -86,7 +88,7 @@ export class ReportComponent {
       (res: {boletos: Boleto[]}) => {
         this.boletos = Boleto.fromJsonArray(res.boletos);
         let tagReport = this.reports.boletoTagChart(this.boletos);
-        console.log(tagReport);
+        this.genTagChart(tagReport);
       }
     );
   }
@@ -121,5 +123,30 @@ export class ReportComponent {
         this.purchases = Purchase.fromJsonArray(res.purchases);
       }
     );
+  }
+
+  genTagChart(tagReport: TagClassification) {
+    let tags: string[] = Object.keys(tagReport.classification);
+    let tagCount: number = tags.length;
+    let td: any = {
+      labels: tags,
+      datasets: [{
+        type: 'line',
+        label: 'Custo Total',
+        borderWidth: 2,
+        fill: false,
+        data: Array(tagCount).fill(tagReport.total)
+      }, {
+        type: 'bar',
+        label: 'Custo Parcial',
+        data: []
+      }]
+    };
+
+    for(let tag of tags) {
+      td.datasets[1].data.push(tagReport.classification[tag]);
+    }
+
+    this.tagData = td;
   }
 }

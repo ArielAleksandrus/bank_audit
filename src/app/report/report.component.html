@@ -95,8 +95,8 @@
 							[class.warning]="!boleto.payment_date">
 						{{ (boleto.payment_date || boleto.expiration_date) | date:'dd/MM/yyyy' }}
 					</td>
-					<td>{{ boleto.supplier_name }}</td>
 					<td>{{ boleto.bank_name }}</td>
+					<td>{{ boleto.supplier_name }}</td>
 					<td>{{ boleto.value | currency:'BRL' }}</td>
 					<td>{{ boleto.installments || '-' }}</td>
 					<td>{{ boleto.tagsStr }}</td>
@@ -108,6 +108,6 @@
 </div>
 <div class="charts">
 	<div>
-		
+		<p-chart type="line" [data]="tagData" class="h-[30rem]" />
 	</div>
 </div>

@@ -56,7 +56,10 @@ export class Purchase {
 
 		this.tagsStr = "";
 		for(let tag of (this.tags || [])) {
-			this.tagsStr += tag.name + ";"
+			this.tagsStr += tag.name + ", "
+		}
+		if(this.tagsStr.length > 2) {
+			this.tagsStr = this.tagsStr.split("").splice(0, this.tagsStr.length - 2).join("");
 		}
 		this.setPaymentTypePtbr();
 	}
