@@ -43,6 +43,7 @@ export class ParserComponent {
   parser: BalanceParser;
 
   availableTags: Tag[] = [];
+  suggestions: {[supplierName: string]: Tag[]} = {};
 
   receitaCollapsed: boolean = true;
   boletoCollapsed: boolean = true;
@@ -98,7 +99,7 @@ export class ParserComponent {
 
     let value = txtArea.value;
     this.parser.parseComprovantes(value);
-    alert("Enviado. Favor conferir se os beneficiários apareceram.");
+    alert("Comprovantes enviados. Favor conferir se as informações estão corretas.");
     this.checkIfBoletosExist();
   }
 
@@ -280,9 +281,10 @@ export class ParserComponent {
       (res: {boletos: Boleto[]}) => {
         for(let i = 0; i < this.parser.boletos.length; i++) {
           if(res.boletos[i] && res.boletos[i].id > 0) {
-            this.parser.boletos[i] = res.boletos[i];
+            this.parser.boletos[i] = new Boleto(res.boletos[i]);
           }
         }
+        this.loadSuggestions(Boleto.getSupplierNames(this.parser.boletos));
       },
       (err: any) => {
         alert("Erro ao buscar boletos existentes");
@@ -299,9 +301,10 @@ export class ParserComponent {
       (res: {purchases: Purchase[]}) => {
         for(let i = 0; i < this.parser.purchases.length; i++) {
           if(res.purchases[i] && res.purchases[i].id > 0) {
-            this.parser.purchases[i] = res.purchases[i];
+            this.parser.purchases[i] = new Purchase(res.purchases[i]);
           }
         }
+        this.loadSuggestions(Purchase.getSupplierNames(this.parser.purchases));
       },
       (err: any) => {
         alert("Erro ao buscar boletos existentes");
@@ -317,7 +320,7 @@ export class ParserComponent {
       (res: {incomes: Income[]}) => {
         for(let i = 0; i < this.parser.incomes.length; i++) {
           if(res.incomes[i] && res.incomes[i].id > 0) {
-            this.parser.incomes[i] = res.incomes[i];
+            this.parser.incomes[i] = new Income(res.incomes[i]);
           }
         }
       },
@@ -368,6 +371,31 @@ export class ParserComponent {
         }
       )
     });
+  }
+
+  loadSuggestions(supplierNames: string[]) {
+    this.api.show('tags', 'suggestions', {
+      supplier_names: supplierNames
+    }).subscribe(
+      (res: {[supplierName: string]: Tag[]}) => {
+        for(let supplierName in res) {
+          this.suggestions[supplierName] = res[supplierName];
+        }
+        for(let boleto of this.parser.boletos) {
+          let suggestedTags: Tag[] = res[boleto.supplier_name];
+          if(suggestedTags) {
+            boleto.auxTags = Utils.clone(suggestedTags);
+          }
+        }
+        for(let purchase of this.parser.purchases) {
+          let suggestedTags: Tag[] = res[purchase.supplier_name];
+          if(suggestedTags) {
+            purchase.tags = Utils.clone(suggestedTags);
+            purchase.aux_tags = Utils.clone(suggestedTags);
+          }
+        }
+      }
+    );
   }
 
   private _createSampleTags(idx: number = 0): any {

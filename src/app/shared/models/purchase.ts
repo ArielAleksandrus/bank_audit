@@ -119,7 +119,15 @@ export class Purchase {
 			}
 		}
 	}
+	public static getSupplierNames(purchases: Purchase[]): string[] {
+		let arr: string[] = [];
 
+		for(let purchase of purchases) {
+			Utils.pushIfNotExists(arr, purchase.supplier_name);
+		}
+
+		return arr;
+	}
 	public static arrayExistsParams(purchases: Purchase[]) {
 		let arr = [];
 		for(let obj of purchases) {

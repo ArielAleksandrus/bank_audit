@@ -1,4 +1,6 @@
 import { Tag } from './tag';
+import { Utils } from '../helpers/utils';
+
 export class Boleto {
 	id: number;
 	purchase_id: number;
@@ -76,6 +78,15 @@ export class Boleto {
 		for(let obj of boletos) {
 			arr.push(obj.existsParams());
 		}
+		return arr;
+	}
+	public static getSupplierNames(boletos: Boleto[]): string[] {
+		let arr: string[] = [];
+
+		for(let boleto of boletos) {
+			Utils.pushIfNotExists(arr, boleto.supplier_name);
+		}
+
 		return arr;
 	}
 }
