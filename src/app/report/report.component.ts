@@ -12,6 +12,11 @@ import { Boleto } from '../shared/models/boleto';
 import { Income } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
 import { Supplier } from '../shared/models/supplier';
+import { Tag } from '../shared/models/tag';
+
+import { BoletoComponent } from '../balance/boleto/boleto.component';
+import { IncomeComponent } from '../balance/income/income.component';
+import { PurchaseComponent } from '../balance/purchase/purchase.component';
 
 import { Reports, TagClassification } from '../shared/parsers/reports';
 
@@ -19,7 +24,8 @@ import { Utils } from '../shared/helpers/utils';
 
 @Component({
   selector: 'app-report',
-  imports: [CommonModule, ChartModule],
+  imports: [CommonModule, ChartModule,
+            BoletoComponent, IncomeComponent, PurchaseComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
 })
@@ -43,6 +49,8 @@ export class ReportComponent {
 
   tagData: any;
 
+  allTags: Tag[] = [];
+
   constructor(private api: ApiService,
               private router: Router,
               private route: ActivatedRoute) {
@@ -63,6 +71,10 @@ export class ReportComponent {
       return;
     }
     api.setAuth({token: this.company.token});
+
+    Tag.loadTags(api).then((res: Tag[]) => {
+      this.allTags = res;
+    });
   }
 
   ngOnInit() {

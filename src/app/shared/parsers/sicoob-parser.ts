@@ -212,6 +212,7 @@ export class SicoobParser extends BalanceParser {
 					supplier_id: 0, // server will set this for us
 					supplier_name: desc,
 					purchase_date: Utils.datePtBrToISO(row[dateIdx]),
+					payment_type: 'other',
 					bank_name: "sicoob",
 					base_value: -row[valueIdx], // 'despesa' and 'boleto' values are negative. we will fix this now. 
 					delivery_fee: 0,
@@ -233,6 +234,7 @@ export class SicoobParser extends BalanceParser {
 					});
 					boleto.auxTags = [];
 					purchase.boletos = [boleto];
+					purchase.payment_type = 'boleto';
 					this.boletos.push(boleto);
 				} else {
 					// boleto's purchase was already added to boletos.

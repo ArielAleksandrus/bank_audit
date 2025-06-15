@@ -1,5 +1,6 @@
 import { Tag } from './tag';
 import { Utils } from '../helpers/utils';
+import { ApiService } from '../services/api.service';
 
 export class Boleto {
 	id: number;
@@ -55,6 +56,26 @@ export class Boleto {
 		}
 		return res;
 	}
+  send(api: ApiService): Promise<Boleto> {
+    return new Promise((resolve, reject) => {
+      let req: any = null;
+      if(this.id > 0) {
+        req = api.update('boletos', this.id, {boleto: this});
+      } else {
+        req = api.create('boletos', {boleto: this});
+      }
+
+      req.subscribe(
+        (res: Boleto) => {
+          resolve(res);
+        },
+        (err: any) => {
+          console.error("Boleto->Could not save boleto: ", this, err);
+          reject(err);
+        }
+      );
+    })
+  }
 
 	existsParams() {
 		return {
@@ -73,6 +94,41 @@ export class Boleto {
 		return hasSupplier && hasRequiredAttrs;
 	}
 
+	public static arrayExists(api: ApiService, boletos: Boleto[]): Promise<Boleto[]> {
+		let objs: Boleto[] = Utils.clone(boletos);
+		
+		return new Promise((resolve, reject) => {
+		  let params = {
+		    boletos: Boleto.arrayExistsParams(boletos)
+		  }
+
+		  api.req('boletos', params, {collection: 'exists'}, 'post').subscribe(
+		    (res: {boletos: Boleto[]}) => {
+		      for(let i = 0; i < objs.length; i++) {
+		        if(res.boletos[i] && res.boletos[i].id > 0) {
+		          objs[i] = new Boleto(res.boletos[i]);
+		        }
+		      }
+		      Tag.loadSuggestions(api, Boleto.getSupplierNames(objs)).then((suggestions: {[supplierName: string]: Tag[]}) => {
+		        for(let boleto of objs) {
+		          let suggestedTags: Tag[] = suggestions[boleto.supplier_name];
+		          if(suggestedTags) {
+		            boleto.auxTags = Utils.clone(suggestedTags);
+		          }
+		        }
+		        resolve(objs);
+		      }, (tagError: any) => {
+		      	console.log("Boleto->Could not load tags suggestions: ", tagError);
+		      	resolve(objs);
+		      });
+		    },
+		    (err: any) => {
+		      alert("Erro ao buscar boletos existentes");
+		      console.error(err);
+		    }
+		  );
+		});
+  }
 	public static arrayExistsParams(boletos: Boleto[]) {
 		let arr = [];
 		for(let obj of boletos) {

@@ -1,16 +1,20 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
-import { FormsModule } from '@angular/forms';
+import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
+
+import { IncomeComponent } from '../balance/income/income.component';
+import { BoletoComponent } from '../balance/boleto/boleto.component';
+import { PurchaseComponent } from '../balance/purchase/purchase.component';
 
 import * as XLSX from 'xlsx';
 
 import { BalanceParser } from '../shared/parsers/balance-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { Tag } from '../shared/models/tag';
 import { Company } from '../shared/models/company';
@@ -30,7 +34,10 @@ import { Filters } from '../shared/helpers/filters';
     NgbCollapseModule,
     NgSelectComponent,
     NgbPopoverModule,
-    FormsModule
+    FormsModule,
+    IncomeComponent,
+    BoletoComponent,
+    PurchaseComponent
   ],
   templateUrl: './parser.component.html',
   styleUrl: './parser.component.scss'
@@ -45,13 +52,6 @@ export class ParserComponent {
   availableTags: Tag[] = [];
   suggestions: {[supplierName: string]: Tag[]} = {};
 
-  receitaCollapsed: boolean = true;
-  boletoCollapsed: boolean = true;
-  despesaCollapsed: boolean = true;
-
-  propagate: boolean = true;
-  propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags do boleto serão copiadas para todos os boletos deste fornecedor";
-
   sending: boolean = false;
   sendingCount: number = 0;
 
@@ -63,8 +63,8 @@ export class ParserComponent {
     //TODO: replace token to user-defined token received via input and stored in localstorage
     this.api.setAuth({token: this.company.token});
 
-    this._loadTags().then((res: any) => {
-      this._createSampleTags();
+    Tag.loadTags(this.api).then((res: any) => {
+      this.availableTags = res;
     });
   }
 
@@ -106,49 +106,25 @@ export class ParserComponent {
     this.checkIfBoletosExist();
   }
 
-  tagChanged(obj: Boleto|Purchase, tags: Tag[], objType: 'boleto'|'purchase') {
-    let tagsAttr: string = 'none';
-    let comparisonAttr: string = 'none';
-    let dataArr: any[];
+  changedPurchase(evt: {mode: 'create'|'edit'|'destroy', purchase: Purchase}) {
+    if(evt.mode == 'destroy') {
 
-    switch(objType) {
-    case("boleto"): {
-      tagsAttr = 'auxTags';
-      comparisonAttr = 'supplier_name';
-      dataArr = this.parser.boletos;
-      break;
+    } else {
+      //this.sendPurchase(evt.purchase);
     }
-    case("purchase"): {
-      tagsAttr = 'tags';
-      comparisonAttr = 'supplier_name';
-      dataArr = this.parser.purchases;
-      break;
-    }
-    }
-
-    for(let tag of tags) {
-      if(tag.id == null) { // tag was not created
-        tag.id = -(new Date().getTime()); // add a negative id so we can create it when user saves
-        this.availableTags.push(tag);
-        this.availableTags = Utils.clone(this.availableTags);
-      }
-    }
-
-    //@ts-ignore
-    obj[tagsAttr] = tags;
-
-    if(this.propagate)
-      this._propagateTags(obj, tagsAttr, comparisonAttr, dataArr);
   }
 
-  removeIncome(income: Income) {
-    let idx = this.parser.incomes.indexOf(income);
-    this.parser.incomes.splice(idx, 1);
+  changedIncome(evt: {mode: 'create'|'edit'|'destroy', income: Income}) {
     this.parser.recalculateIncome();
-
-    let id = income.id;
+    if(evt.mode == 'destroy') {
+      this.removeIncome(evt.income);
+    } else {
+      //this.sendIncome(evt.income);
+    }
+  }
+  removeIncome(income: Income) {
     if(income.id > 0) {
-      this.api.destroy('incomes', id).subscribe(
+      this.api.destroy('incomes', income.id).subscribe(
         (res: any) => {
           console.log(res);
         },
@@ -183,7 +159,7 @@ export class ParserComponent {
       let boleto = Utils.clone(this.parser.boletos[idx]);
 
       if(boleto.purchase_id > 0) {
-        this.sendBoleto(boleto).then( res => {
+        boleto.send(this.api).then( (res: Boleto) => {
           this.parser.boletos[idx] = res;
           resolve(this.saveBoletos(idx + 1));
         })
@@ -191,35 +167,16 @@ export class ParserComponent {
         // I had two boletos of Anapool, of the same value, payed at the same time
         // 1 of them was connected to my restaurant, and the other to the pizza restaurant
         // therefore, when creating boletos, we have to disable Purchase's anti-duplicate check
-        this.sendPurchase(Purchase.fromBoleto(boleto), false).then( purchase => {
+        let pur: Purchase = Purchase.fromBoleto(boleto);
+        pur.send(this.api, false).then( purchase => {
           boleto.purchase_id = purchase.id;
-          this.sendBoleto(boleto).then( res => {
+          boleto.send(this.api).then( (res: Boleto) => {
             this.parser.boletos[idx] = res;
             resolve(this.saveBoletos(idx + 1));
           })
         });
       }
     });
-  }
-  sendBoleto(boleto: Boleto): Promise<Boleto> {
-    return new Promise((resolve, reject) => {
-      let req: any = null;
-      if(boleto.id > 0) {
-        req = this.api.update('boletos', boleto.id, {boleto});
-      } else {
-        req = this.api.create('boletos', {boleto});
-      }
-
-      req.subscribe(
-        (res: Boleto) => {
-          resolve(res);
-        },
-        (err: any) => {
-          console.error("Could not save boleto: ", boleto, err);
-          reject(err);
-        }
-      );
-    })
   }
   saveIncomes(idx: number = 0) {
     return new Promise((resolve, reject) => {
@@ -250,6 +207,7 @@ export class ParserComponent {
       );
     });
   }
+
   savePurchases(idx: number = 0): Promise<boolean> {
     return new Promise((resolve, reject) => {
       if(idx >= this.parser.purchases.length) {
@@ -260,176 +218,27 @@ export class ParserComponent {
 
       let purchase = Utils.clone(this.parser.purchases[idx]);
 
-      this.sendPurchase(purchase).then( res => {
+      purchase.send(this.api).then( (res: Purchase) => {
         this.parser.purchases[idx] = res;
         resolve(this.savePurchases(idx + 1));
       });
     });
   }
-  sendPurchase(purchase: Purchase, avoidDuplicates: boolean = true): Promise<Purchase> {
-    return new Promise((resolve, reject) => {
-      let req: any = null;
-      if(purchase.id > 0) {
-        req = this.api.update('purchases', purchase.id, {purchase});
-      } else {
-        req = this.api.create('purchases', {
-          purchase: purchase,
-          avoid_duplicates: avoidDuplicates
-        });
-      }
-
-      req.subscribe(
-        (res: Purchase) => {
-          resolve(res);
-        },
-        (err: any) => {
-          console.error("Could not save purchase: ", purchase, err);
-          reject(err);
-        }
-      );
-    })
-  }
 
   checkIfBoletosExist() {
-    let params = {
-      boletos: Boleto.arrayExistsParams(this.parser.boletos)
-    }
-
-    this.api.req('boletos', params, {collection: 'exists'}, 'post').subscribe(
-      (res: {boletos: Boleto[]}) => {
-        for(let i = 0; i < this.parser.boletos.length; i++) {
-          if(res.boletos[i] && res.boletos[i].id > 0) {
-            this.parser.boletos[i] = new Boleto(res.boletos[i]);
-          }
-        }
-        this.loadSuggestions(Boleto.getSupplierNames(this.parser.boletos));
-      },
-      (err: any) => {
-        alert("Erro ao buscar boletos existentes");
-        console.error(err);
-      }
-    );
+    Boleto.arrayExists(this.api, this.parser.boletos).then((boletos: Boleto[]) => {
+      this.parser.boletos = boletos;
+    });
   }
   checkIfPurchasesExist() {
-    let params = {
-      purchases: Purchase.arrayExistsParams(this.parser.purchases)
-    }
-
-    this.api.req('purchases', params, {collection: 'exists'}, 'post').subscribe(
-      (res: {purchases: Purchase[]}) => {
-        for(let i = 0; i < this.parser.purchases.length; i++) {
-          if(res.purchases[i] && res.purchases[i].id > 0) {
-            this.parser.purchases[i] = new Purchase(res.purchases[i]);
-          }
-        }
-        this.loadSuggestions(Purchase.getSupplierNames(this.parser.purchases));
-      },
-      (err: any) => {
-        alert("Erro ao buscar boletos existentes");
-        console.error(err);
-      }
-    );
+    Purchase.arrayExists(this.api, this.parser.purchases).then((purchases: Purchase[]) => {
+      this.parser.purchases = purchases;
+    });
   }
   checkIfIncomesExist() {
-    let params = {
-      incomes: Income.arrayExistsParams(this.parser.incomes)
-    }
-    this.api.req('incomes', params, {collection: 'exists'}, 'post').subscribe(
-      (res: {incomes: Income[]}) => {
-        for(let i = 0; i < this.parser.incomes.length; i++) {
-          if(res.incomes[i] && res.incomes[i].id > 0) {
-            this.parser.incomes[i] = new Income(res.incomes[i]);
-          }
-        }
-      },
-      (err: any) => {
-        alert("Erro ao buscar receitas existentes");
-        console.error(err);
-      }
-    );
-  }
-
-  createTags(tags: Tag[], idx: number = 0) {
-    let tag = tags[idx];
-    return new Promise((resolve, reject) => {
-      if(idx >= tags.length) {
-        resolve('done');
-        return;
-      }
-
-      if(tag.id > 0){
-        resolve(this.createTags(tags, idx + 1));
-      } else {
-        this.createTag(tag).then(
-          res => {
-            resolve(this.createTags(tags, idx + 1));
-          },
-          err => {
-            resolve(this.createTags(tags, idx + 1));
-          }
-        );
-      }
+    Income.arrayExists(this.api, this.parser.incomes).then((incomes: Income[]) => {
+      this.parser.incomes = incomes;
     });
-  }
-  createTag(tag: Tag) {
-    return new Promise((resolve, reject) => {
-      if(tag.id > 0) { // tag already exists
-        resolve(tag);
-        return;
-      }
-
-      this.api.create("tags", {name: tag.name}).subscribe(
-        (res: any) => {
-          this._addToAvailableTags([res]);
-          resolve(res);
-        },
-        (err: any) => {
-          console.error("Could not create tag '" + name + "'");
-          reject(err);
-        }
-      )
-    });
-  }
-
-  loadSuggestions(supplierNames: string[]) {
-    this.api.show('tags', 'suggestions', {
-      supplier_names: supplierNames
-    }).subscribe(
-      (res: {[supplierName: string]: Tag[]}) => {
-        for(let supplierName in res) {
-          this.suggestions[supplierName] = res[supplierName];
-        }
-        for(let boleto of this.parser.boletos) {
-          let suggestedTags: Tag[] = res[boleto.supplier_name];
-          if(suggestedTags) {
-            boleto.auxTags = Utils.clone(suggestedTags);
-          }
-        }
-        for(let purchase of this.parser.purchases) {
-          let suggestedTags: Tag[] = res[purchase.supplier_name];
-          if(suggestedTags) {
-            purchase.tags = Utils.clone(suggestedTags);
-            purchase.aux_tags = Utils.clone(suggestedTags);
-          }
-        }
-      }
-    );
-  }
-
-  private _createSampleTags(idx: number = 0): any {
-    let sampleTags: any[] = [{name: "Insumo"}, {name: "Equipamento"}, {name: "Utensílio"}, {name: "Gás"}, {name: "Aluguel"}];
-    if(idx >= sampleTags.length)
-      return;
-
-    // if already exists, do nothing
-    if(Utils.findById(sampleTags[idx].name, this.availableTags, 'name'))
-      return this._createSampleTags(idx + 1);
-
-    this.createTag(<Tag>{name: sampleTags[idx].name}).then(
-      res => {
-        this._createSampleTags(idx + 1);
-      }
-    );
   }
 
   private _loadCompany() {
@@ -438,51 +247,6 @@ export class ParserComponent {
       this.company = loaded;
     } else {
       location.href = '/login';
-    }
-  }
-
-  private _loadTags() {
-    this.availableTags = [];
-
-    return new Promise((resolve, reject) => {
-      this.api.indexAll('tags').subscribe(
-        (res: any) => {
-          this._addToAvailableTags(res.tags);
-          resolve(res.tags);
-        },
-        (err: any) => {
-          console.log(err);
-          reject(err);
-        }
-      );
-    });
-  }
-  private _addToAvailableTags(tags: Tag[]) {
-    let clone: Tag[] = Utils.clone(this.availableTags);
-    
-    for(let tag of tags) {
-      const existing = Utils.findById(tag.name, this.availableTags, 'name');
-      if(!existing){
-        clone.push(tag);
-      }
-    }
-    this.availableTags = Filters.orderAlphabetically(clone, 'name', false);
-  }
-  private _propagateTags(changedObj: any, tagsAttr: string, comparisonAttr: string, dataArr: any[]) {
-    let changed: number = 0;
-
-    let tags = changedObj[tagsAttr];
-    if(!tags) {
-      console.error("ParserComponent->propagateTags: tags attribute is an empty object");
-      return;
-    }
-
-    for(let i = 0; i < dataArr.length; i++) {
-      let dataObj = dataArr[i];
-      if(changedObj[comparisonAttr] == dataObj[comparisonAttr] && !Utils.equals(changedObj[tagsAttr], dataObj[tagsAttr])) {
-        dataObj[tagsAttr] = Utils.clone(changedObj[tagsAttr]);
-        changed++;
-      }
     }
   }
 }

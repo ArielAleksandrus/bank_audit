@@ -70,126 +70,15 @@
 
 <br/>
 
-<table class="table" *ngIf="parser">
-	<thead>
-		<tr class="title">
-			<th colspan="6">
-				RECEITAS &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!receitaCollapsed" (click)="receitaCollapsed = !receitaCollapsed">
-					{{receitaCollapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button>
-			</th>
-		</tr>
-		<tr #collapse="ngbCollapse" [(ngbCollapse)]="receitaCollapsed">
-			<th>DATA</th>
-			<th>TIPO</th>
-			<th>ORIGEM</th>
-			<th>No. ID</th>
-			<th>VALOR</th>
-			<th>&nbsp;</th>
-		</tr>
-	</thead>
-	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="receitaCollapsed">
-		<tr *ngFor="let income of parser.incomes">
-			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
-			<td>{{income.income_type}}</td>
-			<td>{{income.origin || '-'}}</td>
-			<td>{{income.bank_identification || '-'}}</td>
-			<td>{{income.value | currency:'BRL'}}</td>
-			<td><button *ngIf="income.income_type == 'pix'" class="btn btn-md btn-danger" (click)="removeIncome(income)">x</button></td>
-		</tr>
-	</tbody>
-</table>
+<app-income [incomes]="parser.incomes || []" [collapse]="true" (onChange)="changedIncome($event)"></app-income>
 
 <br/>
 
-<table class="table" *ngIf="parser">
-	<thead>
-		<tr class="title">
-			<th colspan="6">
-				BOLETOS &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!boletoCollapsed" (click)="boletoCollapsed = !boletoCollapsed">
-					{{boletoCollapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button>
-			</th>
-		</tr>
-		<tr #collapse="ngbCollapse" [(ngbCollapse)]="boletoCollapsed">
-			<th>Data PGTO.</th>
-			<th>DATA VENC.</th>
-			<th>No. ID</th>
-			<th>FORNECEDOR</th>
-			<th>VALOR PAGO</th>
-			<th>TAGS &nbsp; 
-				<span class="form-switch">
-					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
-					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
-				</span>
-			</th>
-		</tr>
-	</thead>
-	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="boletoCollapsed">
-		<tr *ngFor="let boleto of parser.boletos">
-			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
-			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
-			<td>{{boleto.bank_identification}}</td>
-			<td>{{boleto.supplier_name}}</td>
-			<td>{{boleto.value | currency:'BRL'}}</td>
-			<td>
-				<ng-select [items]="availableTags"
-								addTag="true"
-								[multiple]="true"
-								placeholder="Selecione"
-								bindLabel="name"
-								[ngModel]="boleto.auxTags"
-								(change)="tagChanged(boleto, $event, 'boleto')"></ng-select>
-			</td> <!-- Tags -->
-		</tr>
-	</tbody>
-</table>
+<app-boleto [boletos]="parser.boletos || []" [tags]="availableTags" [collapse]="true"></app-boleto>
 
 <br/>
 
-<table class="table" *ngIf="parser">
-	<thead>
-		<tr class="title">
-			<th colspan="6">
-				OUTRAS DESPESAS &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!despesaCollapsed" (click)="despesaCollapsed = !despesaCollapsed">
-					{{despesaCollapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button>
-			</th>
-		</tr>
-		<tr #collapse="ngbCollapse" [(ngbCollapse)]="despesaCollapsed">
-			<th>DATA DESPESA</th>
-			<th>FORNECEDOR</th>
-			<th>TOTAL</th>
-			<th>BANCO</th>
-			<th>TAGS &nbsp; 
-				<span class="form-switch">
-					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
-					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
-				</span>
-			</th>
-		</tr>
-	</thead>
-	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="despesaCollapsed">
-		<tr *ngFor="let purchase of parser.purchases">
-			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
-			<td>{{purchase.supplier_name}}</td>
-			<td>{{purchase.total | currency:'BRL'}}</td>
-			<td>{{purchase.bank_name}}</td>
-			<td>
-				<ng-select [items]="availableTags"
-								addTag="true"
-								[multiple]="true"
-								placeholder="Selecione"
-								bindLabel="name"
-								[ngModel]="purchase.tags"
-								(change)="tagChanged(purchase, $event, 'purchase')"></ng-select>
-			</td> <!-- Tags -->
-		</tr>
-	</tbody>
-</table>
+<app-purchase [purchases]="parser.purchases || []" [tags]="availableTags" [collapse]="true"></app-purchase>
 
 <div>
 	<button class="btn btn-lg btn-primary" (click)="send()" [disabled]="sending">SALVAR</button>

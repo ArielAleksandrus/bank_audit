@@ -1,8 +1,12 @@
+import { Tag } from './tag';
+import { ApiService } from '../services/api.service';
+import { Utils } from '../helpers/utils';
+
 export class Income {
 	id: number;
 	company_id: number;
 
-	income_type: 'cartao'|'pix'|'outros';
+	income_type: 'cartao'|'pix'|'deposito'|'cheque'|'outros';
 	date_received: string;
 	value: string|number;
 	origin: string;
@@ -34,6 +38,27 @@ export class Income {
 		return res;
 	}
 
+  send(api: ApiService): Promise<Income> {
+    return new Promise((resolve, reject) => {
+      let req: any = null;
+      if(this.id > 0) {
+        req = api.update('incomes', this.id, {income: this});
+      } else {
+        req = api.create('incomes', {income: this});
+      }
+
+      req.subscribe(
+        (res: Income) => {
+          resolve(res);
+        },
+        (err: any) => {
+          console.error("Income->Could not save income: ", this, err);
+          reject(err);
+        }
+      );
+    })
+  }
+
 	existsParams() {
 		return {
 			bank_name: this.bank_name,
@@ -45,6 +70,30 @@ export class Income {
 		};
 	}
 
+	public static arrayExists(api: ApiService, incomes: Income[]): Promise<Income[]> {
+		let objs: Income[] = Utils.clone(incomes);
+		  
+		return new Promise((resolve, reject) => {
+		  let params = {
+		    incomes: Income.arrayExistsParams(incomes)
+		  }
+
+		  api.req('incomes', params, {collection: 'exists'}, 'post').subscribe(
+		    (res: {incomes: Income[]}) => {
+		      for(let i = 0; i < objs.length; i++) {
+		        if(res.incomes[i] && res.incomes[i].id > 0) {
+		          objs[i] = new Income(res.incomes[i]);
+		        }
+		      }
+		      resolve(objs);
+		    },
+		    (err: any) => {
+		      console.error("Income->Erro ao buscar entradas: ", err);
+		      reject(err);
+		    }
+		  );
+		});
+  }
 	public static arrayExistsParams(incomes: Income[]) {
 		let arr = [];
 		for(let obj of incomes) {

@@ -25,85 +25,13 @@
 </div>
 <div class="body-tables row">
 	<div class="table-container col-lg-12" *ngIf="selection == 'incomes'">
-		<table class="table table-hover table-striped">
-			<thead>
-				<tr>
-					<th>Data</th>
-					<th>Valor</th>
-					<th>Banco</th>
-					<th>Tipo</th>
-					<th>Inf. Adic.</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr *ngFor="let income of incomes">
-					<td>{{ income.date_received | date:'dd/MM/yyyy' }}</td>
-					<td>{{ income.value | currency:'BRL' }}</td>
-					<td>{{ income.bank_name }}</td>
-					<td>{{ income.income_type }}</td>
-					<td>{{ income.additional_info || '-' }}</td>
-				</tr>
-			</tbody>
-		</table>
+		<app-income [incomes]="incomes" [collapse]="false"></app-income>
 	</div>
 	<div class="table-container col-lg-12" *ngIf="selection == 'purchases'">
-		<table class="table table-hover table-striped">
-			<thead>
-				<tr>
-					<th>Data</th>
-					<th>Banco</th>
-					<th>Fornecedor</th>
-					<th>Recebedor</th>
-					<th>Total</th>
-					<th>Parcelas</th>
-					<th>Tipo</th>
-					<th>Tags</th>
-					<th>Inf. Adic.</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr *ngFor="let purchase of purchases">
-					<td>{{ purchase.purchase_date | date:'dd/MM/yyyy' }}</td>
-					<td>{{ purchase.bank_name }}</td>
-					<td>{{ purchase.supplier_name }}</td>
-					<td>{{ purchase.referral || '-' }}</td>
-					<td>{{ purchase.total | currency:'BRL' }}</td>
-					<td>{{ purchase.installments }}</td>
-					<td>{{ purchase.paymentTypePtbr }}</td>
-					<td>{{ purchase.tagsStr }}</td>
-					<td>{{ purchase.additional_info }}</td>
-				</tr>
-			</tbody>
-		</table>
+		<app-purchase [purchases]="purchases" [tags]="allTags" [collapse]="false"></app-purchase>
 	</div>
 	<div class="table-container col-lg-12" *ngIf="selection == 'boletos'">
-		<table class="table table-hover table-striped">
-			<thead>
-				<tr>
-					<th>Data</th>
-					<th>Banco</th>
-					<th>Fornecedor</th>
-					<th>Valor</th>
-					<th>Parcela</th>
-					<th>Tags</th>
-					<th>Inf. Adic.</th>
-				</tr>
-			</thead>
-			<tbody>
-				<tr *ngFor="let boleto of boletos">
-					<td [class.success]="boleto.payment_date"
-							[class.warning]="!boleto.payment_date">
-						{{ (boleto.payment_date || boleto.expiration_date) | date:'dd/MM/yyyy' }}
-					</td>
-					<td>{{ boleto.bank_name }}</td>
-					<td>{{ boleto.supplier_name }}</td>
-					<td>{{ boleto.value | currency:'BRL' }}</td>
-					<td>{{ boleto.installments || '-' }}</td>
-					<td>{{ boleto.tagsStr }}</td>
-					<td>{{ boleto.additional_info }}</td>
-				</tr>
-			</tbody>
-		</table>
+		<app-boleto [boletos]="boletos" [tags]="allTags" [collapse]="false"></app-boleto>
 	</div>
 </div>
 <div class="charts">

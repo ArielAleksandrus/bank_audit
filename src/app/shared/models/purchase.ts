@@ -1,7 +1,21 @@
 import { Boleto } from './boleto';
 import { Tag } from './tag';
 import { Utils } from '../helpers/utils';
-export type PAYMENT_TYPES = 'cash'|'boleto'|'check'|'credit_card'|'debit_card'|'pix'|'transfer'|'other';
+import { ApiService } from '../services/api.service';
+
+export type PAYMENT_TYPES = 'cash'|'boleto'|'check'|'credit_card'|'debit_card'|'pix'|'transfer'|'auto_debit'|'other';
+export var PAYMENT_TRANSLATION: {[english: string]: string} = {
+	'cash': 'dinheiro',
+	'boleto': 'boleto',
+	'check': 'cheque',
+	'credit_card': 'crédito',
+	'debit_card': 'débito',
+	'pix': 'pix',
+	'transfer': 'transferência',
+	'auto_debit': 'débito automático',
+	'other': 'outro',
+};
+
 export class Purchase {
 	id: number;
 	company_id: number;
@@ -30,7 +44,6 @@ export class Purchase {
 	// set up by our front end app
 	supplier_name: string;
 	supplier_cnpj: string;
-	paymentTypePtbr: string = '?';
 	tagsStr: string;
 
 	constructor(jsonData: any) {
@@ -61,7 +74,6 @@ export class Purchase {
 		if(this.tagsStr.length > 2) {
 			this.tagsStr = this.tagsStr.split("").splice(0, this.tagsStr.length - 2).join("");
 		}
-		this.setPaymentTypePtbr();
 	}
 	public static fromJsonArray(jsonArr: any[]) {
 		let res = [];
@@ -70,6 +82,30 @@ export class Purchase {
 		}
 		return res;
 	}
+	
+  send(api: ApiService, avoidDuplicates: boolean = true): Promise<Purchase> {
+    return new Promise((resolve, reject) => {
+      let req: any = null;
+      if(this.id > 0) {
+        req = api.update('purchases', this.id, {purchase: this});
+      } else {
+        req = api.create('purchases', {
+          purchase: this,
+          avoid_duplicates: avoidDuplicates
+        });
+      }
+
+      req.subscribe(
+        (res: Purchase) => {
+          resolve(res);
+        },
+        (err: any) => {
+          console.error("Purchase->Could not save purchase: ", this, err);
+          reject(err);
+        }
+      );
+    })
+  }
 
 	existsParams() {
 		return {
@@ -78,49 +114,6 @@ export class Purchase {
 			base_value: this.base_value,
 			total: this.total
 		};
-	}
-	setPaymentTypePtbr() {
-		if(!this.payment_type)
-			this.paymentTypePtbr = '-';
-
-		switch(this.payment_type) {
-			case("boleto"): {
-				this.paymentTypePtbr = "boleto";
-				break;
-			}
-			case("cash"): {
-				this.paymentTypePtbr = "dinheiro";
-				break;
-			}
-			case("check"): {
-				this.paymentTypePtbr = "cheque";
-				break;
-			}
-			case("credit_card"): {
-				this.paymentTypePtbr = "crédito";
-				break;
-			}
-			case("debit_card"): {
-				this.paymentTypePtbr = "débito";
-				break;
-			}
-			case("pix"): {
-				this.paymentTypePtbr = "pix";
-				break;
-			}
-			case("transfer"): {
-				this.paymentTypePtbr = "transferência";
-				break;
-			}
-			case("other"): {
-				this.paymentTypePtbr = "outro";
-				break;
-			}
-			default: {
-				this.paymentTypePtbr = '?';
-				break;
-			}
-		}
 	}
 	public static getSupplierNames(purchases: Purchase[]): string[] {
 		let arr: string[] = [];
@@ -131,6 +124,42 @@ export class Purchase {
 
 		return arr;
 	}
+	public static arrayExists(api: ApiService, purchases: Purchase[]): Promise<Purchase[]> {
+		let objs = Utils.clone(purchases);
+		
+		return new Promise((resolve, reject) => {
+		  let params = {
+		    purchases: Purchase.arrayExistsParams(purchases)
+		  }
+
+		  api.req('purchases', params, {collection: 'exists'}, 'post').subscribe(
+		    (res: {purchases: Purchase[]}) => {
+		      for(let i = 0; i < objs.length; i++) {
+		        if(res.purchases[i] && res.purchases[i].id > 0) {
+		          objs[i] = new Purchase(res.purchases[i]);
+		        }
+		      }
+		      Tag.loadSuggestions(api, Purchase.getSupplierNames(objs)).then((suggestions: {[supplierName: string]: Tag[]}) => {
+		        for(let purchase of objs) {
+		          let suggestedTags: Tag[] = suggestions[purchase.supplier_name];
+		          if(suggestedTags) {
+		            purchase.tags = Utils.clone(suggestedTags);
+		            purchase.aux_tags = Utils.clone(suggestedTags);
+		          }
+		        }
+		        resolve(objs);
+		      }, (tagError: any) => {
+		      	console.log("Purchase->Could not load tags suggestions: ", tagError);
+		      	resolve(objs);
+		      });
+		    },
+		    (err: any) => {
+		      alert("Erro ao buscar boletos existentes");
+		      console.error(err);
+		    }
+		  );
+		});
+  }
 	public static arrayExistsParams(purchases: Purchase[]) {
 		let arr = [];
 		for(let obj of purchases) {

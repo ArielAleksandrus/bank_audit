@@ -1,0 +1,32 @@
+<table class="table table-hover table-striped">
+	<thead>
+		<tr class="title">
+			<th colspan="6">
+				RECEITAS &nbsp;&nbsp;
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
+					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
+				</button>
+			</th>
+		</tr>
+		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
+			<th>BANCO</th>
+			<th>DATA</th>
+			<th>TIPO</th>
+			<th>ORIGEM</th>
+			<th>ID</th>
+			<th>VALOR</th>
+			<th>&nbsp;</th>
+		</tr>
+	</thead>
+	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
+		<tr *ngFor="let income of incomes()">
+			<td>{{income.bank_name}}</td>
+			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
+			<td>{{income.income_type}}</td>
+			<td>{{income.origin || '-'}}</td>
+			<td>{{income.bank_identification || '-'}}</td>
+			<td>{{income.value | currency:'BRL'}}</td>
+			<td><button *ngIf="income.income_type == 'pix'" class="btn btn-md btn-danger" (click)="remove(income)">x</button></td>
+		</tr>
+	</tbody>
+</table>

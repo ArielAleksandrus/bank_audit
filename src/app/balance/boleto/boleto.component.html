@@ -1,0 +1,47 @@
+<table class="table table-hover table-striped">
+	<thead>
+		<tr class="title">
+			<th colspan="6">
+				BOLETOS &nbsp;&nbsp;
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
+					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
+				</button>
+			</th>
+		</tr>
+		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
+			<th>BANCO</th>
+			<th>PGTO.</th>
+			<th>VENC.</th>
+			<th>ID</th>
+			<th>FORNECEDOR</th>
+			<th>VALOR</th>
+			<th>PARCELA</th>
+			<th>TAGS &nbsp; 
+				<span class="form-switch">
+					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
+					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
+				</span>
+			</th>
+		</tr>
+	</thead>
+	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
+		<tr *ngFor="let boleto of boletos()">
+			<td>{{boleto.bank_name}}</td>
+			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
+			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
+			<td>{{boleto.bank_identification}}</td>
+			<td>{{boleto.supplier_name}}</td>
+			<td>{{boleto.value | currency:'BRL'}}</td>
+			<td>{{boleto.installments}}</td>
+			<td>
+				<ng-select [items]="tags()"
+								addTag="true"
+								[multiple]="true"
+								placeholder="Selecione"
+								bindLabel="name"
+								[ngModel]="boleto.auxTags"
+								(change)="tagChanged(boleto, $event)"></ng-select>
+			</td>
+		</tr>
+	</tbody>
+</table>
