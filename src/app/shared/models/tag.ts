@@ -45,6 +45,10 @@ export class Tag {
   	let suggestions: {[supplierName: string]: Tag[]} = {};
 
   	return new Promise((resolve, reject) => {
+  		if(!supplierNames || supplierNames.length == 0) {
+  			resolve({});
+  			return;
+  		}
 	    api.show('tags', 'suggestions', {
 	      supplier_names: supplierNames
 	    }).subscribe(

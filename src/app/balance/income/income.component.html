@@ -23,9 +23,9 @@
 			<td>{{income.bank_name}}</td>
 			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
 			<td>{{income.income_type}}</td>
-			<td>{{income.origin || '-'}}</td>
+			<td><input type="text" class="form-control" [(ngModel)]="income.origin"/></td>
 			<td>{{income.bank_identification || '-'}}</td>
-			<td>{{income.value | currency:'BRL'}}</td>
+			<td><input type="text" class="form-control" mask="separator.2" [(ngModel)]="income.value"/></td>
 			<td><button class="btn btn-sm btn-danger" (click)="remove(income)">x</button></td>
 		</tr>
 	</tbody>

@@ -2,14 +2,15 @@
 	<div class="col-lg-4">
 		<label class="field-label">Para enviar o extrato, primeiro selecione o banco:</label>
 		<select [(ngModel)]="selectedBank" class="form-control" (change)="bankChanged()">
-			<option value="">Selecione</option>
+			<option value="" disabled>Selecione</option>
 			<option value="sicoob">Sicoob</option>
+			<option value="sicredi">Sicredi</option>
 			<option value="stone">Stone</option>
 		</select>
 	</div>
 	<div class="col-lg-4" *ngIf="selectedBank">
-		<label class="field-label">Extrato (Excel)</label>
-		<input id="extrato_file" type="file" accept=".xls,.xlsx" (change)="extratoFileChanged($event)"/>
+		<label class="field-label">Extrato ({{parser.acceptedFormats}})</label>
+		<input id="extrato_file" type="file" [accept]="parser.acceptedFormats" (change)="extratoFileChanged($event)"/>
 	</div>
 	<div class="col-lg-4 send-comprovante" *ngIf="parser && parser.allowsComprovantes && parser.boletos && parser.boletos.length > 0">
 		<label class="field-label">Texto comprovantes</label>

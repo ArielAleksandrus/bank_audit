@@ -31,7 +31,15 @@
 			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.bank_identification}}</td>
-			<td>{{boleto.supplier_name}}</td>
+			<td>
+				<ng-select [items]="suppliers"
+                    bindLabel="name"
+                    autofocus
+                    bindValue="name"
+                    [(ngModel)]="boleto.supplier_name"
+                    addTag="true">
+        </ng-select>
+			</td>
 			<td>{{boleto.value | currency:'BRL'}}</td>
 			<td>{{boleto.installments}}</td>
 			<td>

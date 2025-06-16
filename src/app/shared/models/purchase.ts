@@ -87,6 +87,7 @@ export class Purchase {
   }
   send(api: ApiService, avoidDuplicates: boolean = true): Promise<Purchase> {
     return new Promise((resolve, reject) => {
+    	this.aux_tags = this.tags;
       let req: any = null;
       if(this.id > 0) {
         req = api.update('purchases', this.id, {purchase: this});

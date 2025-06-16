@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 
 import { BalanceParser } from '../shared/parsers/balance-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
+import { SicrediParser } from '../shared/parsers/sicredi-parser';
 import { StoneParser } from '../shared/parsers/stone-parser';
 
 import { Tag } from '../shared/models/tag';
@@ -46,8 +47,9 @@ import { Filters } from '../shared/helpers/filters';
 export class ParserComponent {
   company: Company = <Company>{id: -1};
 
-  selectedBank?: 'sicoob'|'stone';
+  selectedBank?: 'sicoob'|'stone'|'sicredi';
   excelData: any[] = [];
+  pdfData: any = {};
   parser: BalanceParser;
 
   suggestions: {[supplierName: string]: Tag[]} = {};
@@ -70,6 +72,10 @@ export class ParserComponent {
       this.parser = new SicoobParser();
       break;
     }
+    case("sicredi"): {
+      this.parser = new SicrediParser();
+      break;
+    }
     case("stone"): {
       this.parser = new StoneParser();
       break;
@@ -78,21 +84,50 @@ export class ParserComponent {
   }
 
   extratoFileChanged(evt: any) {
-    const file = evt.target.files[0];
+    const self = this;
+    const file: File = evt.target.files[0];
+    let auxArr = file.name.split(".");
+    let extension = auxArr[auxArr.length - 1];
     
     const reader = new FileReader();
     reader.onload = (e: any) => {
-      const workbook = XLSX.read(e.target.result, { type: 'binary' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      this.excelData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-      this.parser.parseExtrato(this.excelData, 'excel');
+      self.loadExtrato(file, e.target.result, extension);
       this.checkIfBoletosExist();
       this.checkIfIncomesExist();
       this.checkIfPurchasesExist();
     }
     
-    reader.readAsBinaryString(file);
+    if(extension == "ofx")
+      reader.readAsText(file);
+    else
+      reader.readAsBinaryString(file);
+  }
+
+  loadExtrato(file: File, fileContent: any, extension: string) {
+    switch(extension) {
+    case("xls"): {
+      this.loadExcel(fileContent);
+      break;
+    }
+    case("xlsx"): {
+      this.loadExcel(fileContent);
+      break;
+    }
+    case("ofx"): {
+      this.loadOFX(fileContent);
+      break;
+    }
+    }
+  }
+  loadExcel(fileContent: any) {
+    const workbook = XLSX.read(fileContent, { type: 'binary' });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    this.excelData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+    this.parser.parseExtrato(this.excelData, 'excel');
+  }
+  loadOFX(fileContent: any) {
+    this.parser.parseExtrato([fileContent], 'ofx');
   }
 
   setComprovante() {

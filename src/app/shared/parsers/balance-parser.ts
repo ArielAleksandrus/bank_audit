@@ -10,6 +10,7 @@ export abstract class BalanceParser {
 	incomes: Income[] = [];
 	tags: Tag[] = [];
 
+	acceptedFormats: string = ".xls,.xlsx";
 	allowsComprovantes: boolean = true;
 
 	sumReceita = {

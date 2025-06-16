@@ -8,6 +8,7 @@ import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { Boleto } from '../../shared/models/boleto';
 import { Tag } from '../../shared/models/tag';
+import { Supplier } from '../../shared/models/supplier';
 
 import { Utils } from '../../shared/helpers/utils';
 import { ApiService } from '../../shared/services/api.service';
@@ -24,6 +25,7 @@ import { ApiService } from '../../shared/services/api.service';
 export class BoletoComponent {
   boletos = model.required<Boleto[]>();
   tags: Tag[] = [];
+  suppliers: Supplier[] = [];
 
   onChange = output<{mode: 'create'|'edit'|'destroy', boleto: Boleto}>();
   collapse = input<boolean>();
@@ -43,6 +45,9 @@ export class BoletoComponent {
 
     Tag.loadTags(this.api).then((res: Tag[]) => {
       this.tags = Tag.fromJsonArray(res);
+    });
+    Supplier.loadSuppliers(this.api).then((res: Supplier[]) => {
+      this.suppliers = Supplier.fromJsonArray(res);
     });
   }
 

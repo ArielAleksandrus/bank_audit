@@ -11,6 +11,7 @@ import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 
 import { Purchase, PAYMENT_TRANSLATION  } from '../../shared/models/purchase';
 import { Tag } from '../../shared/models/tag';
+import { Supplier } from '../../shared/models/supplier';
 
 import { Utils } from '../../shared/helpers/utils';
 import { ApiService } from '../../shared/services/api.service';
@@ -29,6 +30,7 @@ import { ApiService } from '../../shared/services/api.service';
 export class PurchaseComponent {
   purchases = model.required<Purchase[]>();
   tags: Tag[] = [];
+  suppliers: Supplier[] = [];
   onChange = output<{mode: 'create'|'edit'|'destroy', purchase: Purchase}>();
   collapse = input<boolean>();
 
@@ -53,6 +55,9 @@ export class PurchaseComponent {
     });
     Tag.loadTags(this.api).then((res: Tag[]) => {
       this.tags = Tag.fromJsonArray(res);
+    });
+    Supplier.loadSuppliers(this.api).then((res: Supplier[]) => {
+      this.suppliers = Supplier.fromJsonArray(res);
     });
   }
 
@@ -90,7 +95,7 @@ export class PurchaseComponent {
   }
 
   tagChanged(obj: Purchase, tags: Tag[]) {
-    let tagsAttr: string = 'aux_tags';
+    let tagsAttr: string = 'tags';
     let comparisonAttr: string = 'supplier_name';
     let dataArr: Purchase[] = this.purchases();
 
@@ -123,6 +128,8 @@ export class PurchaseComponent {
         changed++;
       }
     }
+
+    this.purchases.set(dataArr);
 
     return changed;
   }

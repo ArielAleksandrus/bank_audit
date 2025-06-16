@@ -5,12 +5,6 @@ import { Boleto } from '../models/boleto';
 import { Purchase, PAYMENT_TYPES } from '../models/purchase';
 import { Income } from '../models/income';
 
-
-/**
- * EXCEL ASSUMPTIONS:
- * 	1. first row will contain header cols, and one of them will be named VALOR and other will be HISTÓRICO
- * 	
- */
 export type StoneExcelEntry = {
     "Movimentação": "Débito"|"Crédito",
     "Tipo": "Pix"|"Recebível de Cartão"|"Transação"|"Pagamento"|"TED", // what we found out so far...
