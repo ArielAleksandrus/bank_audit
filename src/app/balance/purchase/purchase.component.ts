@@ -13,6 +13,7 @@ import { Purchase, PAYMENT_TRANSLATION  } from '../../shared/models/purchase';
 import { Tag } from '../../shared/models/tag';
 
 import { Utils } from '../../shared/helpers/utils';
+import { ApiService } from '../../shared/services/api.service';
 
 @Component({
   selector: 'app-purchase',
@@ -27,7 +28,7 @@ import { Utils } from '../../shared/helpers/utils';
 })
 export class PurchaseComponent {
   purchases = model.required<Purchase[]>();
-  tags = model.required<Tag[]>();
+  tags: Tag[] = [];
   onChange = output<{mode: 'create'|'edit'|'destroy', purchase: Purchase}>();
   collapse = input<boolean>();
 
@@ -40,10 +41,19 @@ export class PurchaseComponent {
 
   paymentTranslation = PAYMENT_TRANSLATION;
 
-  constructor() {
+  referrals: string[] = [];
+
+  constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
+    
+    Purchase.loadReferrals(this.api).then((res: string[]) => {
+      this.referrals = res;
+    });
+    Tag.loadTags(this.api).then((res: Tag[]) => {
+      this.tags = Tag.fromJsonArray(res);
+    });
   }
 
   remove(obj: Purchase) {
@@ -80,7 +90,6 @@ export class PurchaseComponent {
   }
 
   tagChanged(obj: Purchase, tags: Tag[]) {
-    let availableTags = this.tags();
     let tagsAttr: string = 'aux_tags';
     let comparisonAttr: string = 'supplier_name';
     let dataArr: Purchase[] = this.purchases();
@@ -88,11 +97,10 @@ export class PurchaseComponent {
     for(let tag of tags) {
       if(tag.id == null) { // tag was not created
         tag.id = -(new Date().getTime()); // add a negative id so we can create it when user saves
-        availableTags.push(tag);
-        availableTags = Utils.clone(availableTags);
+        Utils.pushIfNotExists(tags, tag, 'name');
       }
     }
-    this.tags.set(availableTags);
+    tags = Utils.clone(tags);
 
     //@ts-ignore
     obj[tagsAttr] = tags;

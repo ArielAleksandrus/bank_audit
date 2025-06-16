@@ -22,6 +22,7 @@
 					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
 				</span>
 			</th>
+			<th> &nbsp; &nbsp; </th>
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -34,13 +35,16 @@
 			<td>{{boleto.value | currency:'BRL'}}</td>
 			<td>{{boleto.installments}}</td>
 			<td>
-				<ng-select [items]="tags()"
+				<ng-select [items]="tags"
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
 								bindLabel="name"
 								[ngModel]="boleto.auxTags"
 								(change)="tagChanged(boleto, $event)"></ng-select>
+			</td>
+			<td>
+				<button class="btn btn-sm btn-danger" (click)="remove(boleto)">x</button>
 			</td>
 		</tr>
 	</tbody>

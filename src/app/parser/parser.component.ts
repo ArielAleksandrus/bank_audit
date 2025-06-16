@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
+//import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 
 import { BalanceParser } from '../shared/parsers/balance-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
+import { StoneParser } from '../shared/parsers/stone-parser';
 
 import { Tag } from '../shared/models/tag';
 import { Company } from '../shared/models/company';
@@ -32,7 +33,7 @@ import { Filters } from '../shared/helpers/filters';
   imports: [
     CommonModule,
     NgbCollapseModule,
-    NgSelectComponent,
+    //NgSelectComponent,
     NgbPopoverModule,
     FormsModule,
     IncomeComponent,
@@ -45,11 +46,10 @@ import { Filters } from '../shared/helpers/filters';
 export class ParserComponent {
   company: Company = <Company>{id: -1};
 
-  selectedBank?: 'sicoob';
+  selectedBank?: 'sicoob'|'stone';
   excelData: any[] = [];
   parser: BalanceParser;
 
-  availableTags: Tag[] = [];
   suggestions: {[supplierName: string]: Tag[]} = {};
 
   sending: boolean = false;
@@ -62,16 +62,16 @@ export class ParserComponent {
     this._loadCompany();
     //TODO: replace token to user-defined token received via input and stored in localstorage
     this.api.setAuth({token: this.company.token});
-
-    Tag.loadTags(this.api).then((res: any) => {
-      this.availableTags = res;
-    });
   }
 
   bankChanged() {
     switch(this.selectedBank) {
     case("sicoob"): {
       this.parser = new SicoobParser();
+      break;
+    }
+    case("stone"): {
+      this.parser = new StoneParser();
       break;
     }
     }
@@ -140,88 +140,46 @@ export class ParserComponent {
     this.sendingCount = this.parser.boletos.length + this.parser.purchases.length + this.parser.incomes.length;
     this.sending = true;
     this.saveBoletos().then(res => {
+      this.sendingCount -= this.parser.boletos.length;
       this.saveIncomes().then(res2 => {
+        this.sendingCount -= this.parser.incomes.length;
         this.savePurchases().then(res3 => {
+          this.sendingCount -= this.parser.purchases.length;
           this.sending = false;
         })
       })
     });
   }
 
-  saveBoletos(idx: number = 0) {
-    return new Promise((resolve, reject) => {
-      if(idx >= this.parser.boletos.length) {
+  saveBoletos(): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      Boleto.sendArray(this.api, this.parser.boletos).then(res => {
+        this.parser.boletos = res;
         resolve(true);
-        return;
-      }
-      this.sendingCount -= 1;
-
-      let boleto = Utils.clone(this.parser.boletos[idx]);
-
-      if(boleto.purchase_id > 0) {
-        boleto.send(this.api).then( (res: Boleto) => {
-          this.parser.boletos[idx] = res;
-          resolve(this.saveBoletos(idx + 1));
-        })
-      } else {
-        // I had two boletos of Anapool, of the same value, payed at the same time
-        // 1 of them was connected to my restaurant, and the other to the pizza restaurant
-        // therefore, when creating boletos, we have to disable Purchase's anti-duplicate check
-        let pur: Purchase = Purchase.fromBoleto(boleto);
-        pur.send(this.api, false).then( purchase => {
-          boleto.purchase_id = purchase.id;
-          boleto.send(this.api).then( (res: Boleto) => {
-            this.parser.boletos[idx] = res;
-            resolve(this.saveBoletos(idx + 1));
-          })
-        });
-      }
+      }).catch(err => {
+        reject(err);
+      })
     });
   }
-  saveIncomes(idx: number = 0) {
-    return new Promise((resolve, reject) => {
-      if(idx >= this.parser.incomes.length) {
+  saveIncomes(): Promise<boolean>  {
+    return new Promise<boolean>((resolve, reject) => {
+      Income.sendArray(this.api, this.parser.incomes).then(res => {
+        this.parser.incomes = res;
         resolve(true);
-        return;
-      }
-      this.sendingCount -= 1;
-
-      let income = Utils.clone(this.parser.incomes[idx]);
-
-      let req: any = null;
-      if(income.id > 0) {
-        req = this.api.update('incomes', income.id, {income});
-      } else {
-        req = this.api.create('incomes', {income});
-      }
-
-      req.subscribe(
-        (res: Income) => {
-          this.parser.incomes[idx] = res;
-          resolve(this.saveIncomes(idx + 1));
-        },
-        (err: any) => {
-          console.error("Could not save income: ", income, err);
-          reject(err);
-        }
-      );
+      }).catch(err => {
+        reject(err);
+      })
     });
   }
 
-  savePurchases(idx: number = 0): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      if(idx >= this.parser.purchases.length) {
+  savePurchases(): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      Purchase.sendArray(this.api, this.parser.purchases).then(res => {
+        this.parser.purchases = res;
         resolve(true);
-        return;
-      }
-      this.sendingCount -= 1;
-
-      let purchase = Utils.clone(this.parser.purchases[idx]);
-
-      purchase.send(this.api).then( (res: Purchase) => {
-        this.parser.purchases[idx] = res;
-        resolve(this.savePurchases(idx + 1));
-      });
+      }).catch(err => {
+        reject(err);
+      })
     });
   }
 

@@ -4,17 +4,17 @@ import { FormsModule } from '@angular/forms';
 
 import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { Boleto } from '../../shared/models/boleto';
 import { Tag } from '../../shared/models/tag';
 
 import { Utils } from '../../shared/helpers/utils';
+import { ApiService } from '../../shared/services/api.service';
 
 @Component({
   selector: 'app-boleto',
-  imports: [CommonModule, FormsModule, FontAwesomeModule,
+  imports: [CommonModule, FormsModule,
             NgbCollapseModule, NgbPopoverModule,
             NgSelectComponent
           ],
@@ -23,7 +23,7 @@ import { Utils } from '../../shared/helpers/utils';
 })
 export class BoletoComponent {
   boletos = model.required<Boleto[]>();
-  tags = model.required<Tag[]>();
+  tags: Tag[] = [];
 
   onChange = output<{mode: 'create'|'edit'|'destroy', boleto: Boleto}>();
   collapse = input<boolean>();
@@ -35,10 +35,15 @@ export class BoletoComponent {
   propagate: boolean = true;
   propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags do boleto serão copiadas para todos os boletos deste fornecedor";
 
-  constructor() {
+  constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
+
+
+    Tag.loadTags(this.api).then((res: Tag[]) => {
+      this.tags = Tag.fromJsonArray(res);
+    });
   }
 
   remove(obj: Boleto) {
@@ -75,7 +80,6 @@ export class BoletoComponent {
   }
 
   tagChanged(obj: Boleto, tags: Tag[]) {
-    let availableTags = this.tags();
     let tagsAttr: string = 'auxTags';
     let comparisonAttr: string = 'supplier_name';
     let dataArr: Boleto[] = this.boletos();
@@ -83,11 +87,10 @@ export class BoletoComponent {
     for(let tag of tags) {
       if(tag.id == null) { // tag was not created
         tag.id = -(new Date().getTime()); // add a negative id so we can create it when user saves
-        availableTags.push(tag);
-        availableTags = Utils.clone(availableTags);
+        Utils.pushIfNotExists(tags, tag, 'name');
       }
     }
-    this.tags.set(availableTags);
+    tags = Utils.clone(tags);
 
     //@ts-ignore
     obj[tagsAttr] = tags;

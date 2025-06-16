@@ -1,5 +1,4 @@
-import { Boleto } from './boleto';
-import { Tag } from './tag';
+import { Boleto, Tag } from './index';
 import { Utils } from '../helpers/utils';
 import { ApiService } from '../services/api.service';
 
@@ -83,6 +82,9 @@ export class Purchase {
 		return res;
 	}
 	
+  public static sendArray(api: ApiService, purchases: Purchase[]): Promise<Purchase[]> {
+  	return Purchase._auxSendArray(api, purchases);
+  }
   send(api: ApiService, avoidDuplicates: boolean = true): Promise<Purchase> {
     return new Promise((resolve, reject) => {
       let req: any = null;
@@ -97,7 +99,7 @@ export class Purchase {
 
       req.subscribe(
         (res: Purchase) => {
-          resolve(res);
+          resolve(new Purchase(res));
         },
         (err: any) => {
           console.error("Purchase->Could not save purchase: ", this, err);
@@ -106,15 +108,22 @@ export class Purchase {
       );
     })
   }
+  destroy(api: ApiService): Promise<boolean> {
+  	return new Promise((resolve, reject) => {
+  		if(this.id > 0) {
+  			api.destroy('purchases', this.id).subscribe(
+  				(res: any) => {
+  					resolve(true);
+  				},
+  				(err: any) => {
+  					console.error("Purchase->Could not destroy purchase: ", this, err);
+  					reject(err);
+  				}
+  			);
+  		}
+  	});
+  }
 
-	existsParams() {
-		return {
-			purchase_date: this.purchase_date,
-			supplier_name: this.supplier_name,
-			base_value: this.base_value,
-			total: this.total
-		};
-	}
 	public static getSupplierNames(purchases: Purchase[]): string[] {
 		let arr: string[] = [];
 
@@ -129,7 +138,7 @@ export class Purchase {
 		
 		return new Promise((resolve, reject) => {
 		  let params = {
-		    purchases: Purchase.arrayExistsParams(purchases)
+		    purchases: Purchase._arrayExistsParams(purchases)
 		  }
 
 		  api.req('purchases', params, {collection: 'exists'}, 'post').subscribe(
@@ -147,10 +156,10 @@ export class Purchase {
 		            purchase.aux_tags = Utils.clone(suggestedTags);
 		          }
 		        }
-		        resolve(objs);
+		        resolve(Purchase.fromJsonArray(objs));
 		      }, (tagError: any) => {
 		      	console.log("Purchase->Could not load tags suggestions: ", tagError);
-		      	resolve(objs);
+		      	resolve(Purchase.fromJsonArray(objs));
 		      });
 		    },
 		    (err: any) => {
@@ -160,13 +169,6 @@ export class Purchase {
 		  );
 		});
   }
-	public static arrayExistsParams(purchases: Purchase[]) {
-		let arr = [];
-		for(let obj of purchases) {
-			arr.push(obj.existsParams());
-		}
-		return arr;
-	}
 	public static fromBoleto(boleto: Boleto) {
 		const today = (Utils.dateToISO(new Date()) || "1900-01-01 00:00:00").split(" ")[0];
 
@@ -181,4 +183,47 @@ export class Purchase {
 			aux_tags: boleto.auxTags
 		});
 	}
+	public static loadReferrals(api: ApiService): Promise<string[]> {
+		return new Promise((resolve, reject) => {
+			api.show('purchases', 'referrals').subscribe(
+				(res: string[]) => {
+					resolve(res);
+				},
+				(err: any) => {
+					console.error("Purchase->Could not load referrals: ", err);
+				}
+			);
+		})
+	}
+
+
+	//////////// PRIVATE METHODS ////////////////
+	private existsParams() {
+		return {
+			purchase_date: this.purchase_date,
+			supplier_name: this.supplier_name,
+			base_value: this.base_value,
+			total: this.total
+		};
+	}
+	private static _arrayExistsParams(purchases: Purchase[]) {
+		let arr = [];
+		for(let obj of purchases) {
+			arr.push(obj.existsParams());
+		}
+		return arr;
+	}
+  private static _auxSendArray(api: ApiService, purchases: Purchase[], idx: number = 0): Promise<Purchase[]> {
+  	return new Promise((resolve, reject) => {
+  		if(idx >= purchases.length) {
+  			resolve(Purchase.fromJsonArray(purchases));
+  			return;
+  		}
+  		let purchase = purchases[idx];
+  		purchase.send(api).then(res => {
+  			purchases[idx] = res;
+  			resolve(Purchase._auxSendArray(api, purchases, idx + 1));
+  		})
+  	});
+  }
 }

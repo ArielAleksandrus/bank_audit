@@ -38,6 +38,9 @@ export class Income {
 		return res;
 	}
 
+  public static sendArray(api: ApiService, incomes: Income[]): Promise<Income[]> {
+  	return Income._auxSendArray(api, incomes);
+  }
   send(api: ApiService): Promise<Income> {
     return new Promise((resolve, reject) => {
       let req: any = null;
@@ -49,7 +52,7 @@ export class Income {
 
       req.subscribe(
         (res: Income) => {
-          resolve(res);
+          resolve(new Income(res));
         },
         (err: any) => {
           console.error("Income->Could not save income: ", this, err);
@@ -59,23 +62,12 @@ export class Income {
     })
   }
 
-	existsParams() {
-		return {
-			bank_name: this.bank_name,
-			bank_identification: this.bank_identification,
-			date_received: this.date_received,
-			value: this.value,
-			origin: this.origin,
-			income_type: this.income_type
-		};
-	}
-
 	public static arrayExists(api: ApiService, incomes: Income[]): Promise<Income[]> {
 		let objs: Income[] = Utils.clone(incomes);
 		  
 		return new Promise((resolve, reject) => {
 		  let params = {
-		    incomes: Income.arrayExistsParams(incomes)
+		    incomes: Income._arrayExistsParams(incomes)
 		  }
 
 		  api.req('incomes', params, {collection: 'exists'}, 'post').subscribe(
@@ -85,7 +77,7 @@ export class Income {
 		          objs[i] = new Income(res.incomes[i]);
 		        }
 		      }
-		      resolve(objs);
+		      resolve(Income.fromJsonArray(objs));
 		    },
 		    (err: any) => {
 		      console.error("Income->Erro ao buscar entradas: ", err);
@@ -94,11 +86,37 @@ export class Income {
 		  );
 		});
   }
-	public static arrayExistsParams(incomes: Income[]) {
+
+
+	//////////// PRIVATE METHODS ////////////////
+	private _existsParams() {
+		return {
+			bank_name: this.bank_name,
+			bank_identification: this.bank_identification,
+			date_received: this.date_received,
+			value: this.value,
+			origin: this.origin,
+			income_type: this.income_type
+		};
+	}
+	private static _arrayExistsParams(incomes: Income[]) {
 		let arr = [];
 		for(let obj of incomes) {
-			arr.push(obj.existsParams());
+			arr.push(obj._existsParams());
 		}
 		return arr;
 	}
+  private static _auxSendArray(api: ApiService, incomes: Income[], idx: number = 0): Promise<Income[]> {
+  	return new Promise((resolve, reject) => {
+  		if(idx >= incomes.length) {
+  			resolve(Income.fromJsonArray(incomes));
+  			return;
+  		}
+  		let income = incomes[idx];
+  		income.send(api).then(res => {
+  			incomes[idx] = res;
+  			resolve(Income._auxSendArray(api, incomes, idx + 1));
+  		})
+  	});
+  }
 }

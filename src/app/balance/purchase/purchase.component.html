@@ -23,6 +23,7 @@
 				</span>
 			</th>
 			<th>INF. ADIC.</th>
+			<th> &nbsp; &nbsp; </th>
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -30,7 +31,11 @@
 			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{purchase.bank_name}}</td>
 			<td>{{purchase.supplier_name}}</td>
-			<td>{{purchase.referral}}</td>
+			<td>
+				<ng-select [items]="referrals"
+								addTag="true"
+								[(ngModel)]="purchase.referral"></ng-select>
+			</td>
 			<td><input type="text" class="form-control" mask="separator.2" [(ngModel)]="purchase.total"/></td>
 			<td><input type="number" class="form-control" [(ngModel)]="purchase.installments" style="max-width:4em"/></td>
 			<td>
@@ -39,7 +44,7 @@
 				</select>
 			</td>
 			<td>
-				<ng-select [items]="tags()"
+				<ng-select [items]="tags"
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
@@ -49,6 +54,9 @@
 			</td> <!-- Tags -->
 			<td>
 				<textarea rows="3" [(ngModel)]="purchase.additional_info" class="form-control"></textarea>
+			</td>
+			<td>
+				<button class="btn btn-sm btn-danger" (click)="remove(purchase)">x</button>
 			</td>
 		</tr>
 	</tbody>

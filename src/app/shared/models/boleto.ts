@@ -1,4 +1,4 @@
-import { Tag } from './tag';
+import { Purchase, Tag } from './index';
 import { Utils } from '../helpers/utils';
 import { ApiService } from '../services/api.service';
 
@@ -56,8 +56,34 @@ export class Boleto {
 		}
 		return res;
 	}
+
+  public static sendArray(api: ApiService, boletos: Boleto[]): Promise<Boleto[]> {
+  	return Boleto._auxSendArray(api, boletos);
+  }
   send(api: ApiService): Promise<Boleto> {
     return new Promise((resolve, reject) => {
+    	// if purchase_id is invalid, we have to create a purchase first.
+    	if(!(this.purchase_id > 0)) {
+    		let pur: Purchase = Purchase.fromBoleto(this);
+    		// I had two boletos of Anapool, of the same value, payed at the same time
+        // 1 of them was connected to my restaurant, and the other to the pizza restaurant
+        // therefore, when creating boletos, we have to disable Purchase's anti-duplicate check
+    		pur.send(api, false).then((purchase: Purchase) => {
+    			this.purchase_id = purchase.id;
+    			if(this.purchase_id > 0) {
+    				resolve(this.send(api));
+    			} else {
+    				console.error("Boleto->Could not save purchase beforehand: ", purchase, this);
+    				reject(purchase);
+    			}
+    		}).catch((err: any) => {
+    			console.error("Boleto->Error saving purchase beforehand: ", err, this);
+    			reject(err);
+    		});
+
+    		return;
+    	}
+
       let req: any = null;
       if(this.id > 0) {
         req = api.update('boletos', this.id, {boleto: this});
@@ -67,7 +93,7 @@ export class Boleto {
 
       req.subscribe(
         (res: Boleto) => {
-          resolve(res);
+          resolve(new Boleto(res));
         },
         (err: any) => {
           console.error("Boleto->Could not save boleto: ", this, err);
@@ -76,16 +102,21 @@ export class Boleto {
       );
     })
   }
-
-	existsParams() {
-		return {
-			bank_name: this.bank_name,
-			bank_identification: this.bank_identification,
-			expiration_date: this.expiration_date,
-			value: this.value,
-			supplier_name: this.supplier_name
-		};
-	}
+  destroy(api: ApiService): Promise<boolean> {
+  	return new Promise((resolve, reject) => {
+  		if(this.id > 0) {
+  			api.destroy('boletos', this.id).subscribe(
+  				(res: any) => {
+  					resolve(true);
+  				},
+  				(err: any) => {
+  					console.error("Boleto->Could not destroy boleto: ", this, err);
+  					reject(err);
+  				}
+  			);
+  		}
+  	});
+  }
 
 	isValid(): boolean {
 		const hasSupplier = !!this.purchase_id || !!this.supplier_name;
@@ -99,7 +130,7 @@ export class Boleto {
 		
 		return new Promise((resolve, reject) => {
 		  let params = {
-		    boletos: Boleto.arrayExistsParams(boletos)
+		    boletos: Boleto._arrayExistsParams(boletos)
 		  }
 
 		  api.req('boletos', params, {collection: 'exists'}, 'post').subscribe(
@@ -116,10 +147,10 @@ export class Boleto {
 		            boleto.auxTags = Utils.clone(suggestedTags);
 		          }
 		        }
-		        resolve(objs);
+		        resolve(Boleto.fromJsonArray(objs));
 		      }, (tagError: any) => {
 		      	console.log("Boleto->Could not load tags suggestions: ", tagError);
-		      	resolve(objs);
+		        resolve(Boleto.fromJsonArray(objs));
 		      });
 		    },
 		    (err: any) => {
@@ -129,13 +160,6 @@ export class Boleto {
 		  );
 		});
   }
-	public static arrayExistsParams(boletos: Boleto[]) {
-		let arr = [];
-		for(let obj of boletos) {
-			arr.push(obj.existsParams());
-		}
-		return arr;
-	}
 	public static getSupplierNames(boletos: Boleto[]): string[] {
 		let arr: string[] = [];
 
@@ -143,6 +167,38 @@ export class Boleto {
 			Utils.pushIfNotExists(arr, boleto.supplier_name);
 		}
 
+		return arr;
+	}
+
+	//////////// PRIVATE METHODS ////////////////
+  private _existsParams() {
+		return {
+			bank_name: this.bank_name,
+			bank_identification: this.bank_identification,
+			expiration_date: this.expiration_date,
+			value: this.value,
+			supplier_name: this.supplier_name
+		};
+	}
+
+  private static _auxSendArray(api: ApiService, boletos: Boleto[], idx: number = 0): Promise<Boleto[]> {
+  	return new Promise((resolve, reject) => {
+  		if(idx >= boletos.length) {
+  			resolve(Boleto.fromJsonArray(boletos));
+  			return;
+  		}
+  		let boleto = boletos[idx];
+  		boleto.send(api).then(res => {
+  			boletos[idx] = res;
+  			resolve(Boleto._auxSendArray(api, boletos, idx + 1));
+  		})
+  	});
+  }
+	private static _arrayExistsParams(boletos: Boleto[]) {
+		let arr = [];
+		for(let obj of boletos) {
+			arr.push(obj._existsParams());
+		}
 		return arr;
 	}
 }

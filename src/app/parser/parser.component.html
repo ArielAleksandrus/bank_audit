@@ -4,13 +4,14 @@
 		<select [(ngModel)]="selectedBank" class="form-control" (change)="bankChanged()">
 			<option value="">Selecione</option>
 			<option value="sicoob">Sicoob</option>
+			<option value="stone">Stone</option>
 		</select>
 	</div>
 	<div class="col-lg-4" *ngIf="selectedBank">
 		<label class="field-label">Extrato (Excel)</label>
 		<input id="extrato_file" type="file" accept=".xls,.xlsx" (change)="extratoFileChanged($event)"/>
 	</div>
-	<div class="col-lg-4 send-comprovante" *ngIf="parser && parser.boletos && parser.boletos.length > 0">
+	<div class="col-lg-4 send-comprovante" *ngIf="parser && parser.allowsComprovantes && parser.boletos && parser.boletos.length > 0">
 		<label class="field-label">Texto comprovantes</label>
 		<textarea id="comprovanteTxt" class="form-control" rows="5" placeholder="Cole aqui o texto dos comprovantes do mes"></textarea>
 		<button class="btn btn-md btn-primary" (click)="setComprovante()">ENVIAR</button>
@@ -74,11 +75,11 @@
 
 <br/>
 
-<app-boleto [boletos]="parser.boletos || []" [tags]="availableTags" [collapse]="true"></app-boleto>
+<app-boleto [boletos]="parser.boletos || []" [collapse]="true"></app-boleto>
 
 <br/>
 
-<app-purchase [purchases]="parser.purchases || []" [tags]="availableTags" [collapse]="true"></app-purchase>
+<app-purchase [purchases]="parser.purchases || []" [collapse]="true"></app-purchase>
 
 <div>
 	<button class="btn btn-lg btn-primary" (click)="send()" [disabled]="sending">SALVAR</button>

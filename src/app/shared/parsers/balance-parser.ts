@@ -10,6 +10,8 @@ export abstract class BalanceParser {
 	incomes: Income[] = [];
 	tags: Tag[] = [];
 
+	allowsComprovantes: boolean = true;
+
 	sumReceita = {
 		cred: {
 			visa: 0,

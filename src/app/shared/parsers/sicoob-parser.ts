@@ -214,9 +214,9 @@ export class SicoobParser extends BalanceParser {
 					purchase_date: Utils.datePtBrToISO(row[dateIdx]),
 					payment_type: 'other',
 					bank_name: "sicoob",
-					base_value: -row[valueIdx], // 'despesa' and 'boleto' values are negative. we will fix this now. 
+					base_value: -row[valueIdx].toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
 					delivery_fee: 0,
-					total: -row[valueIdx] // 'despesa' and 'boleto' values are negative. we will fix this now. 
+					total: -row[valueIdx].toFixed(2) // 'despesa' and 'boleto' values are negative. we will fix this now. 
 				});
 
 				if(type == "boleto") {
@@ -227,7 +227,7 @@ export class SicoobParser extends BalanceParser {
 						bank_identification: row[identificationIdx],
 						// expiration_date: we don't know this yet
 						// issue_date: we don't know this yet
-						value: -row[valueIdx], // 'despesa' and 'boleto' values are negative. we will fix this now. 
+						value: -row[valueIdx].toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
 						// installments: we don't know this yet
 						payment_date: Utils.datePtBrToISO(row[dateIdx]),
 						supplier_name: row[descIdx]
@@ -251,7 +251,7 @@ export class SicoobParser extends BalanceParser {
 					bank_name: "sicoob",
 					// bank_identification: we don't know this yet
 					// income_type: we might not know this yet
-					value: row[valueIdx]
+					value: row[valueIdx].toFixed(2)
 				});
 
 				if(cardType) {
