@@ -28,14 +28,22 @@
 		<app-income [incomes]="incomes" [collapse]="false"></app-income>
 	</div>
 	<div class="table-container col-lg-12" *ngIf="selection == 'purchases'">
-		<app-purchase [purchases]="purchases" [tags]="allTags" [collapse]="false"></app-purchase>
+		<app-purchase [purchases]="purchases" [collapse]="false"></app-purchase>
 	</div>
 	<div class="table-container col-lg-12" *ngIf="selection == 'boletos'">
-		<app-boleto [boletos]="boletos" [tags]="allTags" [collapse]="false"></app-boleto>
+		<app-boleto [boletos]="boletos" [collapse]="false"></app-boleto>
 	</div>
 </div>
 <div class="charts">
-	<div>
-		<p-chart type="line" [data]="tagData" class="h-[30rem]" />
+	<div class="row">
+		<div class="col-lg-6">
+			<p-chart type="line" [data]="chart1Data" class="h-[30rem]" class="chart"/>
+			<br/>
+			<div class="row">
+				<div class="col-md-4" *ngFor="let tagName of chartTags">
+					<input type="checkbox" [(ngModel)]="selectedTags[tagName]" (change)="changeTagSelection(1)"/> {{tagName}}
+				</div>
+			</div>
+		</div>
 	</div>
 </div>

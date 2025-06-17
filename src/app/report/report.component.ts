@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 
 import { ChartModule } from 'primeng/chart';
 
@@ -24,7 +25,7 @@ import { Utils } from '../shared/helpers/utils';
 
 @Component({
   selector: 'app-report',
-  imports: [CommonModule, ChartModule,
+  imports: [CommonModule, ChartModule, FormsModule, 
             BoletoComponent, IncomeComponent, PurchaseComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
@@ -47,9 +48,11 @@ export class ReportComponent {
 
   selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
 
-  tagData: any;
+  selectedTags: {[tagName: string]: boolean} = {};
+  chartTags: string[] = [];
+  tagClassification: TagClassification = {classification: [], total: 0};
 
-  allTags: Tag[] = [];
+  chart1Data: any;
 
   constructor(private api: ApiService,
               private router: Router,
@@ -71,10 +74,6 @@ export class ReportComponent {
       return;
     }
     api.setAuth({token: this.company.token});
-
-    Tag.loadTags(api).then((res: Tag[]) => {
-      this.allTags = res;
-    });
   }
 
   ngOnInit() {
@@ -100,7 +99,7 @@ export class ReportComponent {
       (res: {boletos: Boleto[]}) => {
         this.boletos = Boleto.fromJsonArray(res.boletos);
         let tagReport = this.reports.boletoTagChart(this.boletos);
-        this.genTagChart(tagReport);
+        this.genTagChart(tagReport, 1);
       }
     );
   }
@@ -137,21 +136,36 @@ export class ReportComponent {
     );
   }
 
-  genTagChart(tagReport: TagClassification) {
+  genTagChart(tagReport: TagClassification, chartNumber: number) {
+    this.tagClassification = tagReport;
+
+    this.selectedTags = {};
+    for(let i = 0; i < tagReport.classification.length; i++) {
+      let tagVal = tagReport.classification[i];
+      this.chartTags.push(tagVal.tagName);
+      
+      if(i >= 7) {
+        this.selectedTags[tagVal.tagName] = false;
+        continue;
+      }
+
+      this.selectedTags[tagVal.tagName] = true;
+    }
+
+    this.changeTagSelection(chartNumber);
+  }
+
+  changeTagSelection(chartNumber: number = 1) {
     let tags: string[] = [];
     let totals: number[] = [];
-    for(let i = 0; i < tagReport.classification.length; i++) {
-      // allow only 7 items in chart, so it is easy to see
-      if(i == 7) break;
-
-      let tagVal = tagReport.classification[i];
-
-      tags.push(tagVal.tagName);
-      totals.push(tagVal.value);
+    for(let tagVal of this.tagClassification.classification) {
+      if(this.selectedTags[tagVal.tagName]) {
+        tags.push(tagVal.tagName);
+        totals.push(tagVal.value);
+      }
     }
     let tagCount: number = tags.length;
-
-    let td: any = {
+    let data: any = {
       labels: tags,
       datasets: [/*{
         type: 'line',
@@ -166,6 +180,7 @@ export class ReportComponent {
       }]
     };
 
-    this.tagData = td;
+    //@ts-ignore
+    this[`chart${chartNumber}Data`] = data;
   }
 }
