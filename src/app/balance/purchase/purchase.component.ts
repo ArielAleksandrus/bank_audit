@@ -95,17 +95,19 @@ export class PurchaseComponent {
   }
 
   tagChanged(obj: Purchase, tags: Tag[]) {
-    let tagsAttr: string = 'tags';
+    obj.tags = tags;
+
+    let tagsAttr: string = 'aux_tags';
     let comparisonAttr: string = 'supplier_name';
     let dataArr: Purchase[] = this.purchases();
 
     for(let tag of tags) {
       if(tag.id == null) { // tag was not created
         tag.id = -(new Date().getTime()); // add a negative id so we can create it when user saves
-        Utils.pushIfNotExists(tags, tag, 'name');
+        Utils.pushIfNotExists(this.tags, tag, 'name');
       }
     }
-    tags = Utils.clone(tags);
+    this.tags = Utils.clone(this.tags);
 
     //@ts-ignore
     obj[tagsAttr] = tags;

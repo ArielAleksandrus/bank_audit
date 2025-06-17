@@ -12,7 +12,6 @@
 			<th>BANCO</th>
 			<th>PGTO.</th>
 			<th>VENC.</th>
-			<th>ID</th>
 			<th>FORNECEDOR</th>
 			<th>VALOR</th>
 			<th>PARCELA</th>
@@ -30,7 +29,6 @@
 			<td>{{boleto.bank_name}}</td>
 			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
-			<td>{{boleto.bank_identification}}</td>
 			<td>
 				<ng-select [items]="suppliers"
                     bindLabel="name"

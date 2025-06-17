@@ -64,7 +64,7 @@ export class StoneParser extends BalanceParser {
 				let income = new Income({
 					id: -Math.floor(Math.random() * 1000000),
 					company_id: 0, // server will set this for us
-					date_received: Utils.datePtBrToISO(entry["Data"]),
+					date_received: (Utils.datePtBrToISO(entry["Data"]) || "").split(" ")[0],
 					origin: entry["Origem"],
 					bank_name: "stone",
 					// bank_identification: stone doesnt give us bank identification number
@@ -78,7 +78,7 @@ export class StoneParser extends BalanceParser {
 					company_id: 0, // server will set this for us
 					supplier_id: 0, // server will set this for us
 					supplier_name: entry["Destino"],
-					purchase_date: Utils.datePtBrToISO(entry["Data"]),
+					purchase_date: (Utils.datePtBrToISO(entry["Data"]) || "").split(" ")[0],
 					payment_type: this._getPaymentType(entry["Tipo"]),
 					bank_name: "stone",
 					base_value: this._fixValue(entry["Valor"], true), // 'despesa' and 'boleto' values are negative. we will fix this now. 
@@ -95,7 +95,7 @@ export class StoneParser extends BalanceParser {
 						// issue_date: stone doesnt give us that
 						value: purchase.total, // 'despesa' and 'boleto' values are negative. we will fix this now. 
 						// installments: we don't know this yet
-						payment_date: Utils.datePtBrToISO(entry["Data"]),
+						payment_date: (Utils.datePtBrToISO(entry["Data"]) || "").split(" ")[0],
 						supplier_name: purchase.supplier_name
 					});
 					this.boletos.push(bol);

@@ -58,13 +58,16 @@ export class Boleto {
 	}
 
   public static sendArray(api: ApiService, boletos: Boleto[]): Promise<Boleto[]> {
-  	return Boleto._auxSendArray(api, boletos);
+  	let objs: Boleto[] = Boleto.fromJsonArray(Utils.clone(boletos));
+  	return Boleto._auxSendArray(api, objs);
   }
   send(api: ApiService): Promise<Boleto> {
     return new Promise((resolve, reject) => {
     	// if purchase_id is invalid, we have to create a purchase first.
     	if(!(this.purchase_id > 0)) {
     		let pur: Purchase = Purchase.fromBoleto(this);
+    		this.purchase_id = 99999;
+
     		// I had two boletos of Anapool, of the same value, payed at the same time
         // 1 of them was connected to my restaurant, and the other to the pizza restaurant
         // therefore, when creating boletos, we have to disable Purchase's anti-duplicate check

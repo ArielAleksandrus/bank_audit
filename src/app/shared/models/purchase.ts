@@ -83,11 +83,11 @@ export class Purchase {
 	}
 	
   public static sendArray(api: ApiService, purchases: Purchase[]): Promise<Purchase[]> {
-  	return Purchase._auxSendArray(api, purchases);
+  	let objs: Purchase[] = Purchase.fromJsonArray(Utils.clone(purchases));
+  	return Purchase._auxSendArray(api, objs);
   }
   send(api: ApiService, avoidDuplicates: boolean = true): Promise<Purchase> {
     return new Promise((resolve, reject) => {
-    	this.aux_tags = this.tags;
       let req: any = null;
       if(this.id > 0) {
         req = api.update('purchases', this.id, {purchase: this});
@@ -199,7 +199,7 @@ export class Purchase {
 
 
 	//////////// PRIVATE METHODS ////////////////
-	private existsParams() {
+	private _existsParams() {
 		return {
 			purchase_date: this.purchase_date,
 			supplier_name: this.supplier_name,
@@ -210,7 +210,7 @@ export class Purchase {
 	private static _arrayExistsParams(purchases: Purchase[]) {
 		let arr = [];
 		for(let obj of purchases) {
-			arr.push(obj.existsParams());
+			arr.push(obj._existsParams());
 		}
 		return arr;
 	}

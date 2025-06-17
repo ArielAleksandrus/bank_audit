@@ -39,10 +39,12 @@ export class Income {
 	}
 
   public static sendArray(api: ApiService, incomes: Income[]): Promise<Income[]> {
-  	return Income._auxSendArray(api, incomes);
+  	let objs: Income[] = Income.fromJsonArray(Utils.clone(incomes));
+  	return Income._auxSendArray(api, objs);
   }
   send(api: ApiService): Promise<Income> {
     return new Promise((resolve, reject) => {
+
       let req: any = null;
       if(this.id > 0) {
         req = api.update('incomes', this.id, {income: this});

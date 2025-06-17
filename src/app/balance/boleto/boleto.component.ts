@@ -92,10 +92,10 @@ export class BoletoComponent {
     for(let tag of tags) {
       if(tag.id == null) { // tag was not created
         tag.id = -(new Date().getTime()); // add a negative id so we can create it when user saves
-        Utils.pushIfNotExists(tags, tag, 'name');
+        Utils.pushIfNotExists(this.tags, tag, 'name');
       }
     }
-    tags = Utils.clone(tags);
+    this.tags = Utils.clone(this.tags);
 
     //@ts-ignore
     obj[tagsAttr] = tags;
