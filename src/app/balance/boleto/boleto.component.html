@@ -2,7 +2,7 @@
 	<thead>
 		<tr class="title">
 			<th colspan="6">
-				BOLETOS &nbsp;&nbsp;
+				BOLETOS <i>({{boletos().length}})</i> &nbsp;&nbsp;
 				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
 				</button>
@@ -25,7 +25,7 @@
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let boleto of boletos()">
+		<tr *ngFor="let boleto of boletos()" [class.danger]="boleto.auxStatus == 'error'">
 			<td>{{boleto.bank_name}}</td>
 			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>

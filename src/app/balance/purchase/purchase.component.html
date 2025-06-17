@@ -2,7 +2,7 @@
 	<thead>
 		<tr class="title">
 			<th colspan="6">
-				OUTRAS DESPESAS &nbsp;&nbsp;
+				OUTRAS DESPESAS <i>({{purchases().length}})</i> &nbsp;&nbsp;
 				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
 				</button>
@@ -27,7 +27,7 @@
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let purchase of purchases()">
+		<tr *ngFor="let purchase of purchases()" [class.danger]="purchase.auxStatus == 'error'">
 			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{purchase.bank_name}}</td>
 			<td>
@@ -59,7 +59,7 @@
 								bindLabel="name"
 								[ngModel]="purchase.tags"
 								(change)="tagChanged(purchase, $event)"></ng-select>
-			</td> <!-- Tags -->
+			</td>
 			<td>
 				<textarea rows="3" [(ngModel)]="purchase.additional_info" class="form-control"></textarea>
 			</td>

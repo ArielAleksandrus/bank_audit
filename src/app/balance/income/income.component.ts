@@ -21,6 +21,7 @@ export class IncomeComponent {
   incomes = model.required<Income[]>();
   onChange = output<{mode: 'create'|'edit'|'destroy', income: Income}>();
   collapse = input<boolean>();
+  mode = input<'parser'|'manual'>('manual');
 
   collapsed?: boolean;
 

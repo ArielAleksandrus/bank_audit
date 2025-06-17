@@ -2,7 +2,7 @@
 	<thead>
 		<tr class="title">
 			<th colspan="6">
-				RECEITAS &nbsp;&nbsp;
+				RECEITAS <i>({{incomes().length}})</i> &nbsp;&nbsp;
 				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
 				</button>
@@ -18,10 +18,18 @@
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let income of incomes()">
+		<tr *ngFor="let income of incomes()" [class.danger]="income.auxStatus == 'error'">
 			<td>{{income.bank_name}}</td>
 			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
-			<td>{{income.income_type}}</td>
+			<td>
+				<select class="form-control" [(ngModel)]="income.income_type">
+					<option value="cartao">Cartão</option>
+					<option value="cheque">Cheque</option>
+					<option value="deposito">Depósito</option>
+					<option value="pix">Pix</option>
+					<option value="outros">Outros</option>
+				</select>
+			</td>
 			<td><input type="text" class="form-control" [(ngModel)]="income.origin"/></td>
 			<td><input type="text" class="form-control" mask="separator.2" [(ngModel)]="income.value"/></td>
 			<td><button class="btn btn-sm btn-danger" (click)="remove(income)">x</button></td>

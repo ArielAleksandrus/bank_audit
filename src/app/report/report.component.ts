@@ -138,26 +138,33 @@ export class ReportComponent {
   }
 
   genTagChart(tagReport: TagClassification) {
-    let tags: string[] = Object.keys(tagReport.classification);
+    let tags: string[] = [];
+    let totals: number[] = [];
+    for(let i = 0; i < tagReport.classification.length; i++) {
+      // allow only 7 items in chart, so it is easy to see
+      if(i == 7) break;
+
+      let tagVal = tagReport.classification[i];
+
+      tags.push(tagVal.tagName);
+      totals.push(tagVal.value);
+    }
     let tagCount: number = tags.length;
+
     let td: any = {
       labels: tags,
-      datasets: [{
+      datasets: [/*{
         type: 'line',
         label: 'Custo Total',
         borderWidth: 2,
         fill: false,
         data: Array(tagCount).fill(tagReport.total)
-      }, {
+      }, */{
         type: 'bar',
         label: 'Custo Parcial',
-        data: []
+        data: totals
       }]
     };
-
-    for(let tag of tags) {
-      td.datasets[1].data.push(tagReport.classification[tag]);
-    }
 
     this.tagData = td;
   }

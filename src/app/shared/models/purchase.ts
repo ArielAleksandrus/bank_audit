@@ -44,6 +44,7 @@ export class Purchase {
 	supplier_name: string;
 	supplier_cnpj: string;
 	tagsStr: string;
+	auxStatus: 'ok'|'error';
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
@@ -73,6 +74,7 @@ export class Purchase {
 		if(this.tagsStr.length > 2) {
 			this.tagsStr = this.tagsStr.split("").splice(0, this.tagsStr.length - 2).join("");
 		}
+		this.auxStatus = jsonData.auxStatus || 'ok';
 	}
 	public static fromJsonArray(jsonArr: any[]) {
 		let res = [];
@@ -80,6 +82,10 @@ export class Purchase {
 			res.push(new Purchase(data));
 		}
 		return res;
+	}
+
+	setTags(tags: Tag[]) {
+		this.tags = this.aux_tags = tags;
 	}
 	
   public static sendArray(api: ApiService, purchases: Purchase[]): Promise<Purchase[]> {
@@ -100,10 +106,12 @@ export class Purchase {
 
       req.subscribe(
         (res: Purchase) => {
+        	this.auxStatus = 'ok';
           resolve(new Purchase(res));
         },
         (err: any) => {
           console.error("Purchase->Could not save purchase: ", this, err);
+  				this.auxStatus = 'error';
           reject(err);
         }
       );
@@ -118,6 +126,7 @@ export class Purchase {
   				},
   				(err: any) => {
   					console.error("Purchase->Could not destroy purchase: ", this, err);
+  					this.auxStatus = 'error';
   					reject(err);
   				}
   			);
@@ -224,7 +233,9 @@ export class Purchase {
   		purchase.send(api).then(res => {
   			purchases[idx] = res;
   			resolve(Purchase._auxSendArray(api, purchases, idx + 1));
-  		})
+  		}).catch(err => {
+  			resolve(Purchase._auxSendArray(api, purchases, idx + 1));
+  		});
   	});
   }
 }

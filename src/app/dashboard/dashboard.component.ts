@@ -50,6 +50,9 @@ export class DashboardComponent {
   insertAction() {
     this.router.navigate(['/inserir']);
   }
+  uploadAction() {
+    this.router.navigate(['/parser']);
+  }
 
   goToReports() {
     let fromStr = this.ngbDateToISO(this.fromDate);

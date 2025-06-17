@@ -1,10 +1,12 @@
 import { Utils } from '../helpers/utils';
+import { Filters } from '../helpers/filters';
+
 import { Boleto } from '../models/boleto';
 import { Purchase } from '../models/purchase';
 import { Income } from '../models/income';
 import { Tag } from '../models/tag';
 
-export type TagClassification = {classification: {[tagName: string]: number}, total: number};
+export type TagClassification = {classification: {tagName: string, value: number}[], total: number};
 export class Reports {
 
 	constructor() {
@@ -12,61 +14,45 @@ export class Reports {
 	}
 
 	boletoTagChart(boletos: Boleto[]): TagClassification {
-		if(!boletos || boletos.length == 0)
-			return {classification: {}, total: 0};
-
-		let classification: any = {};
-		let total = 0;
-
-		for(let boleto of boletos) {
-			let value = Number(boleto.value);
-			let foundTags: string[] = [];
-			if(!boleto.auxTags || boleto.auxTags.length == 0) {
-				foundTags.push("Não classificado");
-			} else {
-				for(let tag of boleto.auxTags) {
-					foundTags.push(tag.name);
-				}
-			}
-			for(let tag of foundTags) {
-				if(!classification[tag])
-					classification[tag] = 0;
-				classification[tag] += value;
-				classification[tag] = Number(classification[tag].toFixed(2));
-			}
-			total += value;
-			total = Number(total.toFixed(2));
-		}
-
-		return {classification: classification, total: total};
+		return this._tagChart(boletos, 'auxTags', 'value');
 	}
 	purchaseTagChart(purchases: Purchase[]): TagClassification {
-		if(!purchases || purchases.length == 0)
-			return {classification: {}, total: 0};
+		return this._tagChart(purchases, 'tags', 'total');
+	}
+	
 
-		let classification: any = {};
-		let total = 0;
 
-		for(let purchase of purchases) {
-			let value = Number(purchase.total);
-			let foundTags: string[] = [];
-			if(!purchase.tags || purchase.tags.length == 0) {
-				foundTags.push("Não classificado");
+
+
+
+
+	///////// PRIVATE METHODS /////////
+	private _tagChart(objs: any[], tagsAttr: string = 'tags', valueAttr: string = 'value'): TagClassification {
+		let res: TagClassification = {classification: [], total: 0};
+
+		if(!objs || objs.length == 0)
+			return res;
+
+		let aux: any = {};
+
+		for(let obj of objs) {
+			let value = Number(obj[valueAttr]);
+			let tags = obj[tagsAttr];
+			if(!tags || tags.length == 0) {
+				aux["Não classificado"] = (aux["Não classificado"] || 0) + value;
 			} else {
-				for(let tag of purchase.tags) {
-					foundTags.push(tag.name);
+				for(let tag of tags) {
+					aux[tag.name] = (aux[tag.name] || 0) + value;
 				}
 			}
-			for(let tag of foundTags) {
-				if(!classification[tag])
-					classification[tag] = 0;
-				classification[tag] += value;
-				classification[tag] = Number(classification[tag].toFixed(2));
-			}
-			total += value;
-			total = Number(total.toFixed(2));
+			res.total += Number(value.toFixed(2));
 		}
 
-		return {classification: classification, total: total};
+		for(let tagName in aux) {
+			res.classification.push({tagName: tagName, value: Number(aux[tagName].toFixed(2))});
+		}
+		res.classification = Filters.orderAlphabetically(res.classification, 'value', true).reverse();
+
+		return res;
 	}
 }

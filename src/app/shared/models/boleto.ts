@@ -23,6 +23,7 @@ export class Boleto {
 	supplier_cnpj: string;
 	auxTags: Tag[];
 	tagsStr: string;
+	auxStatus: 'ok'|'error';
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
@@ -48,6 +49,7 @@ export class Boleto {
 		if(this.tagsStr.length > 2) {
 			this.tagsStr = this.tagsStr.split("").splice(0, this.tagsStr.length - 2).join("");
 		}
+		this.auxStatus = jsonData.auxStatus || 'ok';
 	}
 	public static fromJsonArray(jsonArr: any[]) {
 		let res = [];
@@ -55,6 +57,10 @@ export class Boleto {
 			res.push(new Boleto(data));
 		}
 		return res;
+	}
+
+	setTags(tags: Tag[]) {
+		this.auxTags = tags;
 	}
 
   public static sendArray(api: ApiService, boletos: Boleto[]): Promise<Boleto[]> {
@@ -76,10 +82,12 @@ export class Boleto {
     			if(this.purchase_id > 0) {
     				resolve(this.send(api));
     			} else {
+    				this.auxStatus = 'error';
     				console.error("Boleto->Could not save purchase beforehand: ", purchase, this);
     				reject(purchase);
     			}
     		}).catch((err: any) => {
+    			this.auxStatus = 'error';
     			console.error("Boleto->Error saving purchase beforehand: ", err, this);
     			reject(err);
     		});
@@ -96,10 +104,12 @@ export class Boleto {
 
       req.subscribe(
         (res: Boleto) => {
+        	this.auxStatus = 'ok';
           resolve(new Boleto(res));
         },
         (err: any) => {
           console.error("Boleto->Could not save boleto: ", this, err);
+    			this.auxStatus = 'error';
           reject(err);
         }
       );
@@ -194,7 +204,9 @@ export class Boleto {
   		boleto.send(api).then(res => {
   			boletos[idx] = res;
   			resolve(Boleto._auxSendArray(api, boletos, idx + 1));
-  		})
+  		}).catch(err => {
+  			resolve(Boleto._auxSendArray(api, boletos, idx + 1));
+  		});
   	});
   }
 	private static _arrayExistsParams(boletos: Boleto[]) {

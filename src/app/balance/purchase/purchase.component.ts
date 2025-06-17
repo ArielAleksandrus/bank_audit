@@ -95,43 +95,38 @@ export class PurchaseComponent {
   }
 
   tagChanged(obj: Purchase, tags: Tag[]) {
-    obj.tags = tags;
-
-    let tagsAttr: string = 'aux_tags';
-    let comparisonAttr: string = 'supplier_name';
-    let dataArr: Purchase[] = this.purchases();
-
+    let added = false;
     for(let tag of tags) {
       if(tag.id == null) { // tag was not created
         tag.id = -(new Date().getTime()); // add a negative id so we can create it when user saves
         Utils.pushIfNotExists(this.tags, tag, 'name');
+        added = true;
       }
     }
-    this.tags = Utils.clone(this.tags);
+    // make ngselect reload tags so the user can see in the dropdown selection
+    if(added) this.tags = Utils.clone(this.tags);
 
-    //@ts-ignore
-    obj[tagsAttr] = tags;
-
-    this.onChange.emit({mode: 'edit', purchase: obj});
+    obj.setTags(tags);
 
     if(this.propagate)
-      this._propagateTags(obj, tagsAttr, comparisonAttr, dataArr);
+      this._propagateTags(obj.supplier_name, tags);
+    else {
+      this.onChange.emit({mode: 'edit', purchase: obj});
+    }
   }
-  private _propagateTags(changedObj: any, tagsAttr: string, comparisonAttr: string, dataArr: any[]): number {
+  private _propagateTags(supplierName: string, tags: Tag[]): number {
     let changed: number = 0;
 
-    let tags = changedObj[tagsAttr];
+    let objs = this.purchases();
 
-    for(let i = 0; i < dataArr.length; i++) {
-      let dataObj = dataArr[i];
-      if(changedObj[comparisonAttr] == dataObj[comparisonAttr] && !Utils.equals(changedObj[tagsAttr], dataObj[tagsAttr])) {
-        dataObj[tagsAttr] = Utils.clone(changedObj[tagsAttr]);
-        this.onChange.emit({mode: 'edit', purchase: dataObj});
+    for(let i = 0; i < objs.length; i++) {
+      let obj = objs[i];
+      if(obj.supplier_name == supplierName) {
+        obj.setTags(tags);
+        this.onChange.emit({mode: 'edit', purchase: obj});
         changed++;
       }
     }
-
-    this.purchases.set(dataArr);
 
     return changed;
   }

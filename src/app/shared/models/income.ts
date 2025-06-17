@@ -17,6 +17,9 @@ export class Income {
 	created_at: string;
 	updated_at: string;
 
+	// set by our front end app
+	auxStatus: 'ok'|'error';
+
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
 		this.company_id = jsonData.company_id;
@@ -29,6 +32,7 @@ export class Income {
 		this.additional_info = jsonData.additional_info;
 		this.created_at = jsonData.created_at;
 		this.updated_at = jsonData.updated_at;
+		this.auxStatus = jsonData.auxStatus || 'ok';
 	}
 	public static fromJsonArray(jsonArr: any[]) {
 		let res = [];
@@ -54,10 +58,12 @@ export class Income {
 
       req.subscribe(
         (res: Income) => {
+        	this.auxStatus = 'ok';
           resolve(new Income(res));
         },
         (err: any) => {
           console.error("Income->Could not save income: ", this, err);
+         	this.auxStatus = 'error';
           reject(err);
         }
       );
@@ -118,7 +124,9 @@ export class Income {
   		income.send(api).then(res => {
   			incomes[idx] = res;
   			resolve(Income._auxSendArray(api, incomes, idx + 1));
-  		})
+  		}).catch(err => {
+  			resolve(Income._auxSendArray(api, incomes, idx + 1));
+  		});
   	});
   }
 }
