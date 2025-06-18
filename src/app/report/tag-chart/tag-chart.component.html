@@ -1,0 +1,9 @@
+<div class="tag-chart">
+	<p-chart type="line" [data]="chartData" class="h-[30rem]" class="chart"/>
+	<br/>
+	<div class="row">
+		<div class="col-md-4" *ngFor="let tagName of chartTags">
+			<input type="checkbox" [(ngModel)]="selectedTags[tagName]" (change)="changeTagSelection()"/> {{tagName}}
+		</div>
+	</div>
+</div>

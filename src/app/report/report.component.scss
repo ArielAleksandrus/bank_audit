@@ -13,9 +13,15 @@
 }
 .charts {
 	width: 100%;
+	padding: 1em;
+	text-align: center;
+	.title {
+		font-weight: bold;
+		font-size: 135%;
+		font-family: sans-serif;
+	}
 	.chart {
 		width: 46%;
 		min-width: 20em;
-		text-align: center;
 	}
 }

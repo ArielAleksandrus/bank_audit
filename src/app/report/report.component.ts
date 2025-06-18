@@ -3,8 +3,6 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 
-import { ChartModule } from 'primeng/chart';
-
 import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
 
@@ -18,6 +16,7 @@ import { Tag } from '../shared/models/tag';
 import { BoletoComponent } from '../balance/boleto/boleto.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
+import { TagChartComponent } from './tag-chart/tag-chart.component';
 
 import { Reports, TagClassification } from '../shared/parsers/reports';
 
@@ -25,8 +24,9 @@ import { Utils } from '../shared/helpers/utils';
 
 @Component({
   selector: 'app-report',
-  imports: [CommonModule, ChartModule, FormsModule, 
-            BoletoComponent, IncomeComponent, PurchaseComponent],
+  imports: [CommonModule, FormsModule, 
+            BoletoComponent, IncomeComponent, PurchaseComponent,
+            TagChartComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
 })
@@ -45,14 +45,10 @@ export class ReportComponent {
   toPtbr?: string;
 
   reports: Reports;
+  boletoTagData?: TagClassification;
+  purchaseTagData?: TagClassification;
 
   selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
-
-  selectedTags: {[tagName: string]: boolean} = {};
-  chartTags: string[] = [];
-  tagClassification: TagClassification = {classification: [], total: 0};
-
-  chart1Data: any;
 
   constructor(private api: ApiService,
               private router: Router,
@@ -98,8 +94,7 @@ export class ReportComponent {
     this.api.indexAll('boletos', params).subscribe(
       (res: {boletos: Boleto[]}) => {
         this.boletos = Boleto.fromJsonArray(res.boletos);
-        let tagReport = this.reports.boletoTagChart(this.boletos);
-        this.genTagChart(tagReport, 1);
+        this.boletoTagData = this.reports.boletoTagChart(this.boletos);
       }
     );
   }
@@ -132,55 +127,8 @@ export class ReportComponent {
     this.api.indexAll('purchases', params).subscribe(
       (res: {purchases: Purchase[]}) => {
         this.purchases = Purchase.fromJsonArray(res.purchases);
+        this.purchaseTagData = this.reports.purchaseTagChart(this.purchases);
       }
     );
-  }
-
-  genTagChart(tagReport: TagClassification, chartNumber: number) {
-    this.tagClassification = tagReport;
-
-    this.selectedTags = {};
-    for(let i = 0; i < tagReport.classification.length; i++) {
-      let tagVal = tagReport.classification[i];
-      this.chartTags.push(tagVal.tagName);
-      
-      if(i >= 7) {
-        this.selectedTags[tagVal.tagName] = false;
-        continue;
-      }
-
-      this.selectedTags[tagVal.tagName] = true;
-    }
-
-    this.changeTagSelection(chartNumber);
-  }
-
-  changeTagSelection(chartNumber: number = 1) {
-    let tags: string[] = [];
-    let totals: number[] = [];
-    for(let tagVal of this.tagClassification.classification) {
-      if(this.selectedTags[tagVal.tagName]) {
-        tags.push(tagVal.tagName);
-        totals.push(tagVal.value);
-      }
-    }
-    let tagCount: number = tags.length;
-    let data: any = {
-      labels: tags,
-      datasets: [/*{
-        type: 'line',
-        label: 'Custo Total',
-        borderWidth: 2,
-        fill: false,
-        data: Array(tagCount).fill(tagReport.total)
-      }, */{
-        type: 'bar',
-        label: 'Custo Parcial',
-        data: totals
-      }]
-    };
-
-    //@ts-ignore
-    this[`chart${chartNumber}Data`] = data;
   }
 }

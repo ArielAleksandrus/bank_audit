@@ -36,14 +36,15 @@
 </div>
 <div class="charts">
 	<div class="row">
+		<!-- Purchase tag chart -->
 		<div class="col-lg-6">
-			<p-chart type="line" [data]="chart1Data" class="h-[30rem]" class="chart"/>
-			<br/>
-			<div class="row">
-				<div class="col-md-4" *ngFor="let tagName of chartTags">
-					<input type="checkbox" [(ngModel)]="selectedTags[tagName]" (change)="changeTagSelection(1)"/> {{tagName}}
-				</div>
-			</div>
+			<div class="title">Todas as Compras</div>
+			<app-tag-chart *ngIf="purchaseTagData" class="chart" [tagClassification]="purchaseTagData"></app-tag-chart>
+		</div>
+		<!-- Boleto tag chart -->
+		<div class="col-lg-6">
+			<div class="title">Apenas Boletos</div>
+			<app-tag-chart *ngIf="boletoTagData" class="chart" [tagClassification]="boletoTagData"></app-tag-chart>
 		</div>
 	</div>
 </div>
