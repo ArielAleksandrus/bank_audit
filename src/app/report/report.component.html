@@ -25,13 +25,13 @@
 </div>
 <div class="body-tables row">
 	<div class="table-container col-lg-12" *ngIf="selection == 'incomes'">
-		<app-income [incomes]="incomes" [collapse]="false"></app-income>
+		<app-income [incomes]="incomes" [collapse]="false" canSave="true"></app-income>
 	</div>
 	<div class="table-container col-lg-12" *ngIf="selection == 'purchases'">
-		<app-purchase [purchases]="purchases" [collapse]="false"></app-purchase>
+		<app-purchase [purchases]="purchases" [collapse]="false" canSave="true"></app-purchase>
 	</div>
 	<div class="table-container col-lg-12" *ngIf="selection == 'boletos'">
-		<app-boleto [boletos]="boletos" [collapse]="false"></app-boleto>
+		<app-boleto [boletos]="boletos" [collapse]="false" canSave="true"></app-boleto>
 	</div>
 </div>
 <div class="charts">

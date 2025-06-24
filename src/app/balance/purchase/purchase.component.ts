@@ -33,6 +33,8 @@ export class PurchaseComponent {
   suppliers: Supplier[] = [];
   onChange = output<{mode: 'create'|'edit'|'destroy', purchase: Purchase}>();
   collapse = input<boolean>();
+  canSave = input<boolean>();
+  sending: boolean = false;
 
   collapsed?: boolean;
 
@@ -85,6 +87,23 @@ export class PurchaseComponent {
       this.onChange.emit({mode: 'edit', purchase: obj});
     }
     this.selected = undefined;
+  }
+
+  save() {
+    if(!this.canSave) {
+      console.error("PurchaseComponent: Not allowed to save");
+      return;
+    }
+
+    this.sending = true;
+    Purchase.sendArray(this.api, this.purchases()).then(res => {
+      this.purchases.set(res);
+      this.sending = false;
+      alert("Compras salvas");
+    }).catch(err => {
+      console.error("PurchaseComponent: Error saving: ", err);
+      this.sending = false;
+    });
   }
 
   open(obj?: Purchase) {
