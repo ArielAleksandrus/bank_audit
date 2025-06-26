@@ -10,18 +10,13 @@ import { Purchase } from '../../shared/models/purchase';
 import { Supplier } from '../../shared/models/supplier';
 import { Tag } from '../../shared/models/tag';
 
-import { BoletoComponent } from '../../balance/boleto/boleto.component';
-import { IncomeComponent } from '../../balance/income/income.component';
-import { PurchaseComponent } from '../../balance/purchase/purchase.component';
-
 import { Reports, TagClassification } from '../../shared/parsers/reports';
 
 import { Utils } from '../../shared/helpers/utils';
 
 @Component({
   selector: 'app-tag-chart',
-  imports: [CommonModule, ChartModule, FormsModule, 
-            BoletoComponent, IncomeComponent, PurchaseComponent],
+  imports: [CommonModule, ChartModule, FormsModule],
   templateUrl: './tag-chart.component.html',
   styleUrl: './tag-chart.component.scss'
 })

@@ -1,3 +1,11 @@
+/**
+ * Right now, StoneParser will parse ONLY
+ * 1. Pix and card incomes
+ * 2. Pix payments
+ * BOLETO is NOT supported
+ * other payments and incomes may not be correctly parsed
+ */
+
 import { BalanceParser } from './balance-parser';
 
 import { Utils } from '../helpers/utils';
@@ -41,6 +49,7 @@ export class StoneParser extends BalanceParser {
 			this.parseExcel();
 		}
 		}
+		this.recalculateIncome();
 	}
 
 	parseExcel() {
@@ -103,7 +112,6 @@ export class StoneParser extends BalanceParser {
 				console.error(`StoneParser->Unknown Movimentação "${entry["Movimentação"]}"`, entry);
 			}
 		}
-		this.recalculateIncome();
 	}
 	private _fixValue(valStr: string, removeSignal: boolean = false): string {
 		valStr = valStr.replace(".","").replace(",",".").replace(" ",""); // '-50.000,01' will become '-50000.01'

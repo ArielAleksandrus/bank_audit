@@ -3,6 +3,7 @@
 		<label class="field-label">Para enviar o extrato, primeiro selecione o banco:</label>
 		<select [(ngModel)]="selectedBank" class="form-control" (change)="bankChanged()">
 			<option value="" disabled>Selecione</option>
+			<option value="brb">BRB</option>
 			<option value="sicoob">Sicoob</option>
 			<option value="sicredi">Sicredi</option>
 			<option value="stone">Stone</option>
@@ -24,17 +25,17 @@
 
 <br/>
 
-<app-income [incomes]="parser.incomes || []" [collapse]="true" (onChange)="changedIncome($event)"></app-income>
+<app-income *ngIf="parser.incomes && parser.incomes.length > 0" [incomes]="parser.incomes" [collapse]="true" (onChange)="changedIncome($event)"></app-income>
 
 <br/>
 
-<app-boleto [boletos]="parser.boletos || []" [collapse]="true"></app-boleto>
+<app-boleto *ngIf="parser.boletos && parser.boletos.length > 0" [boletos]="parser.boletos" [collapse]="true"></app-boleto>
 
 <br/>
 
-<app-purchase [purchases]="parser.purchases || []" [collapse]="true"></app-purchase>
+<app-purchase *ngIf="parser.purchases && parser.purchases.length > 0" [purchases]="parser.purchases" [collapse]="true"></app-purchase>
 
-<div>
+<div *ngIf="parser && (parser.purchases.length > 0 || parser.incomes.length > 0 || parser.boletos.length > 0)">
 	<button class="btn btn-lg btn-primary" (click)="send()" [disabled]="sending">SALVAR</button>
 	&nbsp; &nbsp; &nbsp;
 	<i *ngIf="sendingCount > 0">Faltam {{sendingCount}} itens</i>

@@ -1,3 +1,11 @@
+/**
+ * Right now, SicrediParser will parse ONLY
+ * 1. Pix incomes
+ * 2. Pix payments
+ * BOLETO is NOT supported
+ * other payments and incomes may not be correctly parsed
+ */
+
 import { BalanceParser } from './balance-parser';
 
 import { Utils } from '../helpers/utils';
@@ -42,7 +50,6 @@ export class SicrediParser extends BalanceParser {
 		for(let i = 1; i < rawEntries.length; i++) {
 			this._parseRawEntry(rawEntries[i]);
 		}
-		this.recalculateIncome();
 	}
 	/* example of rawEntry:
 	 * <TRNTYPE>CREDIT</TRNTYPE>\n

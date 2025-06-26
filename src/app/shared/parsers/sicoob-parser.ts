@@ -59,6 +59,8 @@ export class SicoobParser extends BalanceParser {
 			this.parseExcel();
 		}
 		}
+		
+		this.recalculateIncome();
 	}
 	override parseComprovantes(text: string): any {
 		this.comprovantesArr = [];
@@ -87,6 +89,8 @@ export class SicoobParser extends BalanceParser {
 			});
 		}
 		this._addBeneficiario();
+
+		this.recalculateIncome();
 
 		return this.comprovantesArr;
 	}
@@ -262,7 +266,6 @@ export class SicoobParser extends BalanceParser {
 				console.error("SicoobParser->classifyDescription: row is not receita nor despesa. it is: " + type, row);
 			}
 		}
-		this.recalculateIncome();
 	}
 	private _getCardCompany(cardType: string) {
 		const map: {[companyName:string]: string} = {

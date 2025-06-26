@@ -1,6 +1,8 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import {pdf2array, Pdf2ArrayOptions, pdfjs} from "pdf2array";
+
 
 //import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
@@ -15,6 +17,7 @@ import { PurchaseComponent } from '../balance/purchase/purchase.component';
 import * as XLSX from 'xlsx';
 
 import { BalanceParser } from '../shared/parsers/balance-parser';
+import { BrbParser } from '../shared/parsers/brb-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
 import { SicrediParser } from '../shared/parsers/sicredi-parser';
 import { StoneParser } from '../shared/parsers/stone-parser';
@@ -49,7 +52,7 @@ import { Filters } from '../shared/helpers/filters';
 export class ParserComponent {
   company: Company = <Company>{id: -1};
 
-  selectedBank?: 'sicoob'|'stone'|'sicredi';
+  selectedBank?: 'brb'|'sicoob'|'stone'|'sicredi';
   excelData: any[] = [];
   pdfData: any = {};
   parser: BalanceParser;
@@ -61,6 +64,7 @@ export class ParserComponent {
 
   constructor (private api: ApiService) {
     this.parser = new SicoobParser(); // pick any parser to begin with. user can change it later
+    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
   }
   ngOnInit() {
     this._loadCompany();
@@ -70,6 +74,10 @@ export class ParserComponent {
 
   bankChanged() {
     switch(this.selectedBank) {
+    case("brb"): {
+      this.parser = new BrbParser();
+      break;
+    }
     case("sicoob"): {
       this.parser = new SicoobParser();
       break;
@@ -86,23 +94,15 @@ export class ParserComponent {
   }
 
   extratoFileChanged(evt: any) {
-    const self = this;
     const file: File = evt.target.files[0];
     let auxArr = file.name.split(".");
     let extension = auxArr[auxArr.length - 1];
-    
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      self.loadExtrato(file, e.target.result, extension);
-      this.checkIfBoletosExist();
-      this.checkIfIncomesExist();
-      this.checkIfPurchasesExist();
+
+    if(extension == "pdf") {
+      this._useArrayBuffer(file, extension)
+    } else {
+      this._useFileReader(file, extension);
     }
-    
-    if(extension == "ofx")
-      reader.readAsText(file);
-    else
-      reader.readAsBinaryString(file);
   }
 
   loadExtrato(file: File, fileContent: any, extension: string) {
@@ -119,7 +119,15 @@ export class ParserComponent {
       this.loadOFX(fileContent);
       break;
     }
+    case("pdf"): {
+      this.loadPDF(fileContent);
+      break;
     }
+    }
+
+    this.checkIfBoletosExist();
+    this.checkIfIncomesExist();
+    this.checkIfPurchasesExist();
   }
   loadExcel(fileContent: any) {
     const workbook = XLSX.read(fileContent, { type: 'binary' });
@@ -130,6 +138,9 @@ export class ParserComponent {
   }
   loadOFX(fileContent: any) {
     this.parser.parseExtrato([fileContent], 'ofx');
+  }
+  loadPDF(fileContent: any) {
+    this.parser.parseExtrato(fileContent, 'pdf');
   }
 
   setComprovante() {
@@ -243,5 +254,27 @@ export class ParserComponent {
     } else {
       location.href = '/login';
     }
+  }
+
+
+  private _useArrayBuffer(file: File, extension: string) {
+    file.arrayBuffer().then(buffer => {
+      pdf2array(buffer, {}).then((data: any) => {
+        this.loadExtrato(file, data, extension);
+      })
+    })
+  }
+  private _useFileReader(file: File, extension: string) {
+    const self = this;
+    
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      self.loadExtrato(file, e.target.result, extension);
+    }
+    
+    if(extension == "ofx")
+      reader.readAsText(file);
+    else
+      reader.readAsBinaryString(file);
   }
 }

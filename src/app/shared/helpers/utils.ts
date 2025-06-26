@@ -92,7 +92,7 @@ export const Utils = {
     return `${date.getFullYear()}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   },
   datePtBrToISO(date: string): string|null {
-    if(date == null) {
+    if(date == null || !Utils.isPtBrDate(date)) {
       return null;
     }
     
@@ -148,6 +148,10 @@ export const Utils = {
       }
     }
     return null;
+  },
+  isPtBrDate(date: string): boolean {
+    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}( (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9]){0,1}){0,1}$/;
+    return regex.test(date);
   },
   pushIfNotExists(arr: Array<any>, toPush: any, field?: string): boolean {
     let found: boolean = false;

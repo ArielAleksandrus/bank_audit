@@ -7,7 +7,7 @@ import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
-import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
+//import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
 
 import { Purchase, PAYMENT_TRANSLATION  } from '../../shared/models/purchase';
 import { Tag } from '../../shared/models/tag';
@@ -20,10 +20,10 @@ import { ApiService } from '../../shared/services/api.service';
   selector: 'app-purchase',
   imports: [CommonModule, FormsModule, FontAwesomeModule,
             NgbCollapseModule, NgbPopoverModule,
-            NgxMaskDirective,
+            //NgxMaskDirective,
             NgSelectComponent
           ],
-  providers: [provideNgxMask()],
+  providers: [/*provideNgxMask()*/],
   templateUrl: './purchase.component.html',
   styleUrl: './purchase.component.scss'
 })
