@@ -171,5 +171,8 @@ export const Utils = {
       arr.push(toPush);
       return true;
     }
+  },
+  sumDecimals(num1: string|number, num2: string|number, decimalPlaces: number = 2): number {
+    return Number((Number(num1) + Number(num2)).toFixed(decimalPlaces));
   }
 }

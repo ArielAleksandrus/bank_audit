@@ -7,6 +7,7 @@ import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
+import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { BoletoComponent } from '../balance/boleto/boleto.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
@@ -37,6 +38,7 @@ import { Filters } from '../shared/helpers/filters';
     //NgSelectComponent,
     NgbPopoverModule,
     FormsModule,
+    IncomeSumComponent,
     IncomeComponent,
     BoletoComponent,
     PurchaseComponent

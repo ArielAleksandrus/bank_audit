@@ -1,9 +1,13 @@
 import { Utils } from '../helpers/utils';
 import { Boleto } from '../models/boleto';
 import { Purchase } from '../models/purchase';
-import { Income } from '../models/income';
+import { Income, IncomeSummary } from '../models/income';
 import { Tag } from '../models/tag';
 
+/**
+ * When parsed incomes are of type 'card' (recebiveis de cartao), the card company (in the CardCompany format) must be
+ * included in 'origin' field of Income, surrounded by (()), just like: "DEB CARTOES MAESTRO ((mastercard débito))"
+ */
 export abstract class BalanceParser {
 	boletos: Boleto[] = [];
 	purchases: Purchase[] = [];
@@ -13,28 +17,7 @@ export abstract class BalanceParser {
 	acceptedFormats: string = ".xls,.xlsx";
 	allowsComprovantes: boolean = true;
 
-	sumReceita = {
-		cred: {
-			visa: 0,
-			master: 0,
-			elo: 0,
-			outros: 0,
-			total: 0
-		},
-		deb: {
-			visa: 0,
-			master: 0,
-			elo: 0,
-			outros: 0,
-			total: 0
-		},
-		outros_cartoes: {
-			total: 0
-		},
-		total_cartoes: 0,
-		pix: 0,
-		total: 0
-	};
+	incomeSummary: IncomeSummary = Income.defaultIncomeSummary();
 
 	extractTags(): void {
 		this.tags = [];
@@ -56,7 +39,10 @@ export abstract class BalanceParser {
 	parseComprovantes(text: string): any {
 		throw new Error("BalanceParser->parseComprovantes(): Unimplemented function");
 	}
-	recalculateIncome(): void {
-		throw new Error("BalanceParser->recalculateIncome(): Unimplemented function");
+	recalculateIncome(): IncomeSummary {
+		let sum: IncomeSummary = Income.calculateIncomeSummary(this.incomes);
+		this.incomeSummary = sum;
+		return sum;
 	}
+
 }

@@ -29,6 +29,8 @@ export class BoletoComponent {
 
   onChange = output<{mode: 'create'|'edit'|'destroy', boleto: Boleto}>();
   collapse = input<boolean>();
+  canSave = input<boolean>();
+  sending: boolean = false;
 
   collapsed?: boolean;
 
@@ -75,6 +77,24 @@ export class BoletoComponent {
       this.onChange.emit({mode: 'edit', boleto: obj});
     }
     this.selected = undefined;
+  }
+
+  save() {
+    if(!this.canSave) {
+      console.error("PurchaseComponent: Not allowed to save");
+      return;
+    }
+
+    this.sending = true;
+    Boleto.sendArray(this.api, this.boletos()).then(res => {
+      this.boletos.set(res);
+      this.sending = false;
+      alert("Boletos salvos");
+    }).catch(err => {
+      console.error("BoletoComponent: Error saving: ", err);
+      this.sending = false;
+      alert("Erro ao salvar boletos");
+    });
   }
 
   open(obj?: Boleto) {

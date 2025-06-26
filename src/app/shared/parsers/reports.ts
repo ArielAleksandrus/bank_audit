@@ -3,7 +3,7 @@ import { Filters } from '../helpers/filters';
 
 import { Boleto } from '../models/boleto';
 import { Purchase } from '../models/purchase';
-import { Income } from '../models/income';
+import { Income, IncomeSummary } from '../models/income';
 import { Tag } from '../models/tag';
 
 export type TagClassification = {classification: {tagName: string, value: number}[], total: number};
@@ -19,14 +19,10 @@ export class Reports {
 	purchaseTagChart(purchases: Purchase[]): TagClassification {
 		return this._tagChart(purchases, 'tags', 'total');
 	}
-	
+	incomeSummary(incomes: Income[]): IncomeSummary {
+		return Income.calculateIncomeSummary(incomes);
+	}
 
-
-
-
-
-
-	///////// PRIVATE METHODS /////////
 	private _tagChart(objs: any[], tagsAttr: string = 'tags', valueAttr: string = 'value'): TagClassification {
 		let res: TagClassification = {classification: [], total: 0};
 

@@ -15,9 +15,6 @@ export class SicrediParser extends BalanceParser {
 	constructor() {
 		super();
 	}
-	override recalculateIncome() {
-		this._sumReceita();
-	}
 	override parseExtrato(dataArr: any[], dataType: 'ofx'): void{
 		this.dataArr = dataArr;
 		if(!this.dataArr || this.dataArr.length != 1) {
@@ -45,6 +42,7 @@ export class SicrediParser extends BalanceParser {
 		for(let i = 1; i < rawEntries.length; i++) {
 			this._parseRawEntry(rawEntries[i]);
 		}
+		this.recalculateIncome();
 	}
 	/* example of rawEntry:
 	 * <TRNTYPE>CREDIT</TRNTYPE>\n
@@ -150,76 +148,5 @@ export class SicrediParser extends BalanceParser {
 		let month = rawDate.substr(4, 2);
 		let day = rawDate.substr(6, 2);
 		return `${year}-${month}-${day}`;
-	}
-
-	private _sumReceita() {
-		this.sumReceita = {
-			cred: {
-				visa: 0,
-				master: 0,
-				elo: 0,
-				outros: 0,
-				total: 0
-			},
-			deb: {
-				visa: 0,
-				master: 0,
-				elo: 0,
-				outros: 0,
-				total: 0
-			},
-			outros_cartoes: {
-				total: 0
-			},
-			total_cartoes: 0,
-			pix: 0,
-			total: 0
-		};
-		// por enquanto não utilizamos máquinas da sicredi
-		// vamos nos ater apenas a pix
-		const map = {
-			/*"MAESTRO": {deb: "master"},
-			"MASTERCARD": {cred: "master"},
-			"VISA ELECTRON": {deb: "visa"},
-			"VISA": {cred: "visa"},
-			"DEB OUTRAS BANDEIRAS": {deb: "outros"},
-			"CRE OUTRAS BANDEIRAS": {cred: "outros"},*/
-		}
-
-		for(let income of this.incomes) {
-			let value = Number(income.value);
-
-			switch(income.income_type) {
-			case("cartao"): {
-				//@ts-ignore
-				let match: any = map[income.origin];
-				for(let key in map) {
-					if(income.origin.indexOf(key) > -1) {
-						//@ts-ignore
-						match = map[key];
-						break;
-					}
-				}
-
-				if(!match) {
-					console.log("SicrediParser->sumReceita: Uncategorized type: " + income.origin, income);
-				} else {
-					const credOrDeb = Object.keys(match)[0];
-					const companyName = match[credOrDeb];
-					//@ts-ignore
-					this.sumReceita[credOrDeb][companyName] += Number(income.value);
-					//@ts-ignore
-					this.sumReceita[credOrDeb]["total"] += Number(income.value);
-				}
-				break;
-			}
-			case("pix"): {
-				this.sumReceita.pix += value;
-				break;
-			}
-			}
-
-			this.sumReceita["total"] += Number(income.value);
-		}
 	}
 }

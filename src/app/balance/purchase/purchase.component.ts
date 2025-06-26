@@ -103,6 +103,7 @@ export class PurchaseComponent {
     }).catch(err => {
       console.error("PurchaseComponent: Error saving: ", err);
       this.sending = false;
+      alert("Erro ao salvar recebimentos");
     });
   }
 

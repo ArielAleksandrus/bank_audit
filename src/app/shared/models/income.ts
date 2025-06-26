@@ -2,6 +2,30 @@ import { Tag } from './tag';
 import { ApiService } from '../services/api.service';
 import { Utils } from '../helpers/utils';
 
+export type CardCompany = "visa"|"mastercard"|"amex"|"elo"|"outros";
+export const CARDCOMPANIES: CardCompany[] = ["visa", "mastercard", "amex", "elo", "outros"];
+export type IncomeSummary = {
+	credit: {
+		visa: number,
+		mastercard: number,
+		elo: number,
+		amex: number,
+		outros: number,
+		total: number
+	},
+	debit: {
+		visa: number,
+		mastercard: number,
+		elo: number,
+		amex: number,
+		outros: number,
+		total: number
+	},
+	other_cards: number,
+	pix: number,
+	other_incomes: number,
+	grandTotal: number
+};
 export class Income {
 	id: number;
 	company_id: number;
@@ -95,8 +119,92 @@ export class Income {
 		});
   }
 
+  public static calculateIncomeSummary(incomes: Income[]): IncomeSummary {
+		let incomeSummary = Income.defaultIncomeSummary();
+		if(!incomes || incomes.length == 0)
+			return incomeSummary;
+
+		for(let income of incomes) {
+			let value: number = Number(income.value);
+
+			if(income.income_type == "pix") {
+				incomeSummary.pix = Utils.sumDecimals(incomeSummary.pix, value);
+			} else if(income.income_type == "cartao") {
+				let cardType = Income.getCardType(income.additional_info || "");
+				if(cardType.type == "outros") {
+					incomeSummary.other_cards = Utils.sumDecimals(incomeSummary.other_cards, value);
+				} else if(cardType.type == "debit") {
+					//@ts-ignore
+					incomeSummary.debit[cardType.company] = Utils.sumDecimals(incomeSummary.debit[cardType.company], value);
+					incomeSummary.debit.total = Utils.sumDecimals(incomeSummary.debit.total, value);
+				} else if(cardType.type == "credit") {
+					//@ts-ignore
+					incomeSummary.credit[cardType.company] = Utils.sumDecimals(incomeSummary.credit[cardType.company], value);
+					incomeSummary.credit.total = Utils.sumDecimals(incomeSummary.credit.total, value);
+				}
+			} else {
+				incomeSummary.other_incomes = Utils.sumDecimals(incomeSummary.other_incomes, value);
+			}
+
+			incomeSummary.grandTotal = Utils.sumDecimals(incomeSummary.grandTotal, value);
+		}
+
+		return incomeSummary;
+  }
+  public static getCardType(description: string): {type: "credit"|"debit"|"outros", company: CardCompany} {
+		let res: {type: "credit"|"debit"|"outros", company: CardCompany} = {type: "outros", company: "outros"};
+
+		let companyName = description.split("((")[1];
+		if(!companyName)
+			return res;
+
+		companyName = companyName.split("))")[0];
+
+		if(companyName == "outros") {
+			res = {type: "outros", company: "outros"};
+		} else if(companyName.indexOf("débito") > -1) {
+			res = {type: "debit", company: Income._checkCompanyName(companyName)};
+		} else {
+			res = {type: "credit", company: Income._checkCompanyName(companyName)};
+		}
+		return res;
+	}
+	public static defaultIncomeSummary(): IncomeSummary {
+		return {
+			credit: {
+				visa: 0,
+				mastercard: 0,
+				elo: 0,
+				amex: 0,
+				outros: 0,
+				total: 0
+			},
+			debit: {
+				visa: 0,
+				mastercard: 0,
+				elo: 0,
+				amex: 0,
+				outros: 0,
+				total: 0
+			},
+			other_cards: 0,
+			other_incomes: 0,
+			pix: 0,
+			grandTotal: 0
+		};
+	}
+
 
 	//////////// PRIVATE METHODS ////////////////
+
+	private static _checkCompanyName(companyName: string): CardCompany {
+		companyName = companyName.split(" ")[0]; // will not include "debito" word.
+		for(let comp of CARDCOMPANIES) {
+			if(comp == companyName)
+				return comp;
+		}
+		return "outros";
+	}
 	private _existsParams() {
 		return {
 			bank_name: this.bank_name,

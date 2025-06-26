@@ -33,9 +33,6 @@ export class StoneParser extends BalanceParser {
 	constructor() {
 		super();
 	}
-	override recalculateIncome() {
-		this._sumReceita();
-	}
 	override parseExtrato(dataArr: any[], dataType: 'excel'): void{
 		this.dataArr = dataArr;
 
@@ -106,7 +103,7 @@ export class StoneParser extends BalanceParser {
 				console.error(`StoneParser->Unknown Movimentação "${entry["Movimentação"]}"`, entry);
 			}
 		}
-		this._sumReceita();
+		this.recalculateIncome();
 	}
 	private _fixValue(valStr: string, removeSignal: boolean = false): string {
 		valStr = valStr.replace(".","").replace(",",".").replace(" ",""); // '-50.000,01' will become '-50000.01'
@@ -141,77 +138,5 @@ export class StoneParser extends BalanceParser {
 			res = "other";
 
 		return res;
-	}
-
-	private _sumReceita() {
-		this.sumReceita = {
-			cred: {
-				visa: 0,
-				master: 0,
-				elo: 0,
-				outros: 0,
-				total: 0
-			},
-			deb: {
-				visa: 0,
-				master: 0,
-				elo: 0,
-				outros: 0,
-				total: 0
-			},
-			outros_cartoes: {
-				total: 0
-			},
-			total_cartoes: 0,
-			pix: 0,
-			total: 0
-		};
-		// a stone não informa a instituição que fez o pagamento de cartão
-		// o resultado, por enquanto, é sempre "Desconhecido"
-		const map = {
-			/*"MAESTRO": {deb: "master"},
-			"MASTERCARD": {cred: "master"},
-			"VISA ELECTRON": {deb: "visa"},
-			"VISA": {cred: "visa"},
-			"DEB OUTRAS BANDEIRAS": {deb: "outros"},
-			"CRE OUTRAS BANDEIRAS": {cred: "outros"},*/
-			"Desconhecido": {cred: "outros"}
-		}
-
-		for(let income of this.incomes) {
-			let value = Number(income.value);
-
-			switch(income.income_type) {
-			case("cartao"): {
-				//@ts-ignore
-				let match: any = map[income.origin];
-				for(let key in map) {
-					if(income.origin.indexOf(key) > -1) {
-						//@ts-ignore
-						match = map[key];
-						break;
-					}
-				}
-
-				if(!match) {
-					console.log("StoneParser->sumReceita: Uncategorized type: " + income.origin, income);
-				} else {
-					const credOrDeb = Object.keys(match)[0];
-					const companyName = match[credOrDeb];
-					//@ts-ignore
-					this.sumReceita[credOrDeb][companyName] += Number(income.value);
-					//@ts-ignore
-					this.sumReceita[credOrDeb]["total"] += Number(income.value);
-				}
-				break;
-			}
-			case("pix"): {
-				this.sumReceita.pix += value;
-				break;
-			}
-			}
-
-			this.sumReceita["total"] += Number(income.value);
-		}
 	}
 }

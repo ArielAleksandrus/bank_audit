@@ -7,6 +7,7 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { Income } from '../../shared/models/income';
+import { ApiService } from '../../shared/services/api.service';
 
 @Component({
   selector: 'app-income',
@@ -22,15 +23,35 @@ export class IncomeComponent {
   onChange = output<{mode: 'create'|'edit'|'destroy', income: Income}>();
   collapse = input<boolean>();
   mode = input<'parser'|'manual'>('manual');
+  canSave = input<boolean>();
+  sending: boolean = false;
 
   collapsed?: boolean;
 
   selected?: Income;
 
-  constructor() {
+  constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
+  }
+
+  save() {
+    if(!this.canSave) {
+      console.error("IncomeComponent: Not allowed to save");
+      return;
+    }
+
+    this.sending = true;
+    Income.sendArray(this.api, this.incomes()).then(res => {
+      this.incomes.set(res);
+      this.sending = false;
+      alert("Recebimentos salvos");
+    }).catch(err => {
+      console.error("IncomeComponent: Error saving: ", err);
+      this.sending = false;
+      alert("Erro ao salvar recebimentos");
+    });
   }
 
   remove(obj: Income) {

@@ -8,12 +8,13 @@ import { QueryHelpers } from '../shared/helpers/query-helpers';
 
 import { Company } from '../shared/models/company';
 import { Boleto } from '../shared/models/boleto';
-import { Income } from '../shared/models/income';
+import { Income, IncomeSummary } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
 import { Supplier } from '../shared/models/supplier';
 import { Tag } from '../shared/models/tag';
 
 import { BoletoComponent } from '../balance/boleto/boleto.component';
+import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
 import { TagChartComponent } from './tag-chart/tag-chart.component';
@@ -25,7 +26,7 @@ import { Utils } from '../shared/helpers/utils';
 @Component({
   selector: 'app-report',
   imports: [CommonModule, FormsModule, 
-            BoletoComponent, IncomeComponent, PurchaseComponent,
+            BoletoComponent, IncomeComponent, IncomeSumComponent, PurchaseComponent,
             TagChartComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
@@ -47,6 +48,7 @@ export class ReportComponent {
   reports: Reports;
   boletoTagData?: TagClassification;
   purchaseTagData?: TagClassification;
+  incomeSummary?: IncomeSummary;
 
   selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
 
@@ -111,6 +113,8 @@ export class ReportComponent {
     this.api.indexAll('incomes', params).subscribe(
       (res: {incomes: Income[]}) => {
         this.incomes = Income.fromJsonArray(res.incomes);
+        this.incomeSummary = Income.calculateIncomeSummary(this.incomes);
+        console.log(this.incomeSummary);
       }
     );
   }

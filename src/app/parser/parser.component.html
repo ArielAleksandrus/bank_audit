@@ -20,55 +20,7 @@
 </div>
 <br/>
 
-<table class="table" *ngIf="parser">
-	<thead>
-		<tr class="title">
-			<th colspan="3">RECEITAS (SIMPLIFICADO)</th>
-		</tr>
-		<tr>
-			<th>Tipo (cred/deb/outros)</th>
-			<th>Origem (master/visa/outros)</th>
-			<th>Valor Total</th>
-		</tr>
-	</thead>
-	<tbody>
-		<tr *ngFor="let keyVal of parser.sumReceita.cred | keyvalue" [class.hidden]="keyVal.key == 'total'">
-			<td>Crédito</td>
-			<td>{{keyVal["key"]}}</td>
-			<td>{{keyVal["value"] | currency:'BRL'}}</td>
-		</tr>
-		<tr class="mustard">
-			<td>Crédito</td>
-			<td>TOTAL</td>
-			<td>{{parser.sumReceita.cred.total | currency:'BRL'}}</td>
-		</tr>
-		<tr *ngFor="let keyVal of parser.sumReceita.deb | keyvalue" [class.hidden]="keyVal.key == 'total'">
-			<td>Débito</td>
-			<td>{{keyVal["key"]}}</td>
-			<td>{{keyVal["value"] | currency:'BRL'}}</td>
-		</tr>
-		<tr class="mustard">
-			<td>Débito</td>
-			<td>TOTAL</td>
-			<td>{{parser.sumReceita.deb.total | currency:'BRL'}}</td>
-		</tr>
-		<tr class="mustard">
-			<td>Outros Cartões</td>
-			<td>TOTAL</td>
-			<td>{{parser.sumReceita.outros_cartoes.total | currency:'BRL'}}</td>
-		</tr>
-		<tr class="mustard">
-			<td>PIX</td>
-			<td>TOTAL</td>
-			<td>{{parser.sumReceita.pix | currency:'BRL'}}</td>
-		</tr>
-		<tr class="grass">
-			<td>TOTAL DE RECEITAS</td>
-			<td>-</td>
-			<td>{{parser.sumReceita.total | currency:'BRL'}}</td>
-		</tr>
-	</tbody>
-</table>
+<app-income-sum *ngIf="parser.incomeSummary.grandTotal > 0" [summary]="parser.incomeSummary"></app-income-sum>
 
 <br/>
 

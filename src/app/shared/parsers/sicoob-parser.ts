@@ -49,9 +49,6 @@ export class SicoobParser extends BalanceParser {
 	constructor() {
 		super();
 	}
-	override recalculateIncome() {
-		this._sumReceita();
-	}
 	override parseExtrato(dataArr: any[], dataType: 'excel'): void{
 		this.dataArr = dataArr;
 		this.parsedHeaders = [];
@@ -152,7 +149,6 @@ export class SicoobParser extends BalanceParser {
 		}
 		this._fixPaymentValue();
 		this._classifyDescription();
-		this._sumReceita();
 	}
 	private _fixPaymentValue() {
 		const valorIdx = this.parsedHeaders.indexOf("VALOR");
@@ -250,12 +246,13 @@ export class SicoobParser extends BalanceParser {
 					origin: desc,
 					bank_name: "sicoob",
 					// bank_identification: we don't know this yet
-					// income_type: we might not know this yet
+					income_type: "outros",
 					value: row[valueIdx].toFixed(2)
 				});
 
 				if(cardType) {
 					income.origin = cardType;
+					income.additional_info = (income.additional_info || "") + " ((" + this._getCardCompany(cardType) + "))";
 					income.income_type = 'cartao';
 				} else if(type == 'receita_pix') {
 					income.income_type = 'pix';
@@ -265,73 +262,24 @@ export class SicoobParser extends BalanceParser {
 				console.error("SicoobParser->classifyDescription: row is not receita nor despesa. it is: " + type, row);
 			}
 		}
+		this.recalculateIncome();
 	}
-	private _sumReceita() {
-		this.sumReceita = {
-			cred: {
-				visa: 0,
-				master: 0,
-				elo: 0,
-				outros: 0,
-				total: 0
-			},
-			deb: {
-				visa: 0,
-				master: 0,
-				elo: 0,
-				outros: 0,
-				total: 0
-			},
-			outros_cartoes: {
-				total: 0
-			},
-			total_cartoes: 0,
-			pix: 0,
-			total: 0
-		};
-		const map = {
-			"MAESTRO": {deb: "master"},
-			"MASTERCARD": {cred: "master"},
-			"VISA ELECTRON": {deb: "visa"},
-			"VISA": {cred: "visa"},
-			"DEB OUTRAS BANDEIRAS": {deb: "outros"},
-			"CRE OUTRAS BANDEIRAS": {cred: "outros"}
+	private _getCardCompany(cardType: string) {
+		const map: {[companyName:string]: string} = {
+			"MAESTRO": "mastercard débito",
+			"MASTERCARD": "mastercard",
+			"VISA ELECTRON": "visa débito",
+			"VISA": "visa",
+			//"DEB OUTRAS BANDEIRAS": "outros",
+			//"CRE OUTRAS BANDEIRAS": "outros"
+		}
+		// match will be exact.
+
+		let match: string = map[cardType];
+		if(!match) {
+			match = "other";
 		}
 
-		for(let income of this.incomes) {
-			let value = Number(income.value);
-
-			switch(income.income_type) {
-			case("cartao"): {
-				//@ts-ignore
-				let match: any = map[income.origin];
-				for(let key in map) {
-					if(income.origin.indexOf(key) > -1) {
-						//@ts-ignore
-						match = map[key];
-						break;
-					}
-				}
-
-				if(!match) {
-					console.log("SicoobParser->sumReceita: Uncategorized type: " + income.origin, income);
-				} else {
-					const credOrDeb = Object.keys(match)[0];
-					const companyName = match[credOrDeb];
-					//@ts-ignore
-					this.sumReceita[credOrDeb][companyName] += Number(income.value);
-					//@ts-ignore
-					this.sumReceita[credOrDeb]["total"] += Number(income.value);
-				}
-				break;
-			}
-			case("pix"): {
-				this.sumReceita.pix += value;
-				break;
-			}
-			}
-
-			this.sumReceita["total"] += Number(income.value);
-		}
+		return match;
 	}
 }
