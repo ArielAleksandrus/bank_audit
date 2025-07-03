@@ -24,6 +24,7 @@ export class IncomeComponent {
   collapse = input<boolean>();
   mode = input<'parser'|'manual'>('manual');
   canSave = input<boolean>();
+  canDestroy = input<boolean>();
   sending: boolean = false;
 
   collapsed?: boolean;
@@ -37,7 +38,7 @@ export class IncomeComponent {
   }
 
   save() {
-    if(!this.canSave) {
+    if(!this.canSave()) {
       console.error("IncomeComponent: Not allowed to save");
       return;
     }
@@ -58,9 +59,17 @@ export class IncomeComponent {
     let objs = this.incomes();
     let idx = objs.indexOf(obj);
     if(idx > -1) {
-      objs.splice(idx, 1);
-      this.incomes.set(objs);
-      this.onChange.emit({mode: 'destroy', income: obj});
+      if(this.canDestroy()) {
+        this.destroy(obj).then(res => {
+          objs.splice(idx, 1);
+          this.incomes.set(objs);
+          this.onChange.emit({mode: 'destroy', income: obj});
+        });
+      } else {
+        objs.splice(idx, 1);
+        this.incomes.set(objs);
+        this.onChange.emit({mode: 'destroy', income: obj});
+      }
     }
   }
   add(obj: Income) {
@@ -78,6 +87,22 @@ export class IncomeComponent {
       this.onChange.emit({mode: 'edit', income: obj});
     }
     this.selected = undefined;
+  }
+  destroy(obj: Income): Promise<boolean> {
+    return new Promise((resolve, reject) => {  
+      if(!(obj.id > 0)) {
+        resolve(false);
+      }
+      this.api.destroy('incomes', obj.id).subscribe(
+        res => {
+          resolve(true);
+        },
+        err => {
+          console.error("Error removing income: ", err);
+          reject(err);
+        }
+      );
+    });
   }
 
   open(obj?: Income) {

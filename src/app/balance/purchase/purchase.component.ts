@@ -34,6 +34,7 @@ export class PurchaseComponent {
   onChange = output<{mode: 'create'|'edit'|'destroy', purchase: Purchase}>();
   collapse = input<boolean>();
   canSave = input<boolean>();
+  canDestroy = input<boolean>();
   sending: boolean = false;
 
   collapsed?: boolean;
@@ -67,9 +68,17 @@ export class PurchaseComponent {
     let objs = this.purchases();
     let idx = objs.indexOf(obj);
     if(idx > -1) {
-      objs.splice(idx, 1);
-      this.purchases.set(objs);
-      this.onChange.emit({mode: 'destroy', purchase: obj});
+      if(this.canDestroy()) {
+        this.destroy(obj).then(res => {
+          objs.splice(idx, 1);
+          this.purchases.set(objs);
+          this.onChange.emit({mode: 'destroy', purchase: obj});
+        });
+      } else {
+        objs.splice(idx, 1);
+        this.purchases.set(objs);
+        this.onChange.emit({mode: 'destroy', purchase: obj});
+      }
     }
   }
   add(obj: Purchase) {
@@ -88,9 +97,25 @@ export class PurchaseComponent {
     }
     this.selected = undefined;
   }
+  destroy(obj: Purchase): Promise<boolean> {
+    return new Promise((resolve, reject) => {  
+      if(!(obj.id > 0)) {
+        resolve(false);
+      }
+      this.api.destroy('purchases', obj.id).subscribe(
+        res => {
+          resolve(true);
+        },
+        err => {
+          console.error("Error removing purchase: ", err);
+          reject(err);
+        }
+      );
+    });
+  }
 
   save() {
-    if(!this.canSave) {
+    if(!this.canSave()) {
       console.error("PurchaseComponent: Not allowed to save");
       return;
     }

@@ -30,6 +30,7 @@ export class BoletoComponent {
   onChange = output<{mode: 'create'|'edit'|'destroy', boleto: Boleto}>();
   collapse = input<boolean>();
   canSave = input<boolean>();
+  canDestroy = input<boolean>();
   sending: boolean = false;
 
   collapsed?: boolean;
@@ -57,9 +58,17 @@ export class BoletoComponent {
     let objs = this.boletos();
     let idx = objs.indexOf(obj);
     if(idx > -1) {
-      objs.splice(idx, 1);
-      this.boletos.set(objs);
-      this.onChange.emit({mode: 'destroy', boleto: obj});
+      if(this.canDestroy()) {
+        this.destroy(obj).then(res => {
+          objs.splice(idx, 1);
+          this.boletos.set(objs);
+          this.onChange.emit({mode: 'destroy', boleto: obj});
+        });
+      } else {
+        objs.splice(idx, 1);
+        this.boletos.set(objs);
+        this.onChange.emit({mode: 'destroy', boleto: obj});
+      }
     }
   }
   add(obj: Boleto) {
@@ -79,9 +88,26 @@ export class BoletoComponent {
     this.selected = undefined;
   }
 
+  destroy(obj: Boleto): Promise<boolean> {
+    return new Promise((resolve, reject) => {  
+      if(!(obj.id > 0)) {
+        resolve(false);
+      }
+      this.api.destroy('boletos', obj.id).subscribe(
+        res => {
+          resolve(true);
+        },
+        err => {
+          console.error("Error removing boleto: ", err);
+          reject(err);
+        }
+      );
+    });
+  }
+
   save() {
-    if(!this.canSave) {
-      console.error("PurchaseComponent: Not allowed to save");
+    if(!this.canSave()) {
+      console.error("BoletoComponent: Not allowed to save");
       return;
     }
 
