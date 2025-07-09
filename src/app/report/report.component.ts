@@ -52,6 +52,9 @@ export class ReportComponent {
 
   selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
 
+  selectedTag?: string;
+  selectedPurchases: Purchase[] = [];
+
   constructor(private api: ApiService,
               private router: Router,
               private route: ActivatedRoute) {
@@ -114,7 +117,6 @@ export class ReportComponent {
       (res: {incomes: Income[]}) => {
         this.incomes = Income.fromJsonArray(res.incomes);
         this.incomeSummary = Income.calculateIncomeSummary(this.incomes);
-        console.log(this.incomeSummary);
       }
     );
   }
@@ -134,5 +136,20 @@ export class ReportComponent {
         this.purchaseTagData = this.reports.purchaseTagChart(this.purchases);
       }
     );
+  }
+
+  purchaseChartSelection(evt: {tagName: string, value: number}) {
+    this.selectedPurchases = [];
+    this.selectedTag = evt.tagName;
+
+    for(let purchase of this.purchases) {
+      if(Utils.findById(evt.tagName, purchase.tags, 'name'))
+        this.selectedPurchases.push(purchase);
+    }
+    setTimeout(() => {
+      let el = document.getElementById("selection");
+      if(el)
+        el.scrollIntoView({behavior: 'smooth'});
+    }, 150)
   }
 }

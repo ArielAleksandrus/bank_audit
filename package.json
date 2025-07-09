@@ -29,6 +29,8 @@
     "@types/xlsx": "^0.0.35",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.9",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "ngx-mask": "^19.0.7",
     "pdf2array": "^0.0.1",
     "primeng": "^19.1.3",

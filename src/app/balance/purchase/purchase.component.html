@@ -1,4 +1,4 @@
-<table class="table table-hover table-striped">
+<table id="purchaseTable" class="table table-hover table-striped">
 	<thead>
 		<tr class="title">
 			<th colspan="6">
@@ -12,18 +12,18 @@
 			<th>DATA</th>
 			<th>BANCO</th>
 			<th>FORNECEDOR</th>
-			<th>RECEBEDOR</th>
+			<th *ngIf="!printMode">RECEBEDOR</th>
 			<th>TOTAL</th>
-			<th>PARCELAS</th>
+			<th *ngIf="!printMode">PARCELAS</th>
 			<th>TIPO</th>
 			<th>TAGS &nbsp; 
-				<span class="form-switch">
+				<span *ngIf="!printMode" class="form-switch">
 					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
 					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
 				</span>
 			</th>
 			<th>INF. ADIC.</th>
-			<th> &nbsp; &nbsp; </th>
+			<th *ngIf="!printMode"> &nbsp; &nbsp; </th>
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -31,39 +31,45 @@
 			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{purchase.bank_name}}</td>
 			<td>
-				<ng-select [items]="suppliers"
+				<ng-select *ngIf="!printMode" [items]="suppliers"
                     bindLabel="name"
                     autofocus
                     bindValue="name"
                     [(ngModel)]="purchase.supplier_name"
                     addTag="true">
         </ng-select>
+        <span *ngIf="printMode">{{purchase.supplier_name}}</span>
       </td>
-			<td>
+			<td *ngIf="!printMode">
 				<ng-select [items]="referrals"
 								addTag="true"
 								[(ngModel)]="purchase.referral"></ng-select>
 			</td>
 			<td>{{purchase.total | currency:'BRL'}}</td>
-			<td><input type="number" class="form-control" [(ngModel)]="purchase.installments" style="max-width:4em"/></td>
-			<td>
-				<select [(ngModel)]="purchase.payment_type" class="form-control">
-					<option *ngFor="let item of paymentTranslation | keyvalue" [value]="item.key">{{item.value}}</option>
-				</select>
+			<td *ngIf="!printMode">
+				<input type="number" class="form-control" [(ngModel)]="purchase.installments" style="max-width:4em"/>
 			</td>
 			<td>
-				<ng-select [items]="tags"
+				<select *ngIf="!printMode" [(ngModel)]="purchase.payment_type" class="form-control">
+					<option *ngFor="let item of paymentTranslation | keyvalue" [value]="item.key">{{item.value}}</option>
+				</select>
+				<span *ngIf="printMode">{{paymentTranslation[purchase.payment_type]}}</span>
+			</td>
+			<td>
+				<ng-select *ngIf="!printMode" [items]="tags"
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
 								bindLabel="name"
 								[ngModel]="purchase.tags"
 								(change)="tagChanged(purchase, $event)"></ng-select>
+				<span *ngIf="printMode">{{purchase.tagsStr}}</span>
 			</td>
 			<td>
-				<textarea rows="3" [(ngModel)]="purchase.additional_info" class="form-control"></textarea>
+				<textarea *ngIf="!printMode" rows="3" [(ngModel)]="purchase.additional_info" class="form-control"></textarea>
+				<p *ngIf="printMode">{{purchase.additional_info}}</p>
 			</td>
-			<td>
+			<td *ngIf="!printMode">
 				<button class="btn btn-sm btn-danger" (click)="remove(purchase)">x</button>
 			</td>
 		</tr>
@@ -73,4 +79,8 @@
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
 		Enviar
 	</button> <i *ngIf="sending">Enviando... por favor aguarde</i>
+	&nbsp; &nbsp; &nbsp;
+	<button class="btn btn-lg btn-warning" (click)="export()" [disabled]="sending || purchases().length == 0">
+		Exportar
+	</button>
 </div>

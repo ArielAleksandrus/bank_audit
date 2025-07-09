@@ -1,4 +1,4 @@
-<table class="table table-hover table-striped">
+<table id="incomeTable" class="table table-hover table-striped">
 	<thead>
 		<tr class="title">
 			<th colspan="6">
@@ -14,7 +14,7 @@
 			<th>TIPO</th>
 			<th>ORIGEM</th>
 			<th>VALOR</th>
-			<th>&nbsp;</th>
+			<th *ngIf="!printMode">&nbsp;</th>
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -22,17 +22,24 @@
 			<td>{{income.bank_name}}</td>
 			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
 			<td>
-				<select class="form-control" [(ngModel)]="income.income_type">
+				<select *ngIf="!printMode" class="form-control" [(ngModel)]="income.income_type">
 					<option value="cartao">Cartão</option>
 					<option value="cheque">Cheque</option>
 					<option value="deposito">Depósito</option>
 					<option value="pix">Pix</option>
 					<option value="outros">Outros</option>
 				</select>
+				<span *ngIf="printMode">{{income.income_type}}</span>
 			</td>
-			<td><input type="text" class="form-control" [(ngModel)]="income.origin"/></td>
-			<td><input type="text" class="form-control" mask="separator.2" [(ngModel)]="income.value"/></td>
-			<td><button class="btn btn-sm btn-danger" (click)="remove(income)">x</button></td>
+			<td>
+				<input *ngIf="!printMode" type="text" class="form-control" [(ngModel)]="income.origin"/>
+				<span *ngIf="printMode">{{income.origin}}</span>
+			</td>
+			<td>
+				<input *ngIf="!printMode" type="text" class="form-control" mask="separator.2" [(ngModel)]="income.value"/>
+				<span *ngIf="printMode">{{income.value | currency:'BRL'}}</span>
+			</td>
+			<td *ngIf="!printMode"><button class="btn btn-sm btn-danger" (click)="remove(income)">x</button></td>
 		</tr>
 	</tbody>
 </table>
@@ -40,4 +47,8 @@
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
 		Enviar
 	</button> <i *ngIf="sending">Enviando... por favor aguarde</i>
+	&nbsp; &nbsp; &nbsp;
+	<button class="btn btn-lg btn-warning" (click)="export()" [disabled]="sending || incomes().length == 0">
+		Exportar
+	</button>
 </div>

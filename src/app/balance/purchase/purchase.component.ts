@@ -1,6 +1,8 @@
 import { Component, model, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { jsPDF } from "jspdf";
+import { autoTable } from 'jspdf-autotable';
 
 import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
@@ -36,6 +38,7 @@ export class PurchaseComponent {
   canSave = input<boolean>();
   canDestroy = input<boolean>();
   sending: boolean = false;
+  printMode: boolean = false;
 
   collapsed?: boolean;
 
@@ -130,6 +133,18 @@ export class PurchaseComponent {
       this.sending = false;
       alert("Erro ao salvar recebimentos");
     });
+  }
+  export() {
+    this.printMode = true;
+    this.collapsed = false;
+    setTimeout(() => {
+      const doc = new jsPDF();
+      autoTable(doc, { html: '#purchaseTable' });
+      doc.save("despesas.pdf");
+      setTimeout(() => {
+        this.printMode = false;
+      }, 1000);
+    }, 1000);
   }
 
   open(obj?: Purchase) {

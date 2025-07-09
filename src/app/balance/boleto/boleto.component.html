@@ -1,4 +1,4 @@
-<table class="table table-hover table-striped">
+<table id="boletoTable" class="table table-hover table-striped">
 	<thead>
 		<tr class="title">
 			<th colspan="6">
@@ -16,12 +16,12 @@
 			<th>VALOR</th>
 			<th>PARCELA</th>
 			<th>TAGS &nbsp; 
-				<span class="form-switch">
+				<span *ngIf="!printMode" class="form-switch">
 					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
 					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
 				</span>
 			</th>
-			<th> &nbsp; &nbsp; </th>
+			<th *ngIf="!printMode"> &nbsp; &nbsp; </th>
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -30,26 +30,28 @@
 			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
 			<td>
-				<ng-select [items]="suppliers"
+				<ng-select *ngIf="!printMode" [items]="suppliers"
                     bindLabel="name"
                     autofocus
                     bindValue="name"
                     [(ngModel)]="boleto.supplier_name"
                     addTag="true">
         </ng-select>
+        <span *ngIf="printMode">{{boleto.supplier_name}}</span>
 			</td>
 			<td>{{boleto.value | currency:'BRL'}}</td>
 			<td>{{boleto.installments}}</td>
 			<td>
-				<ng-select [items]="tags"
+				<ng-select *ngIf="!printMode" [items]="tags"
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
 								bindLabel="name"
 								[ngModel]="boleto.auxTags"
 								(change)="tagChanged(boleto, $event)"></ng-select>
+				<span *ngIf="printMode">{{boleto.tagsStr}}</span>
 			</td>
-			<td>
+			<td *ngIf="!printMode">
 				<button class="btn btn-sm btn-danger" (click)="remove(boleto)">x</button>
 			</td>
 		</tr>
@@ -59,4 +61,8 @@
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
 		Enviar
 	</button> <i *ngIf="sending">Enviando... por favor aguarde</i>
+	&nbsp; &nbsp; &nbsp;
+	<button class="btn btn-lg btn-warning" (click)="export()" [disabled]="sending || boletos().length == 0">
+		Exportar
+	</button>
 </div>

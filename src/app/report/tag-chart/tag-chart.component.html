@@ -1,5 +1,5 @@
 <div class="tag-chart">
-	<p-chart type="line" [data]="chartData" class="h-[30rem]" class="chart"/>
+	<p-chart type="line" [data]="chartData" class="h-[30rem]" class="chart" (onDataSelect)="dataSelected($event)"/>
 	<br/>
 	<div class="row">
 		<div class="col-md-4" *ngFor="let tagName of chartTags">

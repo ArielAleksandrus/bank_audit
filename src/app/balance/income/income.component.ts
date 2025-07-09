@@ -1,6 +1,8 @@
 import { Component, model, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { jsPDF } from "jspdf";
+import { autoTable } from 'jspdf-autotable';
 
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -26,6 +28,7 @@ export class IncomeComponent {
   canSave = input<boolean>();
   canDestroy = input<boolean>();
   sending: boolean = false;
+  printMode: boolean = false;
 
   collapsed?: boolean;
 
@@ -53,6 +56,18 @@ export class IncomeComponent {
       this.sending = false;
       alert("Erro ao salvar recebimentos");
     });
+  }
+  export() {
+    this.printMode = true;
+    this.collapsed = false;
+    setTimeout(() => {
+      const doc = new jsPDF();
+      autoTable(doc, { html: '#incomeTable' });
+      doc.save("entradas.pdf");
+      setTimeout(() => {
+        this.printMode = false;
+      }, 1000);
+    }, 1000);
   }
 
   remove(obj: Income) {
@@ -94,10 +109,10 @@ export class IncomeComponent {
         resolve(false);
       }
       this.api.destroy('incomes', obj.id).subscribe(
-        res => {
+        (res: any) => {
           resolve(true);
         },
-        err => {
+        (err: any) => {
           console.error("Error removing income: ", err);
           reject(err);
         }

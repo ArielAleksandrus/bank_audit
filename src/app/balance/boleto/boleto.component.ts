@@ -1,6 +1,8 @@
 import { Component, model, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { jsPDF } from "jspdf";
+import { autoTable } from 'jspdf-autotable';
 
 import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
@@ -32,6 +34,7 @@ export class BoletoComponent {
   canSave = input<boolean>();
   canDestroy = input<boolean>();
   sending: boolean = false;
+  printMode: boolean = false;
 
   collapsed?: boolean;
 
@@ -94,10 +97,10 @@ export class BoletoComponent {
         resolve(false);
       }
       this.api.destroy('boletos', obj.id).subscribe(
-        res => {
+        (res: any) => {
           resolve(true);
         },
-        err => {
+        (err: any) => {
           console.error("Error removing boleto: ", err);
           reject(err);
         }
@@ -121,6 +124,19 @@ export class BoletoComponent {
       this.sending = false;
       alert("Erro ao salvar boletos");
     });
+  }
+
+  export() {
+    this.printMode = true;
+    this.collapsed = false;
+    setTimeout(() => {
+      const doc = new jsPDF();
+      autoTable(doc, { html: '#boletoTable' });
+      doc.save("boletos.pdf");
+      setTimeout(() => {
+        this.printMode = false;
+      }, 1000);
+    }, 1000);
   }
 
   open(obj?: Boleto) {

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ChartModule } from 'primeng/chart';
@@ -24,8 +24,12 @@ export class TagChartComponent {
   selectedTags: {[tagName: string]: boolean} = {};
   chartTags: string[] = [];
   tagClassification = input.required<TagClassification>();
+  onSelect = output<{tagName: string, value: number}>();
 
   chartData: any;
+
+  _auxTags: string[] = [];
+  _auxValues: number[] = [];
 
   constructor() {
 
@@ -53,17 +57,17 @@ export class TagChartComponent {
   }
 
   changeTagSelection() {
-    let tags: string[] = [];
-    let totals: number[] = [];
+    this._auxTags = [];
+    this._auxValues = [];
     for(let tagVal of this.tagClassification().classification) {
       if(this.selectedTags[tagVal.tagName]) {
-        tags.push(tagVal.tagName);
-        totals.push(tagVal.value);
+        this._auxTags.push(tagVal.tagName);
+        this._auxValues.push(tagVal.value);
       }
     }
-    let tagCount: number = tags.length;
+    let tagCount: number = this._auxTags.length;
     let data: any = {
-      labels: tags,
+      labels: this._auxTags,
       datasets: [/*{
         type: 'line',
         label: 'Custo Total',
@@ -73,10 +77,21 @@ export class TagChartComponent {
       }, */{
         type: 'bar',
         label: 'Custo Parcial',
-        data: totals
+        data: this._auxValues
       }]
     };
 
     this.chartData = data;
+  }
+
+  dataSelected(evt: any) {
+    if(!evt || !evt.element || !(evt.element.index >= 0)) {
+      console.log("TagChart->dataSelected: Invalid chart interaction: ", evt);
+      return;
+    }
+    
+    let idx: number = evt.element.index;
+    let tagVal: {tagName: string, value: number} = {tagName: this._auxTags[idx], value: this._auxValues[idx]};
+    this.onSelect.emit(tagVal);
   }
 }
