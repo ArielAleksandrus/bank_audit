@@ -18,6 +18,7 @@ import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
 import { TagChartComponent } from './tag-chart/tag-chart.component';
+import { TagDescriptionComponent } from '../shared/components/tag-description/tag-description.component';
 
 import { Reports, TagClassification } from '../shared/parsers/reports';
 
@@ -27,7 +28,7 @@ import { Utils } from '../shared/helpers/utils';
   selector: 'app-report',
   imports: [CommonModule, FormsModule, 
             BoletoComponent, IncomeComponent, IncomeSumComponent, PurchaseComponent,
-            TagChartComponent],
+            TagChartComponent, TagDescriptionComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
 })
@@ -35,8 +36,11 @@ export class ReportComponent {
   company: Company;
 
   boletos: Boleto[] = [];
+  boletosLoaded: boolean = false;
   incomes: Income[] = [];
+  incomesLoaded: boolean = false;
   purchases: Purchase[] = [];
+  purchasesLoaded: boolean = false;
   suppliers: Supplier[] = [];
 
   from: string;
@@ -45,7 +49,7 @@ export class ReportComponent {
   fromPtbr: string;
   toPtbr?: string;
 
-  reports: Reports;
+  reports?: Reports;
   boletoTagData?: TagClassification;
   purchaseTagData?: TagClassification;
   incomeSummary?: IncomeSummary;
@@ -67,8 +71,6 @@ export class ReportComponent {
     if(this.to)
       this.toPtbr = (Utils.dateToString(this.to, false) || "").split(" ")[0];
 
-    this.reports = new Reports();
-
     this.company = Company.loadCompany();
     if(!this.company) {
       this.router.navigate(['/login']);
@@ -86,6 +88,15 @@ export class ReportComponent {
     this.incomeQuery();
     this.purchaseQuery();
   }
+
+  setReports() {
+    if(!this.incomesLoaded || !this.purchasesLoaded || !this.boletosLoaded)
+      return;
+
+    this.reports = new Reports(this.incomes, this.purchases, this.boletos);
+    this.boletoTagData = this.reports.boletoTagChart(this.boletos);
+    this.purchaseTagData = this.reports.purchaseTagChart(this.purchases);
+  }
   boletoQuery() {
     let params: any = {
       q: {
@@ -99,7 +110,8 @@ export class ReportComponent {
     this.api.indexAll('boletos', params).subscribe(
       (res: {boletos: Boleto[]}) => {
         this.boletos = Boleto.fromJsonArray(res.boletos);
-        this.boletoTagData = this.reports.boletoTagChart(this.boletos);
+        this.boletosLoaded = true;
+        this.setReports();
       }
     );
   }
@@ -117,6 +129,8 @@ export class ReportComponent {
       (res: {incomes: Income[]}) => {
         this.incomes = Income.fromJsonArray(res.incomes);
         this.incomeSummary = Income.calculateIncomeSummary(this.incomes);
+        this.incomesLoaded = true;
+        this.setReports();
       }
     );
   }
@@ -133,7 +147,8 @@ export class ReportComponent {
     this.api.indexAll('purchases', params).subscribe(
       (res: {purchases: Purchase[]}) => {
         this.purchases = Purchase.fromJsonArray(res.purchases);
-        this.purchaseTagData = this.reports.purchaseTagChart(this.purchases);
+        this.purchasesLoaded = true;
+        this.setReports();
       }
     );
   }
@@ -151,5 +166,9 @@ export class ReportComponent {
       if(el)
         el.scrollIntoView({behavior: 'smooth'});
     }, 150)
+  }
+
+  goToGenerateReport() {
+
   }
 }

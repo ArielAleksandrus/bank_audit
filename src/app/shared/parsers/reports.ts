@@ -8,9 +8,19 @@ import { Tag } from '../models/tag';
 
 export type TagClassification = {classification: {tagName: string, value: number}[], total: number};
 export class Reports {
+	boletos: Boleto[] = [];
+	incomes: Income[] = [];
+	purchases: Purchase[] = [];
 
-	constructor() {
+	tags: Tag[] = []; // extracted from purchases
+	tagDescriptions: string[] = []; // extracted from tags
 
+	constructor(incomes: Income[], purchases: Purchase[], boletos: Boleto[]) {
+		this.incomes = incomes;
+		this.purchases = purchases;
+		this.boletos = boletos;
+		this.tags = Purchase.getTags(this.purchases);
+		this.tagDescriptions = Tag.getDescriptions(this.tags);
 	}
 
 	boletoTagChart(boletos: Boleto[]): TagClassification {

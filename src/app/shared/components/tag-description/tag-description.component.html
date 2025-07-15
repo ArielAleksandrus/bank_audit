@@ -1,0 +1,26 @@
+<div>
+	<table class="table table-hover">
+		<thead>
+			<th>Tag</th>
+			<th>Descrição</th>
+		</thead>
+		<tbody>
+			<tr *ngFor="let tag of tags()">
+				<td>{{tag.name}}</td>
+				<td>
+					<ng-select [items]="descriptions"
+	                    autofocus
+	                    [(ngModel)]="tag.description"
+	                    addTag="true"
+	                    placeholder="Custo Fixo, Custo Recorrente, etc"
+	                    (change)="valueChanged($event)">
+	        </ng-select>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+
+	<div class="button-container">
+		<button class="btn btn-md btn-primary" (click)="send()">Salvar</button>
+	</div>
+</div>

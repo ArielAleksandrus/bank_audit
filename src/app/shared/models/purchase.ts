@@ -205,6 +205,21 @@ export class Purchase {
 			);
 		})
 	}
+	public static getTags(purchases: Purchase[]): Tag[] {
+		let res: Tag[] = [];
+
+		for(let pur of purchases) {
+			if(!pur.tags)
+				continue;
+
+			for(let tag of pur.tags) {
+				let aux: Tag = new Tag(tag);
+				Utils.pushIfNotExists(res, aux, 'name');
+			}
+		}
+
+		return res;
+	}
 
 
 	//////////// PRIVATE METHODS ////////////////

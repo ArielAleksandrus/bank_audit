@@ -5,6 +5,7 @@ import { Utils } from '../helpers/utils';
 export class Tag {
 	id: number;
 	name: string;
+	description: string;
 	company_id: number;
 
 	created_at: string;
@@ -14,6 +15,7 @@ export class Tag {
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
 		this.name = jsonData.name;
+		this.description = jsonData.description;
 		this.company_id = jsonData.company_id;
 		this.created_at = jsonData.created_at;
 		this.updated_at = jsonData.updated_at;
@@ -64,5 +66,30 @@ export class Tag {
 	      }
 	    );
   	});
+  }
+  public static loadDescriptions(api: ApiService): Promise<string[]> {
+  	let res: string[] = [];
+
+  	return new Promise((resolve, reject) => {
+	    api.show('tags', 'descriptions').subscribe(
+	      (res: {descriptions: string[]}) => {
+	        resolve(res.descriptions);
+	      },
+	      (err: any) => {
+	      	console.error("Tag->Failed to load tag descriptions: ", err);
+	      	reject(err);
+	      }
+	    );
+  	});
+  }
+
+  public static getDescriptions(tags: Tag[]): string[] {
+  	let res: string[] = [];
+  	for(let tag of tags) {
+  		if(!!tag.description)
+  			Utils.pushIfNotExists(res, tag.description);
+  	}
+
+  	return res;
   }
 }
