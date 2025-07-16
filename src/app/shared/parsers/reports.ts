@@ -7,6 +7,14 @@ import { Income, IncomeSummary } from '../models/income';
 import { Tag } from '../models/tag';
 
 export type TagClassification = {classification: {tagName: string, value: number}[], total: number};
+export type DescribedReport = {
+	descriptions: {
+		description: string,
+		tags: {name: string, purchases: Purchase[], total: number}[],
+		total: number
+	}[],
+	total: number
+};
 export class Reports {
 	boletos: Boleto[] = [];
 	incomes: Income[] = [];
@@ -23,6 +31,48 @@ export class Reports {
 		this.tagDescriptions = Tag.getDescriptions(this.tags);
 	}
 
+	describedReport(purchases?: Purchase[]): DescribedReport{
+		if(purchases)
+			this.purchases = purchases;
+
+		let groupedPurchases: {[tagName: string]: Purchase[]} = Purchase.groupByTags(this.purchases);
+
+		let describedPurchases = this._describePurchases(groupedPurchases);
+
+		let res: DescribedReport = {descriptions: [], total: 0};
+		for(let description in describedPurchases) {
+			let descriptionEl:  {
+				description: string,
+				tags: {name: string, purchases: Purchase[], total: number}[],
+				total: number
+			} = {
+				description: description,
+				tags: [],
+				total: 0
+			};
+			for(let item of describedPurchases[description]) {
+				let tagName: string = Object.keys(item)[0];
+				let tagEl: {name: string, purchases: Purchase[], total: number} = {
+					name: tagName,
+					purchases: item[tagName],
+					total: 0
+				}
+
+				for(let purchase of item[tagName]) {
+					tagEl.total += Number(purchase.total)
+				}
+				tagEl.total = Number(tagEl.total.toFixed(2));
+				descriptionEl.total += tagEl.total;
+				descriptionEl.tags.push(tagEl);
+			}
+			descriptionEl.total = Number(descriptionEl.total.toFixed(2));
+			res.descriptions.push(descriptionEl);
+			res.total += descriptionEl.total;
+		}
+		res.total = Number(res.total.toFixed(2));
+		return res;
+	}
+
 	boletoTagChart(boletos: Boleto[]): TagClassification {
 		return this._tagChart(boletos, 'auxTags', 'value');
 	}
@@ -33,6 +83,23 @@ export class Reports {
 		return Income.calculateIncomeSummary(incomes);
 	}
 
+	private _describePurchases(groupedPurchases: {[tagName: string]: Purchase[]}): {[tagDescription: string]: [{[tagName: string]: Purchase[]}]} {
+		let res: {[tagDescription: string]: [{[tagName: string]: Purchase[]}]} = {};
+		for(let tagName in groupedPurchases) {
+			let tag: Tag = Utils.findById(tagName, this.tags, 'name');
+			let desc: string = tag.description;
+			if(!desc)
+				desc = "Não categorizado";
+			let el: {[tagName: string]: Purchase[]} = {};
+			el[tagName] = groupedPurchases[tagName];
+			if(!res[desc]) {
+				res[desc] = [el]
+			} else {
+				res[desc].push(el)
+			}
+		}
+		return res;
+	}
 	private _tagChart(objs: any[], tagsAttr: string = 'tags', valueAttr: string = 'value'): TagClassification {
 		let res: TagClassification = {classification: [], total: 0};
 

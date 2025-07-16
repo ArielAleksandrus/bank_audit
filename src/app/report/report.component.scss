@@ -1,3 +1,9 @@
+@media print {
+  div:not(.print) {
+  	display: none;
+  }
+}
+
 .header {
 	text-align: center;
 	.header-title {

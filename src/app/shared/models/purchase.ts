@@ -221,6 +221,62 @@ export class Purchase {
 		return res;
 	}
 
+	public static groupByTags(purchases: Purchase[]): {[tagName: string]: Purchase[]} {
+		let aux: any = {};
+		for(let purchase of purchases) {
+			for(let tag of purchase.tags) {
+				if(!aux[tag.name])
+					aux[tag.name] = [];
+				aux[tag.name].push(purchase);
+			}
+		}
+		/* now our 'aux' looks like this:
+		 * {
+		 * 		'tag 1': [<purchase 1>, <purchase 5>],
+		 * 		'tag 2': [<purchase 5>, <purchase 6>, <purchase 20>],
+		 * 		'tag 3': [<purchase 20>, <purchase 21>, <purchase 22>, <purchase 23>]
+		 * }
+		 * now we get the most used tags
+		*/
+		let mostUsed: string[] = [];
+		let aux2: any = [];
+		for(let key in aux) {
+			aux2.push([aux[key].length, key]);
+		}
+		aux2.sort((a: any, b: any) => b[0] - a[0]);
+		for(let el of aux2) {
+			mostUsed.push(el[1]);
+		}
+
+		/* most used tags would now be: ['tag 3', 'tag 2', 'tag 1']
+		 * now, we remove duplicated purchases. most used tags absorb least used tags
+		 * final result should be:
+		 * {
+		 * 		'tag 3': [<purchase 20>, <purchase 21>, <purchase 22>, <purchase 23>],
+		 * 		'tag 2': [<purchase 5>, <purchase 6>],
+		 * 		'tag 1': [<purchase 1>]
+		 * }
+		 */
+		let seen: Purchase[] = [];
+		let res: {[tagName: string]: Purchase[]} = {};
+		for(let tagName of mostUsed) {
+			for(let purchase of purchases) {
+				if(seen.indexOf(purchase) > -1)
+					continue;
+
+				if(Utils.findById(tagName, purchase.tags, 'name')) {
+					if(!res[tagName])
+						res[tagName] = [purchase];
+					else
+						res[tagName].push(purchase);
+
+					seen.push(purchase);
+				}
+			}
+		}
+		return res;
+	}
+
 
 	//////////// PRIVATE METHODS ////////////////
 	private _existsParams() {

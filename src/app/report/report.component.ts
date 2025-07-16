@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { jsPDF } from "jspdf";
+import { autoTable } from 'jspdf-autotable';
 
 import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
@@ -20,7 +22,7 @@ import { PurchaseComponent } from '../balance/purchase/purchase.component';
 import { TagChartComponent } from './tag-chart/tag-chart.component';
 import { TagDescriptionComponent } from '../shared/components/tag-description/tag-description.component';
 
-import { Reports, TagClassification } from '../shared/parsers/reports';
+import { Reports, TagClassification, DescribedReport } from '../shared/parsers/reports';
 
 import { Utils } from '../shared/helpers/utils';
 
@@ -45,7 +47,6 @@ export class ReportComponent {
 
   from: string;
   to: string;
-
   fromPtbr: string;
   toPtbr?: string;
 
@@ -54,10 +55,13 @@ export class ReportComponent {
   purchaseTagData?: TagClassification;
   incomeSummary?: IncomeSummary;
 
-  selection: 'none'|'incomes'|'purchases'|'boletos' = 'none';
+  selection: 'none'|'reports'|'incomes'|'purchases'|'boletos' = 'none';
 
   selectedTag?: string;
   selectedPurchases: Purchase[] = [];
+
+  describedReport?: DescribedReport;
+  printDescribedReportTable: boolean = false;
 
   constructor(private api: ApiService,
               private router: Router,
@@ -168,7 +172,24 @@ export class ReportComponent {
     }, 150)
   }
 
-  goToGenerateReport() {
+  generateReport() {
+    this.selection = 'none';
+    if(this.reports) {
+      this.describedReport = this.reports.describedReport();
+    }
+  }
 
+  print(htmlId: string) {
+    let el = document.getElementById(htmlId);
+    if(!el)
+      return;
+
+    this.printDescribedReportTable = true;
+    setTimeout(() => {
+      window.print();
+    }, 200);
+    setTimeout(() => {
+      //this.printDescribedReportTable = false;
+    }, 3000);
   }
 }

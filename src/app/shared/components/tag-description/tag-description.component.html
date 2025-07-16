@@ -9,7 +9,6 @@
 				<td>{{tag.name}}</td>
 				<td>
 					<ng-select [items]="descriptions"
-	                    autofocus
 	                    [(ngModel)]="tag.description"
 	                    addTag="true"
 	                    placeholder="Custo Fixo, Custo Recorrente, etc"
@@ -21,6 +20,7 @@
 	</table>
 
 	<div class="button-container">
-		<button class="btn btn-md btn-primary" (click)="send()">Salvar</button>
+		<button class="btn btn-md btn-primary" (click)="send()">Salvar</button> &nbsp; &nbsp; &nbsp;
+		<button class="btn btn-md btn-secondary" (click)="next()">Prosseguir</button> &nbsp; &nbsp; &nbsp;
 	</div>
 </div>

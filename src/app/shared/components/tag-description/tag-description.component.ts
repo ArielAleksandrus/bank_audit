@@ -1,4 +1,4 @@
-import { Component, model } from '@angular/core';
+import { Component, model, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -17,6 +17,8 @@ import { Filters } from '../../helpers/filters';
 })
 export class TagDescriptionComponent {
   tags = model.required<Tag[]>();
+  onSave = output<Tag[]>();
+  onClose = output<'next'|'close'>();
 
   descriptions: string[] = [];
 
@@ -42,6 +44,7 @@ export class TagDescriptionComponent {
     if(!tag) {
       this.tags.set(this.tags());
       alert("Descrições salvas");
+      this.onSave.emit(this.tags());
       return;
     }
 
@@ -49,6 +52,11 @@ export class TagDescriptionComponent {
       this.send(idx + 1);
     });
   }
+
+  next() {
+    this.onClose.emit('next');
+  }
+
 
   private _sendTag(tag: Tag): Promise<boolean> {
     return new Promise((resolve, reject) => {

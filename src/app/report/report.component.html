@@ -22,14 +22,51 @@
 			</button>
 		</div>
 		<div>
-			<button *ngIf="purchases.length > 0 || incomes.length > 0" class="btn btn-md btn-success" (click)="generateReport()">
+			<button *ngIf="purchases.length > 0 || incomes.length > 0" class="btn btn-md btn-success" (click)="selection = 'reports'">
 				Gerar Relatório
 			</button>
 		</div>
 	</div>
 </div>
 
-<app-tag-description *ngIf="reports" [(tags)]="reports.tags"></app-tag-description>
+<app-tag-description *ngIf="reports && selection == 'reports'"
+											[(tags)]="reports.tags"
+											(onSave)="generateReport()"
+											(onClose)="generateReport()"></app-tag-description>
+<div *ngIf="describedReport" [class.print]="printDescribedReportTable">
+	<table id="describedReportTable" class="table table-hover table-striped">
+		<thead>
+			<tr>
+				<th colspan="2">Relatório do dia {{fromPtbr}} <span *ngIf="toPtbr"> até {{toPtbr}}</span></th>
+			</tr>
+		</thead>
+		@for (descriptionEl of describedReport.descriptions; track descriptionEl) {
+		<thead>
+			<tr>
+				<th>{{descriptionEl.description}}</th>
+				<th>{{descriptionEl.total | currency:'BRL'}}</th>
+			</tr>
+		</thead>
+		<tbody>
+			@for (tagItem of descriptionEl.tags; track tagItem) {
+				<tr>
+					<td>{{tagItem.name}}</td>
+					<td>{{tagItem.total | currency:'BRL'}}</td>
+				</tr>
+			}
+		</tbody>
+		}
+		<tfoot>
+			<tr>
+				<td><b>TOTAL DESPESAS</b></td>
+				<td><b>{{describedReport.total | currency:'BRL'}}</b></td>
+			</tr>
+		</tfoot>
+	</table>
+	<div class="button-container">
+		<button class="btn btn-md btn-secondary" (click)="print('describedReportTable')">Imprimir</button>
+	</div>
+</div>
 
 <div class="body-tables row">
 	<div class="table-container col-lg-12" *ngIf="selection == 'incomes'">
