@@ -69,7 +69,14 @@ export class SicoobParser extends BalanceParser {
 		for(let i = 1; i < boletosRawArr.length; i++) {
 			let boletoRaw = boletosRawArr[i];
 
-			let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1].split("\n")[0];
+			let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1];
+			
+			if(!beneficiario)
+				continue;
+			beneficiario = beneficiario.split("\n")[0];
+			if(!beneficiario)
+				continue;
+
 			if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
 				beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
 
