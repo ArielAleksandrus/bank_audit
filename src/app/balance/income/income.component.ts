@@ -7,14 +7,17 @@ import { autoTable } from 'jspdf-autotable';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgSelectComponent } from '@ng-select/ng-select';
 
 import { Income } from '../../shared/models/income';
 import { ApiService } from '../../shared/services/api.service';
+import { Utils } from '../../shared/helpers/utils';
 
 @Component({
   selector: 'app-income',
   imports: [CommonModule, FormsModule, FontAwesomeModule,
             NgbCollapseModule, NgbPopoverModule,
+            NgSelectComponent
             //NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent
           ],
   templateUrl: './income.component.html',
@@ -34,10 +37,71 @@ export class IncomeComponent {
 
   selected?: Income;
 
+  filtering: boolean = false;
+  filters: {
+    bank_names: string[],
+    income_types: string[],
+    value_min: number|null,
+    value_max: number|null
+  } = {
+    bank_names: [],
+    income_types: [],
+    value_min: null,
+    value_max: null
+  };
+  availableBanks: string[] = [];
+  availableIncomeTypes: string[] = [];
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
+    this.prepareFilter();
+  }
+
+  prepareFilter() {
+    this.availableBanks = [];
+    this.availableIncomeTypes = [];
+    let objs = this.incomes();
+    for(let obj of objs) {
+      if(!!obj.bank_name)
+        Utils.pushIfNotExists(this.availableBanks, obj.bank_name);
+      if(!!obj.income_type)
+        Utils.pushIfNotExists(this.availableIncomeTypes, obj.income_type);
+    }
+  }
+  changeFilter(field: 'bank_names'|'income_types'|'value_min'|'value_max', value: any) {
+    //@ts-ignore
+    this.filters[field] = value;
+
+    if((field == "value_min" || field == "value_max") && value == "")
+      value = null;
+
+    this.applyFilter();
+  }
+  applyFilter() {
+    let objs = this.incomes();
+    let filters = this.filters;
+
+    let bankNames = (filters.bank_names && filters.bank_names.length > 0) ? filters.bank_names : this.availableBanks;
+    let incomeTypes = (filters.income_types && filters.income_types.length > 0) ? filters.income_types : this.availableIncomeTypes;
+
+    for(let obj of objs) {
+      if(bankNames.indexOf(obj.bank_name) == -1 ||
+          incomeTypes.indexOf(obj.income_type) == -1 ||
+          (filters.value_min ? Number(obj.value) < Number(filters.value_min) : false) ||
+          (filters.value_max ? Number(obj.value) > Number(filters.value_max) : false)) {
+        obj.hidden = true;
+      } else {
+        obj.hidden = false;
+      }
+    }
+  }
+  clearHidden() {
+    let objs = this.incomes();
+    for(let obj of objs) {
+      obj.hidden = false;
+    }
   }
 
   save() {

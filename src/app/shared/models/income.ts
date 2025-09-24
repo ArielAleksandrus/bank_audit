@@ -44,6 +44,9 @@ export class Income {
 	// set by our front end app
 	auxStatus: 'ok'|'error';
 
+	// front-end app's aux variables
+	hidden: boolean = false;
+
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
 		this.company_id = jsonData.company_id;

@@ -5,7 +5,8 @@
 				RECEITAS <i>({{incomes().length}})</i> &nbsp;&nbsp;
 				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button>
+				</button> &nbsp; &nbsp;
+				<button class="btn btn-sm btn-info" (click)="filtering = !filtering">FILTRAR</button>
 			</th>
 		</tr>
 		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -16,9 +17,20 @@
 			<th>VALOR</th>
 			<th *ngIf="!printMode">&nbsp;</th>
 		</tr>
+		<tr *ngIf="filtering" #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
+			<td>
+				<ng-select [items]="availableBanks" [(ngModel)]="filters.bank_names" multiple="true"
+				(change)="changeFilter('bank_names', $event)"></ng-select>
+			</td>
+			<td></td>
+			<td>
+				<ng-select [items]="availableIncomeTypes" [(ngModel)]="filters.income_types" multiple="true"
+				(change)="changeFilter('income_types', $event)"></ng-select>
+			</td>
+		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let income of incomes()" [class.danger]="income.auxStatus == 'error'">
+		<tr *ngFor="let income of incomes()" [class.danger]="income.auxStatus == 'error'" [class.hidden]="income.hidden">
 			<td>{{income.bank_name}}</td>
 			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
 			<td>
