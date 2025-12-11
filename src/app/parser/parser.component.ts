@@ -18,6 +18,7 @@ import * as XLSX from 'xlsx';
 
 import { BalanceParser } from '../shared/parsers/balance-parser';
 import { BrbParser } from '../shared/parsers/brb-parser';
+import { ItauParser } from '../shared/parsers/itau-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
 import { SicrediParser } from '../shared/parsers/sicredi-parser';
 import { StoneParser } from '../shared/parsers/stone-parser';
@@ -52,7 +53,7 @@ import { Filters } from '../shared/helpers/filters';
 export class ParserComponent {
   company: Company = <Company>{id: -1};
 
-  selectedBank?: 'brb'|'sicoob'|'stone'|'sicredi';
+  selectedBank?: 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
   excelData: any[] = [];
   pdfData: any = {};
   parser: BalanceParser;
@@ -76,6 +77,10 @@ export class ParserComponent {
     switch(this.selectedBank) {
     case("brb"): {
       this.parser = new BrbParser();
+      break;
+    }
+    case("itau"): {
+      this.parser = new ItauParser();
       break;
     }
     case("sicoob"): {

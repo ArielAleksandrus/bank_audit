@@ -153,6 +153,11 @@ export const Utils = {
     const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}( (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])(:[0-5][0-9]){0,1}){0,1}$/;
     return regex.test(date);
   },
+  isValue(str: string): boolean {
+    str = str.trim();
+    const regex = /^-?(?:\d{1,3}(?:\.\d{3})*)?(?:,\d{1,2})?$/;
+    return regex.test(str);
+  },
   pushIfNotExists(arr: Array<any>, toPush: any, field?: string): boolean {
     let found: boolean = false;
     for(let el of arr) {
@@ -178,5 +183,14 @@ export const Utils = {
   },
   sumDecimals(num1: string|number, num2: string|number, decimalPlaces: number = 2): number {
     return Number((Number(num1) + Number(num2)).toFixed(decimalPlaces));
+  },
+  valueToFloat(str: string): number {
+    if (!Utils.isValue(str)) return NaN;
+
+    const s = str.trim();
+    const normalized = s.includes(',') ? s : s + ',00';
+    const [intPart, decPart] = normalized.split(',');
+    
+    return parseFloat(intPart.replace(/\./g, '') + '.' + (decPart || '00').padEnd(2, '0').substring(0, 2));
   }
 }
