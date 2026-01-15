@@ -43,6 +43,8 @@ export class BoletoComponent {
   propagate: boolean = true;
   propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags do boleto serão copiadas para todos os boletos deste fornecedor";
 
+  total: number = 0;
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
@@ -55,6 +57,8 @@ export class BoletoComponent {
     Supplier.loadSuppliers(this.api).then((res: Supplier[]) => {
       this.suppliers = Supplier.fromJsonArray(res);
     });
+
+    this._recalculate();
   }
 
   remove(obj: Boleto) {
@@ -78,6 +82,7 @@ export class BoletoComponent {
     let objs = this.boletos();
     objs.push(obj);
     this.boletos.set(objs);
+    this._recalculate();
     this.onChange.emit({mode: 'create', boleto: obj});
   }
   edit(obj: Boleto) {
@@ -87,6 +92,7 @@ export class BoletoComponent {
       objs[idx] = obj;
       this.boletos.set(objs);
       this.onChange.emit({mode: 'edit', boleto: obj});
+      this._recalculate();
     }
     this.selected = undefined;
   }
@@ -99,6 +105,7 @@ export class BoletoComponent {
       this.api.destroy('boletos', obj.id).subscribe(
         (res: any) => {
           resolve(true);
+          this._recalculate();
         },
         (err: any) => {
           console.error("Error removing boleto: ", err);
@@ -117,6 +124,7 @@ export class BoletoComponent {
     this.sending = true;
     Boleto.sendArray(this.api, this.boletos()).then(res => {
       this.boletos.set(res);
+      this._recalculate();
       this.sending = false;
       alert("Boletos salvos");
     }).catch(err => {
@@ -181,5 +189,9 @@ export class BoletoComponent {
     }
 
     return changed;
+  }
+
+  private _recalculate() {
+    this.total = Boleto.getTotal(this.boletos());
   }
 }

@@ -51,6 +51,8 @@ export class PurchaseComponent {
 
   referrals: string[] = [];
 
+  total: number = 0;
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
@@ -65,6 +67,8 @@ export class PurchaseComponent {
     Supplier.loadSuppliers(this.api).then((res: Supplier[]) => {
       this.suppliers = Supplier.fromJsonArray(res);
     });
+
+    this._recalculate();
   }
 
   remove(obj: Purchase) {
@@ -82,12 +86,14 @@ export class PurchaseComponent {
         this.purchases.set(objs);
         this.onChange.emit({mode: 'destroy', purchase: obj});
       }
+      this._recalculate();
     }
   }
   add(obj: Purchase) {
     let objs = this.purchases();
     objs.push(obj);
     this.purchases.set(objs);
+    this._recalculate();
     this.onChange.emit({mode: 'create', purchase: obj});
   }
   edit(obj: Purchase) {
@@ -97,6 +103,7 @@ export class PurchaseComponent {
       objs[idx] = obj;
       this.purchases.set(objs);
       this.onChange.emit({mode: 'edit', purchase: obj});
+      this._recalculate();
     }
     this.selected = undefined;
   }
@@ -108,6 +115,7 @@ export class PurchaseComponent {
       this.api.destroy('purchases', obj.id).subscribe(
         res => {
           resolve(true);
+          this._recalculate();
         },
         err => {
           console.error("Error removing purchase: ", err);
@@ -189,5 +197,8 @@ export class PurchaseComponent {
     }
 
     return changed;
+  }
+  private _recalculate() {
+    this.total = Purchase.getTotal(this.purchases());
   }
 }

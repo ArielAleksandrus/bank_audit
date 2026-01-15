@@ -183,6 +183,15 @@ export class Boleto {
 		return arr;
 	}
 
+	public static getTotal(boletos: Boleto[]): number {
+		let total = 0;
+		for(let obj of boletos) {
+			total += Number(obj.value);
+		}
+
+		return Number(total.toFixed(2));
+	}
+
 	//////////// PRIVATE METHODS ////////////////
   private _existsParams() {
 		return {

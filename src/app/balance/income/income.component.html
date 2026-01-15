@@ -54,6 +54,16 @@
 			<td *ngIf="!printMode"><button class="btn btn-sm btn-danger" (click)="remove(income)">x</button></td>
 		</tr>
 	</tbody>
+	<tfoot>
+		<tr>
+			<td></td>
+			<td></td>
+			<td></td>
+			<td>Total:</td>
+			<td>{{total | currency:'BRL'}}</td>
+			<td></td>
+		</tr>
+	</tfoot>
 </table>
 <div *ngIf="canSave" class="send-container">
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">

@@ -196,6 +196,15 @@ export class Income {
 			grandTotal: 0
 		};
 	}
+	public static getTotal(incomes: Income[]): number {
+		let total: number = 0;
+		for(let income of incomes) {
+			if(!income.hidden) {
+				total += Number(income.value);
+			}
+		}
+		return Number(total.toFixed(2));
+	}
 
 
 	//////////// PRIVATE METHODS ////////////////

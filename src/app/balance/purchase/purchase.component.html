@@ -74,6 +74,20 @@
 			</td>
 		</tr>
 	</tbody>
+	<tfoot>
+		<tr>
+			<td></td>
+			<td *ngIf="!printMode"></td>
+			<td *ngIf="!printMode"></td>
+			<td *ngIf="!printMode"></td>
+			<td></td>
+			<td>Total:</td>
+			<td>{{total | currency:'BRL'}}</td>
+			<td></td>
+			<td></td>
+			<td></td>
+		</tr>
+	</tfoot>
 </table>
 <div *ngIf="canSave" class="send-container">
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">

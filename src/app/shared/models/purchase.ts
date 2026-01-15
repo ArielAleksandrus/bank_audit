@@ -220,6 +220,14 @@ export class Purchase {
 
 		return res;
 	}
+	public static getTotal(purchases: Purchase[]): number {
+		let total = 0;
+		for(let pur of purchases) {
+			total += Number(pur.total);
+		}
+
+		return Number(total.toFixed(2));
+	}
 
 	public static groupByTags(purchases: Purchase[]): {[tagName: string]: Purchase[]} {
 		let aux: any = {};

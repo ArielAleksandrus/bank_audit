@@ -52,11 +52,14 @@ export class IncomeComponent {
   availableBanks: string[] = [];
   availableIncomeTypes: string[] = [];
 
+  total: number = 0;
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
     this.prepareFilter();
+    this._recalculate();
   }
 
   prepareFilter() {
@@ -96,12 +99,14 @@ export class IncomeComponent {
         obj.hidden = false;
       }
     }
+    this._recalculate();
   }
   clearHidden() {
     let objs = this.incomes();
     for(let obj of objs) {
       obj.hidden = false;
     }
+    this._recalculate();
   }
 
   save() {
@@ -149,6 +154,7 @@ export class IncomeComponent {
         this.incomes.set(objs);
         this.onChange.emit({mode: 'destroy', income: obj});
       }
+      this._recalculate();
     }
   }
   add(obj: Income) {
@@ -156,6 +162,7 @@ export class IncomeComponent {
     objs.push(obj);
     this.incomes.set(objs);
     this.onChange.emit({mode: 'create', income: obj});
+    this._recalculate();
   }
   edit(obj: Income) {
     let objs = this.incomes();
@@ -163,6 +170,7 @@ export class IncomeComponent {
     if(idx > -1) {
       objs[idx] = obj;
       this.incomes.set(objs);
+      this._recalculate();
       this.onChange.emit({mode: 'edit', income: obj});
     }
     this.selected = undefined;
@@ -175,6 +183,7 @@ export class IncomeComponent {
       this.api.destroy('incomes', obj.id).subscribe(
         (res: any) => {
           resolve(true);
+          this._recalculate();
         },
         (err: any) => {
           console.error("Error removing income: ", err);
@@ -189,5 +198,10 @@ export class IncomeComponent {
       obj = new Income({});
 
     this.selected = obj;
+  }
+
+
+  private _recalculate() {
+    this.total = Income.getTotal(this.incomes());
   }
 }
