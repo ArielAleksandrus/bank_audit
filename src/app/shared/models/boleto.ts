@@ -24,6 +24,7 @@ export class Boleto {
 	auxTags: Tag[];
 	tagsStr: string;
 	auxStatus: 'ok'|'error';
+	hidden: boolean;
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
@@ -41,6 +42,7 @@ export class Boleto {
 		this.updated_at = jsonData.updated_at;
 		this.supplier_cnpj = jsonData.supplier_cnpj;
 		this.auxTags = jsonData.auxTags;
+		this.hidden = jsonData.hidden;
 
 		this.tagsStr = "";
 		for(let tag of (this.auxTags || [])) {
@@ -138,6 +140,18 @@ export class Boleto {
 		return hasSupplier && hasRequiredAttrs;
 	}
 
+	public static hasTag(boleto: Boleto, tags: string[], andOr: 'and'|'or' = 'or'): boolean {
+		let found = 0;
+		for(let auxTag of boleto.auxTags) {
+			if(tags.indexOf(auxTag.name) > -1)
+				found += 1;
+		}
+		if(andOr == 'and') return found == tags.length;
+		if(andOr == 'or') return found > 0;
+
+		return false;
+	}
+
 	public static arrayExists(api: ApiService, boletos: Boleto[]): Promise<Boleto[]> {
 		let objs: Boleto[] = Utils.clone(boletos);
 		
@@ -186,7 +200,8 @@ export class Boleto {
 	public static getTotal(boletos: Boleto[]): number {
 		let total = 0;
 		for(let obj of boletos) {
-			total += Number(obj.value);
+			if(!obj.hidden)
+				total += Number(obj.value);
 		}
 
 		return Number(total.toFixed(2));

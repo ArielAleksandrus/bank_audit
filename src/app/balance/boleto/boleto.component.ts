@@ -45,11 +45,31 @@ export class BoletoComponent {
 
   total: number = 0;
 
+  filtering: boolean = false;
+  filters: {
+    bank_names: string[],
+    tags: string[],
+    suppliers: string[],
+    value_min: number|null,
+    value_max: number|null
+  } = {
+    bank_names: [],
+    tags: [],
+    suppliers: [],
+    value_min: null,
+    value_max: null
+  };
+  availableBanks: string[] = [];
+  availableTags: string[] = [];
+  availableSuppliers: string[] = [];
+
+  delayAFTimeout: any = null;
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
-
+    this.prepareFilter();
 
     Tag.loadTags(this.api).then((res: Tag[]) => {
       this.tags = Tag.fromJsonArray(res);
@@ -59,6 +79,62 @@ export class BoletoComponent {
     });
 
     this._recalculate();
+  }
+
+  prepareFilter() {
+    this.availableBanks = [];
+    this.availableTags = [];
+    let objs = this.boletos();
+    for(let obj of objs) {
+      if(!!obj.bank_name)
+        Utils.pushIfNotExists(this.availableBanks, obj.bank_name);
+      if(!!obj.auxTags) {
+        for(let tag of obj.auxTags)
+          Utils.pushIfNotExists(this.availableTags, tag.name);
+      }
+      if(!!obj.supplier_name) {
+        Utils.pushIfNotExists(this.availableSuppliers, obj.supplier_name);
+      }
+    }
+  }
+  changeFilter(field: 'bank_names'|'tags'|'supplier'|'value_min'|'value_max', value: any) {
+    //@ts-ignore
+    this.filters[field] = value;
+
+    if((field == "value_min" || field == "value_max") && value == "")
+      value = null;
+
+    this.applyFilter();
+  }
+  applyFilter() {
+    let objs = this.boletos();
+    let filters = this.filters;
+
+    let bankNames = (filters.bank_names && filters.bank_names.length > 0) ? filters.bank_names : this.availableBanks;
+    let suppliers = (filters.suppliers && filters.suppliers.length > 0) ? filters.suppliers : this.availableSuppliers;
+    let tags = (filters.tags && filters.tags.length > 0) ? filters.tags : this.availableTags;
+
+    for(let obj of objs) {
+      if(bankNames.indexOf(obj.bank_name) == -1 ||
+          suppliers.indexOf(obj.supplier_name) == -1 ||
+          Boleto.hasTag(obj, tags, 'or') == false ||
+          (filters.value_min ? Number(obj.value) < Number(filters.value_min) : false) ||
+          (filters.value_max ? Number(obj.value) > Number(filters.value_max) : false)) {
+        obj.hidden = true;
+      } else {
+        obj.hidden = false;
+      }
+    }
+    this._recalculate();
+  }
+  delayApplyFilter() {
+    if(this.delayAFTimeout) {
+      clearTimeout(this.delayAFTimeout);
+      this.delayAFTimeout = null;
+    }
+    this.delayAFTimeout = setTimeout(() => {
+      this.applyFilter();
+    }, 1000);
   }
 
   remove(obj: Boleto) {

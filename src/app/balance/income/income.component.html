@@ -27,6 +27,14 @@
 				<ng-select [items]="availableIncomeTypes" [(ngModel)]="filters.income_types" multiple="true"
 				(change)="changeFilter('income_types', $event)"></ng-select>
 			</td>
+			<td>
+				<input type="number" [(ngModel)]="filters.value_min" placeholder="V. Mín" 
+				class="form-control" (keyup)="delayApplyFilter()"/>
+			</td>
+			<td>
+				<input type="number" [(ngModel)]="filters.value_max" placeholder="V. Máx" 
+				class="form-control" (keyup)="delayApplyFilter()"/>
+			</td>
 		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">

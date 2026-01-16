@@ -53,6 +53,7 @@ export class IncomeComponent {
   availableIncomeTypes: string[] = [];
 
   total: number = 0;
+  delayAFTimeout: any = null;
 
   constructor(private api: ApiService) {
   }
@@ -100,6 +101,15 @@ export class IncomeComponent {
       }
     }
     this._recalculate();
+  }
+  delayApplyFilter() {
+    if(this.delayAFTimeout) {
+      clearTimeout(this.delayAFTimeout);
+      this.delayAFTimeout = null;
+    }
+    this.delayAFTimeout = setTimeout(() => {
+      this.applyFilter();
+    }, 1000);
   }
   clearHidden() {
     let objs = this.incomes();

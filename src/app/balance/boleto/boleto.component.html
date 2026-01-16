@@ -5,7 +5,8 @@
 				BOLETOS <i>({{boletos().length}})</i> &nbsp;&nbsp;
 				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button>
+				</button> &nbsp; &nbsp;
+				<button class="btn btn-sm btn-info" (click)="filtering = !filtering">FILTRAR</button>
 			</th>
 		</tr>
 		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -23,9 +24,33 @@
 			</th>
 			<th *ngIf="!printMode"> &nbsp; &nbsp; </th>
 		</tr>
+		<tr *ngIf="filtering" #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
+			<td>
+				<ng-select [items]="availableBanks" [(ngModel)]="filters.bank_names" multiple="true"
+				(change)="changeFilter('bank_names', $event)"></ng-select>
+			</td>
+			<td></td>
+			<td></td>
+			<td>
+				<ng-select [items]="availableSuppliers" [(ngModel)]="filters.suppliers" multiple="true"
+				(change)="changeFilter('suppliers', $event)"></ng-select>
+			</td>
+			<td>
+				<input type="number" [(ngModel)]="filters.value_min" placeholder="V. Mín" 
+				class="form-control" (keyup)="delayApplyFilter()"/>
+			</td>
+			<td>
+				<input type="number" [(ngModel)]="filters.value_max" placeholder="V. Máx" 
+				class="form-control" (keyup)="delayApplyFilter()"/>
+			</td>
+			<td>
+				<ng-select [items]="availableTags" [(ngModel)]="filters.tags" multiple="true"
+				(change)="changeFilter('tags', $event)"></ng-select>
+			</td>
+		</tr>
 	</thead>
 	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let boleto of boletos()" [class.danger]="boleto.auxStatus == 'error'">
+		<tr *ngFor="let boleto of boletos()" [class.danger]="boleto.auxStatus == 'error'" [class.hidden]="boleto.hidden">
 			<td>{{boleto.bank_name}}</td>
 			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
