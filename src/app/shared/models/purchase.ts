@@ -45,6 +45,7 @@ export class Purchase {
 	supplier_cnpj: string;
 	tagsStr: string;
 	auxStatus: 'ok'|'error';
+	hidden: boolean = false;
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
@@ -223,7 +224,8 @@ export class Purchase {
 	public static getTotal(purchases: Purchase[]): number {
 		let total = 0;
 		for(let pur of purchases) {
-			total += Number(pur.total);
+			if(!pur.hidden)
+				total += Number(pur.total);
 		}
 
 		return Number(total.toFixed(2));

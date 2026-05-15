@@ -51,12 +51,29 @@ export class PurchaseComponent {
 
   referrals: string[] = [];
 
+  filtering: boolean = false;
+  filters: {
+    bank_names: string[],
+    payment_types: string[],
+    value_min: number|null,
+    value_max: number|null
+  } = {
+    bank_names: [],
+    payment_types: [],
+    value_min: null,
+    value_max: null
+  };
+  availableBanks: string[] = [];
+  availablePaymentTypes: string[] = [];
+
   total: number = 0;
+  delayAFTimeout: any = null;
 
   constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
+    this.prepareFilter();
     
     Purchase.loadReferrals(this.api).then((res: string[]) => {
       this.referrals = res;
@@ -68,6 +85,61 @@ export class PurchaseComponent {
       this.suppliers = Supplier.fromJsonArray(res);
     });
 
+    this._recalculate();
+  }
+  prepareFilter() {
+    this.availableBanks = [];
+    this.availablePaymentTypes = [];
+    let objs = this.purchases();
+    for(let obj of objs) {
+      if(!!obj.bank_name)
+        Utils.pushIfNotExists(this.availableBanks, obj.bank_name);
+      if(!!obj.payment_type)
+        Utils.pushIfNotExists(this.availablePaymentTypes, obj.payment_type);
+    }
+  }
+  changeFilter(field: 'bank_names'|'payment_types'|'value_min'|'value_max', value: any) {
+    //@ts-ignore
+    this.filters[field] = value;
+
+    if((field == "value_min" || field == "value_max") && value == "")
+      value = null;
+
+    this.applyFilter();
+  }
+  applyFilter() {
+    let objs = this.purchases();
+    let filters = this.filters;
+
+    let bankNames = (filters.bank_names && filters.bank_names.length > 0) ? filters.bank_names : this.availableBanks;
+    let paymentTypes = (filters.payment_types && filters.payment_types.length > 0) ? filters.payment_types : this.availablePaymentTypes;
+
+    for(let obj of objs) {
+      if(bankNames.indexOf(obj.bank_name) == -1 ||
+          paymentTypes.indexOf(obj.payment_type) == -1 ||
+          (filters.value_min ? Number(obj.total) < Number(filters.value_min) : false) ||
+          (filters.value_max ? Number(obj.total) > Number(filters.value_max) : false)) {
+        obj.hidden = true;
+      } else {
+        obj.hidden = false;
+      }
+    }
+    this._recalculate();
+  }
+  delayApplyFilter() {
+    if(this.delayAFTimeout) {
+      clearTimeout(this.delayAFTimeout);
+      this.delayAFTimeout = null;
+    }
+    this.delayAFTimeout = setTimeout(() => {
+      this.applyFilter();
+    }, 1000);
+  }
+  clearHidden() {
+    let objs = this.purchases();
+    for(let obj of objs) {
+      obj.hidden = false;
+    }
     this._recalculate();
   }
 
