@@ -45,6 +45,12 @@ export class SicoobParser extends BalanceParser {
 		data_vencimento: string,
 		valor: number
 	}[] = [];
+  comprovantesPixArr: {
+    tipo: 'pix'|'transfer',
+    beneficiario: string,
+    data_pagamento: string,
+    valor: number
+  }[] = [];
 
 	constructor() {
 		super();
@@ -59,48 +65,68 @@ export class SicoobParser extends BalanceParser {
 			this.parseExcel();
 		}
 		}
+
+    console.log(this);
 		
 		this.recalculateIncome();
 	}
 	override parseComprovantes(text: string): any {
-		this.comprovantesArr = [];
-		let boletosRawArr = text.split("Número do agendamento");
+    this.comprovantesArr = [];
+    this.comprovantesPixArr = [];
+    this._parseBoletos(text);
+    this._parsePayments(text);
 
-		for(let i = 1; i < boletosRawArr.length; i++) {
-			let boletoRaw = boletosRawArr[i];
-
-			let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1];
-			
-			if(!beneficiario)
-				continue;
-			beneficiario = beneficiario.split("\n")[0];
-			if(!beneficiario)
-				continue;
-
-			if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
-				beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
-
-			beneficiario = beneficiario.replace("\t", "").replace("\n", "");
-
-			let supplierCnpj = boletoRaw.split('CPF/CNPJ\t')[1].split('\n')[0];
-			if(supplierCnpj)
-				supplierCnpj = supplierCnpj.replace('.','').replace('-','').replace('/','');
-
-			this.comprovantesArr.push({
-				documento: boletoRaw.split('\t')[1].split('\n')[0],
-				beneficiario: beneficiario,
-				cnpj: supplierCnpj,
-				data_pagamento: boletoRaw.split("Datas\nRealizado\t")[1].split(" às ")[0],
-				data_vencimento: boletoRaw.split("Vencimento\t")[1].split("\n")[0],
-				valor: Number.parseFloat(boletoRaw.split("\nPago\tR$ ")[1].split("\n")[0].replace('.','').replace(',','.'))
-			});
-		}
-		this._addBeneficiario();
-
-		this.recalculateIncome();
+    this._addBeneficiario();
+    this.recalculateIncome();
 
 		return this.comprovantesArr;
 	}
+  private _parsePayments(text: string): any {
+    let rawArr = text.split("COMPROVANTE DE EFETIVAÇÃO");
+    for(let i = 1; i < rawArr.length; i++) {
+      this.comprovantesPixArr.push({
+        tipo: rawArr[i].split("Tipo")[0].toLowerCase().indexOf("pix") > -1 ? "pix" : "transfer",
+        beneficiario: rawArr[i].split("Destinatário")[1].split("Nome")[1].split("\n")[0].split(" ").filter(word => word != "").join(" "),
+        data_pagamento: rawArr[i].toLowerCase().split("data do pagamento ")[1].split(" ")[0],
+        valor: Number.parseFloat(rawArr[i].split("Valor ")[1].split(" ")[1].split("\n")[0].replace(".","").replace(",","."))
+      });
+    }
+
+    console.log(this.comprovantesPixArr, this.purchases);
+  }
+  private _parseBoletos(text: string): any {
+    let boletosRawArr = text.split("Número do agendamento");
+
+    for(let i = 1; i < boletosRawArr.length; i++) {
+      let boletoRaw = boletosRawArr[i];
+
+      let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1];
+
+      if(!beneficiario)
+        continue;
+      beneficiario = beneficiario.split("\n")[0];
+      if(!beneficiario)
+        continue;
+
+      if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
+        beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
+
+      beneficiario = beneficiario.replace("\t", "").replace("\n", "");
+
+      let supplierCnpj = boletoRaw.split('CPF/CNPJ\t')[1].split('\n')[0];
+      if(supplierCnpj)
+        supplierCnpj = supplierCnpj.replace('.','').replace('-','').replace('/','');
+
+      this.comprovantesArr.push({
+        documento: boletoRaw.split('\t')[1].split('\n')[0],
+        beneficiario: beneficiario,
+        cnpj: supplierCnpj,
+        data_pagamento: boletoRaw.split("Datas\nRealizado\t")[1].split(" às ")[0],
+        data_vencimento: boletoRaw.split("Vencimento\t")[1].split("\n")[0],
+        valor: Number.parseFloat(boletoRaw.split("\nPago\tR$ ")[1].split("\n")[0].replace('.','').replace(',','.'))
+      });
+    }
+  }
 
 	parseExcel() {
 		if(!this.dataArr || this.dataArr.length < 2) {
@@ -113,7 +139,7 @@ export class SicoobParser extends BalanceParser {
 	}
 
 	private _addBeneficiario() {
-		if(this.parsedRows.length == 0 || this.comprovantesArr.length == 0)
+		if(this.parsedRows.length == 0)
 			return;
 
 		for(let boleto of this.boletos) {
@@ -125,6 +151,16 @@ export class SicoobParser extends BalanceParser {
 			boleto.supplier_cnpj = comprovanteObj.cnpj;
 			boleto.supplier_name = comprovanteObj.beneficiario;
 		}
+    for(let pix of this.comprovantesPixArr) {
+      const isoDate = Utils.datePtBrToISO(pix.data_pagamento);
+      const foundArr = this.purchases.filter(item => item.purchase_date == isoDate && item.total == pix.valor);
+      if(foundArr.length == 0) {
+        console.log("SicoobParser::_addBeneficiario -> Não encontrado item pix: ", pix);
+        continue;
+      }
+      foundArr[0].payment_type = pix.tipo;
+      foundArr[0].supplier_name = pix.beneficiario;
+    }
 	}
 	private _parseExcelHeader() {
 		this.parsedHeaders = [];

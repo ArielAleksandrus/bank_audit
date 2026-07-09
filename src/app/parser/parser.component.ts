@@ -62,6 +62,8 @@ export class ParserComponent {
   sending: boolean = false;
   sendingCount: number = 0;
 
+  extratoFile: any;
+
   constructor(private api: ApiService) {
     this.parser = new SicoobParser();
 
@@ -100,6 +102,7 @@ export class ParserComponent {
 
   extratoFileChanged(evt: any) {
     const file: File = evt.target.files[0];
+    this.extratoFile = file;
     let auxArr = file.name.split(".");
     let extension = auxArr[auxArr.length - 1];
 

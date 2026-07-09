@@ -14,7 +14,7 @@
 		<label class="field-label">Extrato ({{parser.acceptedFormats}})</label>
 		<input id="extrato_file" type="file" [accept]="parser.acceptedFormats" (change)="extratoFileChanged($event)"/>
 	</div>
-	<div class="col-lg-4 send-comprovante" *ngIf="parser && parser.allowsComprovantes && parser.boletos && parser.boletos.length > 0">
+	<div class="col-lg-4 send-comprovante" *ngIf="parser && parser.allowsComprovantes && extratoFile">
 		<label class="field-label">Texto comprovantes</label>
 		<textarea id="comprovanteTxt" class="form-control" rows="5" placeholder="Cole aqui o texto dos comprovantes do mes"></textarea>
 		<button class="btn btn-md btn-primary" (click)="setComprovante()">ENVIAR</button>
