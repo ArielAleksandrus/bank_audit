@@ -1,8 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {pdf2array, Pdf2ArrayOptions, pdfjs} from "pdf2array";
-
+import * as pdfjsLib from 'pdfjs-dist';
 
 //import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
 import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
@@ -51,7 +50,7 @@ import { Filters } from '../shared/helpers/filters';
   styleUrl: './parser.component.scss'
 })
 export class ParserComponent {
-  company: Company = <Company>{id: -1};
+  company: Company = {id: -1} as Company;
 
   selectedBank?: 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
   excelData: any[] = [];
@@ -63,9 +62,10 @@ export class ParserComponent {
   sending: boolean = false;
   sendingCount: number = 0;
 
-  constructor (private api: ApiService) {
-    this.parser = new SicoobParser(); // pick any parser to begin with. user can change it later
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.js`;
+  constructor(private api: ApiService) {
+    this.parser = new SicoobParser();
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/pdf.worker.min.mjs';
   }
   ngOnInit() {
     this._loadCompany();
@@ -260,14 +260,66 @@ export class ParserComponent {
       location.href = '/login';
     }
   }
+  private async _useArrayBuffer(file: File, extension: string) {
+    const buffer = await file.arrayBuffer();
 
+    try {
+      const rows = await this.extractTableRowsFromPDF(buffer);
+      this.loadExtrato(file, rows, extension);
+    } catch (error) {
+      console.error('PDF extraction error:', error);
+      alert('Erro ao processar o PDF');
+    }
+  }
 
-  private _useArrayBuffer(file: File, extension: string) {
-    file.arrayBuffer().then(buffer => {
-      pdf2array(buffer, {}).then((data: any) => {
-        this.loadExtrato(file, data, extension);
-      })
-    })
+  /**
+   * Extracts text and tries to group it into table rows (array of arrays)
+   */
+  private async extractTableRowsFromPDF(arrayBuffer: ArrayBuffer): Promise<any[][]> {
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const allRows: any[][] = [];
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+
+      // Group text items into rows by Y position
+      const rows = this.groupTextItemsIntoRows(textContent.items);
+      allRows.push(...rows);
+    }
+
+    return allRows;
+  }
+
+  /**
+   * Groups text items that are on roughly the same horizontal line into rows
+   */
+  private groupTextItemsIntoRows(items: any[]): any[][] {
+    const tolerance = 5; // pixels tolerance for same row
+    const sorted = [...items].sort((a, b) => b.transform[5] - a.transform[5]); // sort by Y descending
+
+    const rows: any[][] = [];
+    let currentRow: any[] = [];
+    let lastY = -9999;
+
+    for (const item of sorted) {
+      const y = item.transform[5];
+
+      if (Math.abs(y - lastY) > tolerance && currentRow.length > 0) {
+        // New row
+        rows.push(currentRow.map(i => i.str.trim()).filter(Boolean));
+        currentRow = [];
+      }
+
+      currentRow.push(item);
+      lastY = y;
+    }
+
+    if (currentRow.length > 0) {
+      rows.push(currentRow.map(i => i.str.trim()).filter(Boolean));
+    }
+
+    return rows;
   }
   private _useFileReader(file: File, extension: string) {
     const self = this;
