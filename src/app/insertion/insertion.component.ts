@@ -47,6 +47,7 @@ export class InsertionComponent {
     'santander',
     'sicoob',
     'sicredi',
+    'stone',
     'outro'
   ];
 

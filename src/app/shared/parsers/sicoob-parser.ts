@@ -75,20 +75,20 @@ export class SicoobParser extends BalanceParser {
     this.comprovantesPixArr = [];
     this._parseBoletos(text);
     this._parsePayments(text);
-
+    
     this._addBeneficiario();
     this.recalculateIncome();
 
 		return this.comprovantesArr;
 	}
   private _parsePayments(text: string): any {
-    let rawArr = text.split("COMPROVANTE DE EFETIVAÇÃO");
+    let rawArr = text.split("COMPROVANTE DE TRANSFERÊNCIA");
     for(let i = 1; i < rawArr.length; i++) {
       this.comprovantesPixArr.push({
-        tipo: rawArr[i].split("Tipo")[0].toLowerCase().indexOf("pix") > -1 ? "pix" : "transfer",
-        beneficiario: rawArr[i].split("Destinatário")[1].split("Nome")[1].split("\n")[0].split(" ").filter(word => word != "").join(" "),
-        data_pagamento: rawArr[i].toLowerCase().split("data do pagamento ")[1].split(" ")[0],
-        valor: Number.parseFloat(rawArr[i].split("Valor ")[1].split(" ")[1].split("\n")[0].replace(".","").replace(",","."))
+        tipo: rawArr[i].split("Natureza")[1].toLowerCase().indexOf("pix") > -1 ? "pix" : "transfer",
+        beneficiario: rawArr[i].split("\nAutenticação")[0].split("Conta")[2].split(" / ")[1],
+        data_pagamento: rawArr[i].toLowerCase().split("data do agendamento ")[1].split("\n")[0],
+        valor: Number.parseFloat(rawArr[i].split("Valor R$ ")[1].split("\n")[0].replace(".","").replace(",","."))
       });
     }
 
@@ -100,30 +100,31 @@ export class SicoobParser extends BalanceParser {
     for(let i = 1; i < boletosRawArr.length; i++) {
       let boletoRaw = boletosRawArr[i];
 
-      let beneficiario = boletoRaw.split("Nome/Razão Social\t")[1];
+      boletoRaw = boletoRaw.replace("\t", " ")
 
-      if(!beneficiario)
+      let beneficiario = boletoRaw.split("Nome/Razão Social ")[1];
+
+      if(beneficiario)
+        beneficiario = beneficiario.split("\n")[0];
+      else
         continue;
-      beneficiario = beneficiario.split("\n")[0];
-      if(!beneficiario)
-        continue;
 
-      if(!!boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1])
-        beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social\t")[1].split("\n")[0];
+      if(!!boletoRaw.split("Beneficiário final\nNome/Razão social ")[1])
+        beneficiario = boletoRaw.split("Beneficiário final\nNome/Razão social ")[1].split("\n")[0];
 
-      beneficiario = beneficiario.replace("\t", "").replace("\n", "");
+      beneficiario = beneficiario.replace("\n", "");
 
-      let supplierCnpj = boletoRaw.split('CPF/CNPJ\t')[1].split('\n')[0];
+      let supplierCnpj = boletoRaw.split('CPF/CNPJ ')[1].split('\n')[0];
       if(supplierCnpj)
         supplierCnpj = supplierCnpj.replace('.','').replace('-','').replace('/','');
 
       this.comprovantesArr.push({
-        documento: boletoRaw.split('\t')[1].split('\n')[0],
+        documento: boletoRaw.split(' ')[1].split('\n')[0],
         beneficiario: beneficiario,
         cnpj: supplierCnpj,
-        data_pagamento: boletoRaw.split("Datas\nRealizado\t")[1].split(" às ")[0],
-        data_vencimento: boletoRaw.split("Vencimento\t")[1].split("\n")[0],
-        valor: Number.parseFloat(boletoRaw.split("\nPago\tR$ ")[1].split("\n")[0].replace('.','').replace(',','.'))
+        data_pagamento: boletoRaw.split("Datas\nRealizado ")[1].split(" às ")[0],
+        data_vencimento: boletoRaw.split("Vencimento ")[1].split("\n")[0],
+        valor: Number.parseFloat(boletoRaw.split("\nPago  R$ ")[1].split("\n")[0].replace('.','').replace(',','.'))
       });
     }
   }
@@ -144,6 +145,11 @@ export class SicoobParser extends BalanceParser {
 
 		for(let boleto of this.boletos) {
 			let comprovanteObj = Utils.findById(boleto.bank_identification, this.comprovantesArr, 'documento');
+
+			if(!comprovanteObj) {
+				continue;
+			}
+
 			boleto.payment_date = Utils.datePtBrToISO(comprovanteObj.data_pagamento) || '1900-10-10';
 			boleto.expiration_date = Utils.datePtBrToISO(comprovanteObj.data_vencimento) || '1900-10-10';
 			// a data da compra não é a data do pagamento, porém esta informação é obrigatória e não consta no comprovante!
@@ -203,7 +209,15 @@ export class SicoobParser extends BalanceParser {
 		for(let row of this.parsedRows) {
 			let valStr = row[valorIdx];
 			let nbSpace = String.fromCharCode(160);
+
+
+			if(typeof valStr == "number") {
+				row[valorIdx] = valStr;
+				continue;
+			}
+
 			valStr = valStr.replace(".","").replace(",",".").replace(" ","").replace(nbSpace,""); // '- 16.309,27 D' will become '-16309.27D'
+
 			if(valStr.indexOf("D") > -1) {
 				if(valStr[0] != '-')
 					valStr = '-' + valStr;
@@ -244,6 +258,10 @@ export class SicoobParser extends BalanceParser {
 		for(let row of this.parsedRows) {
 			const desc = row[descIdx];
 			const type = this._getDescriptionType(desc, row[valueIdx]);
+			let valueField = row[valueIdx];
+			if(typeof valueField == "string") {
+				valueField = row[valueIdx + 1];
+			}
 			
 			if(row[descIdx].indexOf("SALDO") == 0)
 				continue;
@@ -257,9 +275,9 @@ export class SicoobParser extends BalanceParser {
 					purchase_date: Utils.datePtBrToISO(row[dateIdx]),
 					payment_type: 'other',
 					bank_name: "sicoob",
-					base_value: -row[valueIdx].toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
+					base_value: -valueField.toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
 					delivery_fee: 0,
-					total: -row[valueIdx].toFixed(2) // 'despesa' and 'boleto' values are negative. we will fix this now. 
+					total: -valueField.toFixed(2) // 'despesa' and 'boleto' values are negative. we will fix this now. 
 				});
 
 				if(type == "boleto") {
@@ -270,7 +288,7 @@ export class SicoobParser extends BalanceParser {
 						bank_identification: row[identificationIdx],
 						// expiration_date: we don't know this yet
 						// issue_date: we don't know this yet
-						value: -row[valueIdx].toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
+						value: -valueField.toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
 						// installments: we don't know this yet
 						payment_date: Utils.datePtBrToISO(row[dateIdx]),
 						supplier_name: row[descIdx]
@@ -294,7 +312,7 @@ export class SicoobParser extends BalanceParser {
 					bank_name: "sicoob",
 					// bank_identification: we don't know this yet
 					income_type: "outros",
-					value: row[valueIdx].toFixed(2)
+					value: valueField.toFixed(2)
 				});
 
 				if(cardType) {
