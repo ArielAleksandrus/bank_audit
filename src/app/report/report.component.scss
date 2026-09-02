@@ -102,6 +102,19 @@
 .sidebar-item-report {
 	color: #0f766e;
 }
+.sidebar-company-name {
+	padding: 0.3rem 0.8rem;
+	text-align: center;
+	font-weight: 700;
+	color: #0f172a;
+}
+.report-sidebar hr {
+	width: 100%;
+	height: 1px;
+	border: none;
+	background: #e6ebf2;
+	margin: 0.4rem 0;
+}
 
 .report-content {
 	flex: 1 1 auto;

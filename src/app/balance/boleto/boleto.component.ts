@@ -1,5 +1,5 @@
 import { Component, model, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
@@ -21,6 +21,7 @@ import { ApiService } from '../../shared/services/api.service';
             NgbCollapseModule, NgbPopoverModule,
             NgSelectComponent
           ],
+  providers: [DatePipe, CurrencyPipe],
   templateUrl: './boleto.component.html',
   styleUrl: './boleto.component.scss'
 })
@@ -72,7 +73,12 @@ export class BoletoComponent {
   pagedBoletos: Boleto[] = [];
   editing: {boleto: Boleto, field: 'supplier'|'tags'}|null = null;
 
-  constructor(private api: ApiService) {
+  sortField: string | null = null;
+  sortDir: 'asc' | 'desc' = 'asc';
+
+  constructor(private api: ApiService,
+              private datePipe: DatePipe,
+              private currencyPipe: CurrencyPipe) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
@@ -114,6 +120,16 @@ export class BoletoComponent {
   onPageSizeChange() {
     this.page = 1;
     this._slicePage();
+  }
+  sortBy(field: string) {
+    if(this.sortField === field) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortDir = 'asc';
+    }
+    this.page = 1;
+    this._refreshView();
   }
 
   prepareFilter() {
@@ -249,16 +265,23 @@ export class BoletoComponent {
   }
 
   export() {
-    this.printMode = true;
-    this.collapsed = false;
-    setTimeout(() => {
-      const doc = new jsPDF();
-      autoTable(doc, { html: '#boletoTable' });
-      doc.save("boletos.pdf");
-      setTimeout(() => {
-        this.printMode = false;
-      }, 1000);
-    }, 1000);
+    // Builds the PDF straight from visibleBoletos (every filtered row, not
+    // just the current page) instead of scraping the rendered table's DOM -
+    // the table only ever renders the current page, so scraping it silently
+    // exported just that page once pagination was added.
+    const doc = new jsPDF();
+    const head = [['BANCO', 'PGTO.', 'VENC.', 'FORNECEDOR', 'VALOR', 'PARCELA', 'TAGS']];
+    const body = this.visibleBoletos.map(boleto => [
+      boleto.bank_name || '',
+      this.datePipe.transform(boleto.payment_date, 'dd/MM/YYYY') || '',
+      this.datePipe.transform(boleto.expiration_date, 'dd/MM/YYYY') || '',
+      boleto.supplier_name || '',
+      this.currencyPipe.transform(boleto.value, 'BRL') || '',
+      boleto.installments || '',
+      this.tagNames(boleto)
+    ]);
+    autoTable(doc, { head, body });
+    doc.save("boletos.pdf");
   }
 
   open(obj?: Boleto) {
@@ -310,7 +333,7 @@ export class BoletoComponent {
   }
   private _refreshView() {
     this._recalculate();
-    this.visibleBoletos = this.boletos().filter(boleto => !boleto.hidden);
+    this.visibleBoletos = this._applySort(this.boletos().filter(boleto => !boleto.hidden));
     if(this.page > this.pageCount)
       this.page = this.pageCount;
     this._slicePage();
@@ -318,5 +341,25 @@ export class BoletoComponent {
   private _slicePage() {
     const start = (this.page - 1) * this.pageSize;
     this.pagedBoletos = this.visibleBoletos.slice(start, start + this.pageSize);
+  }
+  private _applySort(items: Boleto[]): Boleto[] {
+    if(!this.sortField)
+      return items;
+
+    const field = this.sortField;
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+
+    return [...items].sort((a: any, b: any) => {
+      let av = a[field], bv = b[field];
+      if(av == null && bv == null) return 0;
+      if(av == null) return -1 * dir;
+      if(bv == null) return 1 * dir;
+
+      let an = Number(av), bn = Number(bv);
+      if(av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn))
+        return (an - bn) * dir;
+
+      return String(av).localeCompare(String(bv)) * dir;
+    });
   }
 }

@@ -1,6 +1,7 @@
 import { ApiService } from '../services/api.service';
 import { Filters } from '../helpers/filters';
 import { Utils } from '../helpers/utils';
+import { Purchase } from './purchase';
 
 export class Tag {
 	id: number;
@@ -106,6 +107,22 @@ export class Tag {
   			},
   			(err: any) => {
   				console.error("Tag->Failed to rename tag: ", err);
+  				reject(err);
+  			}
+  		);
+  	});
+  }
+
+  // This tag's purchases, most recent first, 5 per page (its whole
+  // history - not scoped to any date range).
+  loadPurchases(api: ApiService, page: number = 1): Promise<{purchases: Purchase[], total: number}> {
+  	return new Promise((resolve, reject) => {
+  		api.show('tags', this.id, { page: page }, { collection: 'purchases' }).subscribe(
+  			(res: { purchases: any[], total: number }) => {
+  				resolve({ purchases: Purchase.fromJsonArray(res.purchases), total: res.total });
+  			},
+  			(err: any) => {
+  				console.error("Tag->Failed to load tag purchases: ", err);
   				reject(err);
   			}
   		);

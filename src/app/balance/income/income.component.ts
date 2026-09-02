@@ -1,5 +1,5 @@
 import { Component, model, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
@@ -20,6 +20,7 @@ import { Utils } from '../../shared/helpers/utils';
             NgSelectComponent
             //NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent
           ],
+  providers: [DatePipe, CurrencyPipe],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
@@ -55,12 +56,48 @@ export class IncomeComponent {
   total: number = 0;
   delayAFTimeout: any = null;
 
-  constructor(private api: ApiService) {
+  page = 1;
+  pageSize = 50;
+  pageSizes = [25, 50, 100];
+  visibleIncomes: Income[] = [];
+  pagedIncomes: Income[] = [];
+
+  sortField: string | null = null;
+  sortDir: 'asc' | 'desc' = 'asc';
+
+  constructor(private api: ApiService,
+              private datePipe: DatePipe,
+              private currencyPipe: CurrencyPipe) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
     this.prepareFilter();
-    this._recalculate();
+    this._refreshView();
+  }
+  trackByIncome = (_index: number, income: Income) => income.id ?? _index;
+  get pageCount(): number {
+    return Math.max(1, Math.ceil(this.visibleIncomes.length / this.pageSize));
+  }
+  get displayedIncomes(): Income[] {
+    return this.printMode ? this.visibleIncomes : this.pagedIncomes;
+  }
+  goToPage(page: number) {
+    this.page = Math.min(this.pageCount, Math.max(1, page));
+    this._slicePage();
+  }
+  onPageSizeChange() {
+    this.page = 1;
+    this._slicePage();
+  }
+  sortBy(field: string) {
+    if(this.sortField === field) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortDir = 'asc';
+    }
+    this.page = 1;
+    this._refreshView();
   }
 
   prepareFilter() {
@@ -81,6 +118,7 @@ export class IncomeComponent {
     if((field == "value_min" || field == "value_max") && value == "")
       value = null;
 
+    this.page = 1;
     this.applyFilter();
   }
   applyFilter() {
@@ -100,7 +138,7 @@ export class IncomeComponent {
         obj.hidden = false;
       }
     }
-    this._recalculate();
+    this._refreshView();
   }
   delayApplyFilter() {
     if(this.delayAFTimeout) {
@@ -116,7 +154,8 @@ export class IncomeComponent {
     for(let obj of objs) {
       obj.hidden = false;
     }
-    this._recalculate();
+    this.page = 1;
+    this._refreshView();
   }
 
   save() {
@@ -128,6 +167,7 @@ export class IncomeComponent {
     this.sending = true;
     Income.sendArray(this.api, this.incomes()).then(res => {
       this.incomes.set(res);
+      this._refreshView();
       this.sending = false;
       alert("Recebimentos salvos");
     }).catch(err => {
@@ -137,16 +177,21 @@ export class IncomeComponent {
     });
   }
   export() {
-    this.printMode = true;
-    this.collapsed = false;
-    setTimeout(() => {
-      const doc = new jsPDF();
-      autoTable(doc, { html: '#incomeTable' });
-      doc.save("entradas.pdf");
-      setTimeout(() => {
-        this.printMode = false;
-      }, 1000);
-    }, 1000);
+    // Builds the PDF straight from visibleIncomes (every filtered row, not
+    // just the current page) instead of scraping the rendered table's DOM -
+    // the table only ever renders the current page, so scraping it silently
+    // exported just that page once pagination was added.
+    const doc = new jsPDF();
+    const head = [['BANCO', 'DATA', 'TIPO', 'ORIGEM', 'VALOR']];
+    const body = this.visibleIncomes.map(income => [
+      income.bank_name || '',
+      this.datePipe.transform(income.date_received, 'dd/MM/YYYY') || '',
+      income.income_type || '',
+      income.origin || '',
+      this.currencyPipe.transform(income.value, 'BRL') || ''
+    ]);
+    autoTable(doc, { head, body });
+    doc.save("entradas.pdf");
   }
 
   remove(obj: Income) {
@@ -158,13 +203,14 @@ export class IncomeComponent {
           objs.splice(idx, 1);
           this.incomes.set(objs);
           this.onChange.emit({mode: 'destroy', income: obj});
+          this._refreshView();
         });
       } else {
         objs.splice(idx, 1);
         this.incomes.set(objs);
         this.onChange.emit({mode: 'destroy', income: obj});
       }
-      this._recalculate();
+      this._refreshView();
     }
   }
   add(obj: Income) {
@@ -172,7 +218,7 @@ export class IncomeComponent {
     objs.push(obj);
     this.incomes.set(objs);
     this.onChange.emit({mode: 'create', income: obj});
-    this._recalculate();
+    this._refreshView();
   }
   edit(obj: Income) {
     let objs = this.incomes();
@@ -180,20 +226,20 @@ export class IncomeComponent {
     if(idx > -1) {
       objs[idx] = obj;
       this.incomes.set(objs);
-      this._recalculate();
+      this._refreshView();
       this.onChange.emit({mode: 'edit', income: obj});
     }
     this.selected = undefined;
   }
   destroy(obj: Income): Promise<boolean> {
-    return new Promise((resolve, reject) => {  
+    return new Promise((resolve, reject) => {
       if(!(obj.id > 0)) {
         resolve(false);
       }
       this.api.destroy('incomes', obj.id).subscribe(
         (res: any) => {
           resolve(true);
-          this._recalculate();
+          this._refreshView();
         },
         (err: any) => {
           console.error("Error removing income: ", err);
@@ -213,5 +259,36 @@ export class IncomeComponent {
 
   private _recalculate() {
     this.total = Income.getTotal(this.incomes());
+  }
+  private _refreshView() {
+    this._recalculate();
+    this.visibleIncomes = this._applySort(this.incomes().filter(income => !income.hidden));
+    if(this.page > this.pageCount)
+      this.page = this.pageCount;
+    this._slicePage();
+  }
+  private _slicePage() {
+    const start = (this.page - 1) * this.pageSize;
+    this.pagedIncomes = this.visibleIncomes.slice(start, start + this.pageSize);
+  }
+  private _applySort(items: Income[]): Income[] {
+    if(!this.sortField)
+      return items;
+
+    const field = this.sortField;
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+
+    return [...items].sort((a: any, b: any) => {
+      let av = a[field], bv = b[field];
+      if(av == null && bv == null) return 0;
+      if(av == null) return -1 * dir;
+      if(bv == null) return 1 * dir;
+
+      let an = Number(av), bn = Number(bv);
+      if(av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn))
+        return (an - bn) * dir;
+
+      return String(av).localeCompare(String(bv)) * dir;
+    });
   }
 }

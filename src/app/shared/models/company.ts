@@ -44,13 +44,20 @@ export class Company {
 
 	// The set of companies picked on the companies page to view a combined
 	// report for (distinct from the single "current_company" used elsewhere).
-	public static storeSelectedCompanies(companies: Company[]) {
-		localStorage.setItem('selected_companies', JSON.stringify({companies: companies}));
+	// isAll marks that every company the user has was picked (e.g. via
+	// "Todas as Empresas"), so the report can just say "Todas as Empresas"
+	// instead of spelling out every name.
+	public static storeSelectedCompanies(companies: Company[], isAll: boolean = false) {
+		localStorage.setItem('selected_companies', JSON.stringify({companies: companies, all: isAll}));
 	}
 	public static loadSelectedCompanies(): Company[] {
-		const empty = JSON.stringify({companies: []});
+		const empty = JSON.stringify({companies: [], all: false});
 		const companies = JSON.parse(localStorage.getItem('selected_companies') || empty).companies;
 		return Company.fromJsonArray(companies);
+	}
+	public static loadSelectedCompaniesAreAll(): boolean {
+		const empty = JSON.stringify({companies: [], all: false});
+		return !!JSON.parse(localStorage.getItem('selected_companies') || empty).all;
 	}
 	public static clearSelectedCompanies() {
 		localStorage.removeItem('selected_companies');

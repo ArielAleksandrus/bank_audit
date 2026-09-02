@@ -10,11 +10,11 @@
 			</th>
 		</tr>
 		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-			<th>BANCO</th>
-			<th>DATA</th>
-			<th>TIPO</th>
-			<th>ORIGEM</th>
-			<th>VALOR</th>
+			<th class="sortable" (click)="sortBy('bank_name')">BANCO <span class="sort-indicator" *ngIf="sortField == 'bank_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('date_received')">DATA <span class="sort-indicator" *ngIf="sortField == 'date_received'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('income_type')">TIPO <span class="sort-indicator" *ngIf="sortField == 'income_type'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('origin')">ORIGEM <span class="sort-indicator" *ngIf="sortField == 'origin'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('value')">VALOR <span class="sort-indicator" *ngIf="sortField == 'value'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
 			<th *ngIf="!printMode">&nbsp;</th>
 		</tr>
 		<tr *ngIf="filtering" #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
@@ -37,8 +37,8 @@
 			</td>
 		</tr>
 	</thead>
-	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let income of incomes()" [class.danger]="income.auxStatus == 'error'" [class.hidden]="income.hidden">
+	<tbody *ngIf="!collapsed">
+		<tr *ngFor="let income of displayedIncomes; trackBy: trackByIncome" [class.danger]="income.auxStatus == 'error'">
 			<td>{{income.bank_name}}</td>
 			<td>{{income.date_received | date:'dd/MM/YYYY'}}</td>
 			<td>
@@ -73,6 +73,14 @@
 		</tr>
 	</tfoot>
 </table>
+<div class="pager" *ngIf="!collapsed && !printMode && visibleIncomes.length > pageSize">
+	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
+	<span>Página {{page}} de {{pageCount}} · {{visibleIncomes.length}} entradas</span>
+	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
+	<select class="form-control pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+		<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
+	</select>
+</div>
 <div *ngIf="canSave" class="send-container">
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
 		Enviar

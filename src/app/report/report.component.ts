@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpHeaders } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
@@ -12,7 +12,8 @@ import {
   faFileInvoiceDollar,
   faChartPie,
   faFileLines,
-  faTags
+  faTags,
+  faArrowLeft
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ApiService } from '../shared/services/api.service';
@@ -49,6 +50,8 @@ export class ReportComponent {
   // one company for the normal '/:companySlug/relatorio' route, several for
   // the combined '/relatorio-multi' view
   companies: Company[] = [];
+  // true when every company the user has was picked (e.g. "Todas as Empresas")
+  viewingAllCompanies: boolean = false;
 
   incomeIcon = faArrowTrendUp;
   purchaseIcon = faArrowTrendDown;
@@ -56,6 +59,7 @@ export class ReportComponent {
   chartsIcon = faChartPie;
   reportIcon = faFileLines;
   tagsIcon = faTags;
+  backIcon = faArrowLeft;
 
   boletos: Boleto[] = [];
   boletosLoaded: boolean = false;
@@ -87,7 +91,8 @@ export class ReportComponent {
   printDescribedReportTable: boolean = false;
 
   constructor(private api: ApiService,
-              private route: ActivatedRoute) {
+              private route: ActivatedRoute,
+              private router: Router) {
 
     const snapshot = this.route.snapshot;
 
@@ -103,6 +108,7 @@ export class ReportComponent {
     } else {
       // selectedCompaniesGuard has already validated the selection.
       this.companies = Company.loadSelectedCompanies();
+      this.viewingAllCompanies = Company.loadSelectedCompaniesAreAll();
     }
 
     // Company/boleto/income/purchase queries pass their own per-company auth
@@ -119,6 +125,9 @@ export class ReportComponent {
   }
 
   get companyNamesLabel(): string {
+    if(this.viewingAllCompanies) {
+      return 'Todas as Empresas';
+    }
     return this.companies.map(c => c.name).join(', ');
   }
 
@@ -131,6 +140,10 @@ export class ReportComponent {
 
   selectSection(section: 'reports'|'incomes'|'purchases'|'boletos'|'charts'|'tags') {
     this.selection = this.selection == section ? 'none' : section;
+  }
+
+  goToCompanies() {
+    this.router.navigate(['/companies']);
   }
 
   queryEntries() {

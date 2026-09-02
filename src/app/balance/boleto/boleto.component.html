@@ -10,13 +10,13 @@
 			</th>
 		</tr>
 		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-			<th>BANCO</th>
-			<th>PGTO.</th>
-			<th>VENC.</th>
-			<th>FORNECEDOR</th>
-			<th>VALOR</th>
-			<th>PARCELA</th>
-			<th>TAGS &nbsp; 
+			<th class="sortable" (click)="sortBy('bank_name')">BANCO <span class="sort-indicator" *ngIf="sortField == 'bank_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('payment_date')">PGTO. <span class="sort-indicator" *ngIf="sortField == 'payment_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('expiration_date')">VENC. <span class="sort-indicator" *ngIf="sortField == 'expiration_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('supplier_name')">FORNECEDOR <span class="sort-indicator" *ngIf="sortField == 'supplier_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('value')">VALOR <span class="sort-indicator" *ngIf="sortField == 'value'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th class="sortable" (click)="sortBy('installments')">PARCELA <span class="sort-indicator" *ngIf="sortField == 'installments'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+			<th>TAGS &nbsp;
 				<span *ngIf="!printMode" class="form-switch">
 					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
 					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>

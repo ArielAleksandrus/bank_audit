@@ -2,12 +2,15 @@
 	<div class="report-header">
 		<div class="report-title">Relatório do dia <b>{{fromPtbr}}</b> <span *ngIf="toPtbr"> até <b>{{toPtbr}}</b></span></div>
 		<div class="report-companies" *ngIf="!isSingleCompany">
-			{{companies.length}} empresas: {{companyNamesLabel}}
+			{{companyNamesLabel}}<span *ngIf="!viewingAllCompanies"> ({{companies.length}} empresas)</span>
 		</div>
 	</div>
 
 	<div class="report-layout">
 		<nav class="report-sidebar">
+			<div class="sidebar-company-name">{{companyNamesLabel}}</div>
+			<hr/>
+
 			<button type="button" class="sidebar-item" [class.active]="selection == 'incomes'" (click)="selectSection('incomes')">
 				<fa-icon class="sidebar-icon" [icon]="incomeIcon"></fa-icon>
 				<span class="sidebar-label">Entradas</span>
@@ -39,6 +42,12 @@
 							*ngIf="purchases.length > 0 || incomes.length > 0" (click)="selectSection('reports')">
 				<fa-icon class="sidebar-icon" [icon]="reportIcon"></fa-icon>
 				<span class="sidebar-label">Gerar Relatório</span>
+			</button>
+
+			<hr/>
+			<button type="button" class="sidebar-item" (click)="goToCompanies()">
+				<fa-icon class="sidebar-icon" [icon]="backIcon"></fa-icon>
+				<span class="sidebar-label">Voltar</span>
 			</button>
 		</nav>
 

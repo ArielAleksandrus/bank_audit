@@ -1,5 +1,5 @@
 import { Component, model, input, output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
@@ -25,7 +25,7 @@ import { ApiService } from '../../shared/services/api.service';
             //NgxMaskDirective,
             NgSelectComponent
           ],
-  providers: [/*provideNgxMask()*/],
+  providers: [/*provideNgxMask()*/ DatePipe, CurrencyPipe],
   templateUrl: './purchase.component.html',
   styleUrl: './purchase.component.scss'
 })
@@ -76,7 +76,12 @@ export class PurchaseComponent {
   pagedPurchases: Purchase[] = [];
   editing: {purchase: Purchase, field: 'supplier'|'referral'|'tags'|'info'}|null = null;
 
-  constructor(private api: ApiService) {
+  sortField: string | null = null;
+  sortDir: 'asc' | 'desc' = 'asc';
+
+  constructor(private api: ApiService,
+              private datePipe: DatePipe,
+              private currencyPipe: CurrencyPipe) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
@@ -121,6 +126,16 @@ export class PurchaseComponent {
   onPageSizeChange() {
     this.page = 1;
     this._slicePage();
+  }
+  sortBy(field: string) {
+    if(this.sortField === field) {
+      this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortDir = 'asc';
+    }
+    this.page = 1;
+    this._refreshView();
   }
   prepareFilter() {
     this.availableBanks = [];
@@ -253,16 +268,23 @@ export class PurchaseComponent {
     });
   }
   export() {
-    this.printMode = true;
-    this.collapsed = false;
-    setTimeout(() => {
-      const doc = new jsPDF();
-      autoTable(doc, { html: '#purchaseTable' });
-      doc.save("despesas.pdf");
-      setTimeout(() => {
-        this.printMode = false;
-      }, 1000);
-    }, 1000);
+    // Builds the PDF straight from visiblePurchases (every filtered row, not
+    // just the current page) instead of scraping the rendered table's DOM -
+    // the table only ever renders the current page, so scraping it silently
+    // exported just that page once pagination was added.
+    const doc = new jsPDF();
+    const head = [['DATA', 'BANCO', 'FORNECEDOR', 'TOTAL', 'TIPO', 'TAGS', 'INF. ADIC.']];
+    const body = this.visiblePurchases.map(purchase => [
+      this.datePipe.transform(purchase.purchase_date, 'dd/MM/YYYY') || '',
+      purchase.bank_name || '',
+      purchase.supplier_name || '',
+      this.currencyPipe.transform(purchase.total, 'BRL') || '',
+      this.paymentTranslation[purchase.payment_type] || purchase.payment_type || '',
+      this.tagNames(purchase),
+      purchase.additional_info || ''
+    ]);
+    autoTable(doc, { head, body });
+    doc.save("despesas.pdf");
   }
 
   open(obj?: Purchase) {
@@ -313,7 +335,7 @@ export class PurchaseComponent {
   }
   private _refreshView() {
     this._recalculate();
-    this.visiblePurchases = this.purchases().filter(purchase => !purchase.hidden);
+    this.visiblePurchases = this._applySort(this.purchases().filter(purchase => !purchase.hidden));
     if(this.page > this.pageCount)
       this.page = this.pageCount;
     this._slicePage();
@@ -321,5 +343,25 @@ export class PurchaseComponent {
   private _slicePage() {
     const start = (this.page - 1) * this.pageSize;
     this.pagedPurchases = this.visiblePurchases.slice(start, start + this.pageSize);
+  }
+  private _applySort(items: Purchase[]): Purchase[] {
+    if(!this.sortField)
+      return items;
+
+    const field = this.sortField;
+    const dir = this.sortDir === 'asc' ? 1 : -1;
+
+    return [...items].sort((a: any, b: any) => {
+      let av = a[field], bv = b[field];
+      if(av == null && bv == null) return 0;
+      if(av == null) return -1 * dir;
+      if(bv == null) return 1 * dir;
+
+      let an = Number(av), bn = Number(bv);
+      if(av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn))
+        return (an - bn) * dir;
+
+      return String(av).localeCompare(String(bv)) * dir;
+    });
   }
 }

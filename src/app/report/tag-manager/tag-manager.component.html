@@ -2,7 +2,12 @@
 	<div class="tag-row" *ngFor="let tag of tags()">
 		<ng-container *ngIf="editingId !== tag.id; else renaming">
 			<div class="tag-name">{{tag.name}}</div>
-			<div class="tag-meta">{{tag.purchases_count || 0}} compra(s)</div>
+			<button type="button" class="tag-meta tag-meta-link" *ngIf="tag.purchases_count; else noPurchases" (click)="toggleExpand(tag)">
+				{{tag.purchases_count}} compra(s)
+			</button>
+			<ng-template #noPurchases>
+				<div class="tag-meta">0 compra(s)</div>
+			</ng-template>
 			<div class="tag-actions">
 				<button type="button" class="btn-icon" (click)="startRename(tag)" title="Renomear">
 					<fa-icon [icon]="penIcon"></fa-icon>
@@ -45,7 +50,20 @@
 				<fa-icon [icon]="alertIcon"></fa-icon> {{mergeError}}
 			</div>
 		</div>
-	</div>
+
+			<div class="purchases-panel" *ngIf="isExpanded(tag)">
+				<div class="purchases-loading" *ngIf="expandedLoading">Carregando compras...</div>
+				<ng-container *ngIf="!expandedLoading">
+					<app-purchase [purchases]="expandedPurchases" [canSave]="true" [canDestroy]="true"
+												(onChange)="onExpandedPurchasesChanged(tag)"></app-purchase>
+					<div class="pager" *ngIf="expandedPageCount > 1">
+						<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToExpandedPage(tag, expandedPage - 1)" [disabled]="expandedPage <= 1">Anterior</button>
+						<span>Página {{expandedPage}} de {{expandedPageCount}} · {{expandedTotal}} compra(s)</span>
+						<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToExpandedPage(tag, expandedPage + 1)" [disabled]="expandedPage >= expandedPageCount">Próxima</button>
+					</div>
+				</ng-container>
+			</div>
+		</div>
 
 	<div class="empty-state-inline" *ngIf="tags().length === 0">
 		Nenhuma tag cadastrada ainda.

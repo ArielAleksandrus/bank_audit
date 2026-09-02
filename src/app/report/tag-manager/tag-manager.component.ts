@@ -11,17 +11,20 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { Tag } from '../../shared/models/tag';
+import { Purchase } from '../../shared/models/purchase';
 import { ApiService } from '../../shared/services/api.service';
+import { PurchaseComponent } from '../../balance/purchase/purchase.component';
 
 @Component({
   selector: 'app-tag-manager',
-  imports: [CommonModule, FormsModule, FaIconComponent],
+  imports: [CommonModule, FormsModule, FaIconComponent, PurchaseComponent],
   templateUrl: './tag-manager.component.html',
   styleUrl: './tag-manager.component.scss'
 })
 export class TagManagerComponent {
   tags = input.required<Tag[]>();
-  // emitted after a rename or merge succeeds, so the parent can reload the list
+  // emitted after a rename, merge, or a purchase edit/destroy, so the
+  // parent can reload the list (e.g. to refresh purchase counts)
   changed = output<void>();
 
   penIcon = faPen;
@@ -40,7 +43,53 @@ export class TagManagerComponent {
   savingMerge: boolean = false;
   mergeError: string = '';
 
+  expandedTagId: number | null = null;
+  expandedPurchases: Purchase[] = [];
+  expandedPage: number = 1;
+  expandedTotal: number = 0;
+  expandedLoading: boolean = false;
+
   constructor(private api: ApiService) { }
+
+  get expandedPageCount(): number {
+    return Math.max(1, Math.ceil(this.expandedTotal / 5));
+  }
+
+  isExpanded(tag: Tag): boolean {
+    return this.expandedTagId === tag.id;
+  }
+
+  toggleExpand(tag: Tag) {
+    if(this.isExpanded(tag)) {
+      this.expandedTagId = null;
+      return;
+    }
+
+    this.expandedTagId = tag.id;
+    this.expandedPage = 1;
+    this._loadExpandedPurchases(tag);
+  }
+
+  goToExpandedPage(tag: Tag, page: number) {
+    this.expandedPage = Math.min(this.expandedPageCount, Math.max(1, page));
+    this._loadExpandedPurchases(tag);
+  }
+
+  onExpandedPurchasesChanged(tag: Tag) {
+    this._loadExpandedPurchases(tag);
+    this.changed.emit();
+  }
+
+  private _loadExpandedPurchases(tag: Tag) {
+    this.expandedLoading = true;
+    tag.loadPurchases(this.api, this.expandedPage).then(res => {
+      this.expandedLoading = false;
+      this.expandedPurchases = res.purchases;
+      this.expandedTotal = res.total;
+    }).catch(() => {
+      this.expandedLoading = false;
+    });
+  }
 
   otherTags(tag: Tag): Tag[] {
     return this.tags().filter(t => t.id !== tag.id);
@@ -104,6 +153,9 @@ export class TagManagerComponent {
     tag.mergeInto(this.api, target).then(() => {
       this.savingMerge = false;
       this.mergingId = null;
+      if(this.expandedTagId === tag.id) {
+        this.expandedTagId = null;
+      }
       this.changed.emit();
     }).catch(() => {
       this.savingMerge = false;

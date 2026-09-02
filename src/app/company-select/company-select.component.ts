@@ -106,7 +106,8 @@ export class CompanySelectComponent {
       return;
     }
 
-    Company.storeSelectedCompanies(this.pickingReportFor);
+    const isAll = this.pickingReportFor.length === this.companies.length;
+    Company.storeSelectedCompanies(this.pickingReportFor, isAll);
     this.pickingReportFor = null;
 
     let params: any = { desde: range.from };
