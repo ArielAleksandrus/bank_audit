@@ -67,7 +67,7 @@ export class ParserComponent {
   constructor(private api: ApiService) {
     this.parser = new SicoobParser();
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'assets/pdf.worker.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.min.mjs';
   }
   ngOnInit() {
     this._loadCompany();

@@ -6,27 +6,15 @@ import { Purchase } from '../models/purchase';
 import { Income } from '../models/income';
 
 /*
- * PDF limitations.
- * So far we're able to add generic income and outcome
- * So, no cards are supported yet
- */
-
-/*
- * PDF assumptions: income records will have 4 columns
- * first is date
- * second is description
- * third is source
- * fourth is value
- * 
- * outcome records will have 3 columns
- * first is date
- * second is description
- * third is value
- * 
- * rendimento records will have 2 columns
- * and will be preceded by ['RENDIMENTOS <...>']
- * first is date
- * second is value
+ * PDF layout varies by export. Rows are grouped by Y in ParserComponent.
+ *
+ * Current Itaú PJ extrato columns:
+ *   Data | Lançamentos | Razão Social | CNPJ/CPF | Valor (R$) | Saldo (R$)
+ * Names wrap, so a logical launch can be split across 2-3 extracted rows.
+ *
+ * We treat any dated row whose last numeric cell is a money value as a
+ * launch. Description/supplier are taken from non-document cells, or from
+ * the immediately preceding undated lines (TED/iFood wraps, rendimentos).
  */
 
 export class ItauParser extends BalanceParser {
@@ -79,64 +67,128 @@ export class ItauParser extends BalanceParser {
 			if(!Utils.isPtBrDate(row[0]))
 				continue;
 
-			if(row[1] && row[1].toLowerCase().indexOf("saldo") > -1)
+			if(this._isSaldoRow(row))
 				continue;
 
-			if(row.length == 4 || row.length == 3) {
-				let val = row[row.length - 1];
-				if(Utils.isValue(val)) {
-					if(Utils.valueToFloat(val) > 0){
-						let inc = this._parseIncome(dataArr, i);
-						if(inc) this.incomes.push(inc);
-					} else {
-						let purchase = this._parseOutcome(dataArr, i);
-						if(purchase) this.purchases.push(purchase);
-					}
-				} else {
-					continue;
-				}
-			} else if(row.length == 2) {
-				let inc: Income|null = this._parseRendimento(dataArr, i);
-				if(inc) this.incomes.push(inc);
+			let inc: Income|null = this._parseRendimento(dataArr, i);
+			if(inc) {
+				this.incomes.push(inc);
+				continue;
 			}
 
+			const val = this._valueFromRow(row);
+			if(val == null)
+				continue;
+
+			if(Utils.valueToFloat(val) > 0){
+				inc = this._parseIncome(dataArr, i, val);
+				if(inc) this.incomes.push(inc);
+			} else {
+				let purchase = this._parseOutcome(dataArr, i, val);
+				if(purchase) this.purchases.push(purchase);
+			}
 		}
 	}
-	private _parseIncome(dataArr: any[], rowIdx: number) {
+	private _isSaldoRow(row: any[]): boolean {
+		return row.some((cell: any) => String(cell || "").toLowerCase().indexOf("saldo") > -1);
+	}
+	private _isMoney(str: any): boolean {
+		return typeof str == "string" && Utils.isValue(str);
+	}
+	private _isCnpjCpf(str: any): boolean {
+		if(str == null)
+			return false;
+		const digits = String(str).replace(/\D/g, "");
+		return digits.length == 11 || digits.length == 14;
+	}
+	private _valueFromRow(row: any[]): string|null {
+		for(let i = row.length - 1; i >= 1; i--) {
+			if(this._isMoney(row[i]))
+				return row[i];
+		}
+		return null;
+	}
+	private _labelCells(row: any[]): string[] {
+		const labels: string[] = [];
+		for(let i = 1; i < row.length; i++) {
+			const cell = row[i];
+			if(!cell || this._isMoney(cell) || this._isCnpjCpf(cell))
+				continue;
+			labels.push(String(cell).trim());
+		}
+		return labels;
+	}
+	private _contextLabels(dataArr: any[], rowIdx: number): string[] {
+		const prev = dataArr[rowIdx - 1];
+		if(!prev || !prev.length || Utils.isPtBrDate(prev[0]))
+			return [];
+
+		const labels: string[] = [];
+		for(const cell of prev) {
+			if(!cell || this._isMoney(cell) || this._isCnpjCpf(cell))
+				continue;
+			const text = String(cell).trim();
+			if(text)
+				labels.push(text);
+		}
+		return labels;
+	}
+	private _descriptionOf(dataArr: any[], rowIdx: number): string {
+		const row = dataArr[rowIdx];
+		const onRow = this._labelCells(row);
+		if(onRow.length)
+			return onRow[0];
+
+		const around = this._contextLabels(dataArr, rowIdx);
+		return around[0] || "";
+	}
+	private _supplierOf(dataArr: any[], rowIdx: number, fallback: string): string {
+		const row = dataArr[rowIdx];
+		const onRow = this._labelCells(row);
+		if(onRow.length > 1)
+			return onRow[1];
+
+		const around = this._contextLabels(dataArr, rowIdx);
+		for(const label of around) {
+			if(label && label != fallback)
+				return label;
+		}
+		return fallback;
+	}
+	private _parseIncome(dataArr: any[], rowIdx: number, value: string): Income|null {
 		let row = dataArr[rowIdx];
 		let date = Utils.datePtBrToISO(row[0]);
-		let origin = row[1];
-		if(!Number.isNaN(origin.replace(".","").replace("-","").replace("/",""))) { // is cnpj?
-			origin = dataArr[rowIdx-1][0]; // origin is on the upper row
-		}
-		let value = row[row.length - 1];
-		if(!Utils.isValue(value) || Utils.valueToFloat(value) < 0)
+		const origin = this._descriptionOf(dataArr, rowIdx);
+		if(!this._isMoney(value) || Utils.valueToFloat(value) < 0)
 			return null;
 
+		const incomeType = this._getIncomeType(origin + " " + (row[1] || ""));
 		return new Income({
 			id: -Math.floor(Math.random() * 1000000),
 			company_id: 0, // server will set this for us
 			date_received: date,
-			origin: origin,
+			origin: origin || row[1],
 			bank_name: "itau",
 			//bank_identification: no bank identification is given,
-			income_type: this._getIncomeType(row[1]),
+			income_type: incomeType,
+			additional_info: this._cardAdditionalInfo(origin + " " + (row[1] || "")),
 			value: Utils.valueToFloat(value)
 		});
 	}
-	private _parseOutcome(dataArr: any[], rowIdx: number) {
+	private _parseOutcome(dataArr: any[], rowIdx: number, value: string): Purchase|null {
 		let row = dataArr[rowIdx];
-		let value = row[row.length - 1];
-		if(!Utils.isValue(value) || Utils.valueToFloat(value) > 0)
+		if(!this._isMoney(value) || Utils.valueToFloat(value) > 0)
 			return null;
 
+		const description = this._descriptionOf(dataArr, rowIdx) || row[1];
+		const supplier = this._supplierOf(dataArr, rowIdx, description);
 		return new Purchase({
 			id: -Math.floor(Math.random() * 1000000),
 			company_id: 0, // server will set this for us
 			supplier_id: 0, // server will set this for us
-			supplier_name: row[1],
+			supplier_name: supplier,
 			purchase_date: Utils.datePtBrToISO(row[0]),
-			payment_type: this._getOutcomeType(row[1]),
+			payment_type: this._getOutcomeType(description),
 			bank_name: "itau",
 			base_value: -Utils.valueToFloat(value), 
 			delivery_fee: 0,
@@ -145,7 +197,9 @@ export class ItauParser extends BalanceParser {
 	}
 	private _parseRendimento(dataArr: any[], rowIdx: number): Income|null {
 		let row = dataArr[rowIdx];
-		if(Utils.isPtBrDate(row[0]) && Utils.isValue(row[1]) && dataArr[rowIdx - 1][0].toLowerCase().indexOf("rendiment") > -1) {
+		const prev = dataArr[rowIdx - 1];
+		const prevText = prev ? String(prev[0] || "").toLowerCase() : "";
+		if(Utils.isPtBrDate(row[0]) && this._isMoney(row[1]) && prevText.indexOf("rendiment") > -1) {
 			return new Income({
 				id: -Math.floor(Math.random() * 1000000),
 				company_id: 0, // server will set this for us
@@ -160,15 +214,24 @@ export class ItauParser extends BalanceParser {
 		return null;
 	}
 	private _getIncomeType(str: string): 'cartao'|'pix'|'deposito'|'cheque'|'outros' {
-		str = str.toLowerCase();
+		str = (str || "").toLowerCase();
 		if(str.indexOf("pix") > -1) return 'pix';
-		else if(str.indexOf("ifood") > -1 || str.indexOf("ted ") > -1 || str.indexOf("doc ") > -1 || str.indexOf("transf") > -1) return 'deposito';
-		else if(str.indexOf("master") > -1 || str.indexOf("visa") > -1 || str.indexOf("cartao") > -1 || str.indexOf("card") > -1) return 'cartao';
+		if(str.indexOf("mast") > -1 || str.indexOf("master") > -1 || str.indexOf("visa") > -1 || str.indexOf("elo") > -1 || str.indexOf("amex") > -1 || str.indexOf("cartao") > -1 || str.indexOf("card") > -1) return 'cartao';
+		if(str.indexOf("ifood") > -1 || str.indexOf("ted") > -1 || str.indexOf("doc ") > -1 || str.indexOf("transf") > -1 || str.indexOf("rendiment") > -1) return 'deposito';
 		return 'outros';
 	}
+	private _cardAdditionalInfo(str: string): string|undefined {
+		str = (str || "").toLowerCase();
+		if(str.indexOf("visa") > -1) return " ((visa))";
+		if(str.indexOf("mast") > -1 || str.indexOf("master") > -1) return " ((mastercard))";
+		if(str.indexOf("elo") > -1) return " ((elo))";
+		if(str.indexOf("amex") > -1) return " ((amex))";
+		return undefined;
+	}
 	private _getOutcomeType(str: string): 'cash'|'boleto'|'check'|'credit_card'|'debit_card'|'pix'|'transfer'|'auto_debit'|'other' {
-		str = str.toLowerCase();
+		str = (str || "").toLowerCase();
 		if(str.indexOf("pix") > -1) return 'pix';
+		if(str.indexOf("ted") > -1 || str.indexOf("transf") > -1) return 'transfer';
 
 		return 'other';
 	}

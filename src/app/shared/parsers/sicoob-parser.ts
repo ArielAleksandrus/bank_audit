@@ -21,21 +21,21 @@ export class SicoobParser extends BalanceParser {
 	descriptions = {
 		boleto: ["DÉB.TIT", "DÉB.TÍT", "DÉB. PAGAMENTO DE BOLETO"],
 		receita_cartao: ["CR COMPRAS"],
-		receita_pix: ["PIX RECEBIDO"],
-		seguro: ["DÉB. CONV. SEGURO"]
+		receita_pix: ["PIX RECEBIDO", "TRANSF.RECEBIDA"],
+		receita_ted: ["CRÉD.TED", "CRED.TED", "CRÉD. TED"],
+		seguro: ["DÉB. CONV. SEGURO", "DÉB.CONV.SEGURO"]
 		// anything else will be either 'receita' (if value > 0) or 'despesa' (if value <= 0)
 	};
 
-	////// TODO: CHECK IF UNCHANGED
 	boletoColsIndexes = {
 		date: 0,
 		bank_identification: 1,
 		description: 2,
 		value: 3,
+		complementary: -1,
 		type: 4,
 		tags: 5
 	};
-	////////////
 
 	comprovantesArr: {
 		documento: string,
@@ -82,17 +82,54 @@ export class SicoobParser extends BalanceParser {
 		return this.comprovantesArr;
 	}
   private _parsePayments(text: string): any {
-    let rawArr = text.split("COMPROVANTE DE TRANSFERÊNCIA");
-    for(let i = 1; i < rawArr.length; i++) {
+    this._parsePixEfetivacao(text);
+    this._parseTransferenciaLegacy(text);
+    console.log(this.comprovantesPixArr, this.purchases);
+  }
+  private _parsePixEfetivacao(text: string): void {
+    const parts = text.split(/COMPROVANTE DE EFETIVAÇÃO DE PAGAMENTO PIX/i);
+    for(let i = 1; i < parts.length; i++) {
+      const raw = parts[i];
+      const dest = raw.split(/Destinatário/i)[1];
+      if(!dest)
+        continue;
+
+      const nomeMatch = dest.match(/Nome\s+([^\n]+)/i);
+      const dateMatch = raw.match(/Data do pagamento\s+(\d{2}\/\d{2}\/\d{4})/i);
+      const valMatch = raw.match(/Valor\s*R\$\s*([\d.]+,\d{2})/i);
+      if(!nomeMatch || !dateMatch || !valMatch)
+        continue;
+
       this.comprovantesPixArr.push({
-        tipo: rawArr[i].split("Natureza")[1].toLowerCase().indexOf("pix") > -1 ? "pix" : "transfer",
-        beneficiario: rawArr[i].split("\nAutenticação")[0].split("Conta")[2].split(" / ")[1],
-        data_pagamento: rawArr[i].toLowerCase().split("data do agendamento ")[1].split("\n")[0],
-        valor: Number.parseFloat(rawArr[i].split("Valor R$ ")[1].split("\n")[0].replace(".","").replace(",","."))
+        tipo: "pix",
+        beneficiario: nomeMatch[1].trim(),
+        data_pagamento: dateMatch[1],
+        valor: this._parseBrl(valMatch[1])
       });
     }
-
-    console.log(this.comprovantesPixArr, this.purchases);
+  }
+  private _parseTransferenciaLegacy(text: string): void {
+    const rawArr = text.split("COMPROVANTE DE TRANSFERÊNCIA");
+    for(let i = 1; i < rawArr.length; i++) {
+      try {
+        const chunk = rawArr[i];
+        const natureza = (chunk.split("Natureza")[1] || "").toLowerCase();
+        const beneficiario = chunk.split("\nAutenticação")[0].split("Conta")[2].split(" / ")[1];
+        const dataRaw = chunk.toLowerCase().split("data do agendamento ")[1].split("\n")[0];
+        const dateMatch = dataRaw.match(/\d{2}\/\d{2}\/\d{4}/);
+        this.comprovantesPixArr.push({
+          tipo: natureza.indexOf("pix") > -1 ? "pix" : "transfer",
+          beneficiario: beneficiario,
+          data_pagamento: dateMatch ? dateMatch[0] : dataRaw.trim(),
+          valor: this._parseBrl(chunk.split("Valor R$ ")[1].split("\n")[0])
+        });
+      } catch (err) {
+        console.log("SicoobParser::_parseTransferenciaLegacy skipped chunk", err);
+      }
+    }
+  }
+  private _parseBrl(str: string): number {
+    return Number.parseFloat(String(str).trim().replace(/\./g, "").replace(",", "."));
   }
   private _parseBoletos(text: string): any {
     let boletosRawArr = text.split("Número do agendamento");
@@ -158,8 +195,11 @@ export class SicoobParser extends BalanceParser {
 			boleto.supplier_name = comprovanteObj.beneficiario;
 		}
     for(let pix of this.comprovantesPixArr) {
-      const isoDate = Utils.datePtBrToISO(pix.data_pagamento);
-      const foundArr = this.purchases.filter(item => item.purchase_date == isoDate && item.total == pix.valor);
+      const isoDate = (Utils.datePtBrToISO(pix.data_pagamento) || "").split(" ")[0];
+      const amount = Number(Number(pix.valor).toFixed(2));
+      const foundArr = this.purchases.filter(item =>
+        item.purchase_date == isoDate && Number(Number(item.total).toFixed(2)) == amount
+      );
       if(foundArr.length == 0) {
         console.log("SicoobParser::_addBeneficiario -> Não encontrado item pix: ", pix);
         continue;
@@ -177,6 +217,18 @@ export class SicoobParser extends BalanceParser {
 
 			this.parsedHeaders.push(this.dataArr[0][key]);
 		}
+		this._resolveColIndexes();
+	}
+	private _headerIndex(name: string, fallback: number): number {
+		const idx = this.parsedHeaders.indexOf(name);
+		return idx >= 0 ? idx : fallback;
+	}
+	private _resolveColIndexes() {
+		this.boletoColsIndexes.date = this._headerIndex("DATA", 0);
+		this.boletoColsIndexes.bank_identification = this._headerIndex("DOCUMENTO", 1);
+		this.boletoColsIndexes.description = this._headerIndex("HISTÓRICO", 2);
+		this.boletoColsIndexes.value = this._headerIndex("VALOR", 3);
+		this.boletoColsIndexes.complementary = this._headerIndex("INFORMAÇÕES COMPLEMENTARES", -1);
 	}
 	private _parseExcelRows() {
 		this.parsedRows = [];
@@ -204,7 +256,9 @@ export class SicoobParser extends BalanceParser {
 		this._classifyDescription();
 	}
 	private _fixPaymentValue() {
-		const valorIdx = this.parsedHeaders.indexOf("VALOR");
+		const valorIdx = this.boletoColsIndexes.value;
+		if(valorIdx < 0)
+			return;
 
 		for(let row of this.parsedRows) {
 			let valStr = row[valorIdx];
@@ -254,26 +308,32 @@ export class SicoobParser extends BalanceParser {
 		const valueIdx = this.boletoColsIndexes.value;
 		const identificationIdx = this.boletoColsIndexes.bank_identification;
 		const dateIdx = this.boletoColsIndexes.date;
+		const complementaryIdx = this.boletoColsIndexes.complementary;
 
 		for(let row of this.parsedRows) {
-			const desc = row[descIdx];
-			const type = this._getDescriptionType(desc, row[valueIdx]);
+			const desc = String(row[descIdx] || "");
 			let valueField = row[valueIdx];
 			if(typeof valueField == "string") {
 				valueField = row[valueIdx + 1];
 			}
+			if(typeof valueField != "number" || Number.isNaN(valueField))
+				continue;
+
+			const type = this._getDescriptionType(desc, valueField);
+			const complementary = complementaryIdx >= 0 ? row[complementaryIdx] : "";
 			
-			if(row[descIdx].indexOf("SALDO") == 0)
+			if(desc.indexOf("SALDO") == 0)
 				continue;
 
 			if(type == "boleto" || type == "despesa" || type == "seguro") {
+				const person = this._personFromComplementary(complementary);
 				let purchase = new Purchase({
 					id: -Math.floor(Math.random() * 1000000),
 					company_id: 0, // server will set this for us
 					supplier_id: 0, // server will set this for us
-					supplier_name: desc,
+					supplier_name: person || desc,
 					purchase_date: Utils.datePtBrToISO(row[dateIdx]),
-					payment_type: 'other',
+					payment_type: this._getPaymentType(desc),
 					bank_name: "sicoob",
 					base_value: -valueField.toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
 					delivery_fee: 0,
@@ -291,7 +351,7 @@ export class SicoobParser extends BalanceParser {
 						value: -valueField.toFixed(2), // 'despesa' and 'boleto' values are negative. we will fix this now. 
 						// installments: we don't know this yet
 						payment_date: Utils.datePtBrToISO(row[dateIdx]),
-						supplier_name: row[descIdx]
+						supplier_name: person || desc
 					});
 					boleto.auxTags = [];
 					purchase.boletos = [boleto];
@@ -304,11 +364,14 @@ export class SicoobParser extends BalanceParser {
 				}
 			} else if(type && type.indexOf("receita") > -1) {
 				let cardType: string|null = type.split("receita_cartao ")[1];
+				if(cardType)
+					cardType = cardType.trim();
+				const person = this._personFromComplementary(complementary);
 				let income: Income = new Income({
 					id: -Math.floor(Math.random() * 1000000),
 					company_id: 0, // server will set this for us
 					date_received: Utils.datePtBrToISO(row[dateIdx]),
-					origin: desc,
+					origin: person || desc,
 					bank_name: "sicoob",
 					// bank_identification: we don't know this yet
 					income_type: "outros",
@@ -321,6 +384,8 @@ export class SicoobParser extends BalanceParser {
 					income.income_type = 'cartao';
 				} else if(type == 'receita_pix') {
 					income.income_type = 'pix';
+				} else if(type == 'receita_ted') {
+					income.income_type = 'deposito';
 				}
 				this.incomes.push(income);
 			} else {
@@ -328,20 +393,46 @@ export class SicoobParser extends BalanceParser {
 			}
 		}
 	}
+	private _getPaymentType(desc: string): 'boleto'|'pix'|'transfer'|'auto_debit'|'other' {
+		const upper = (desc || "").toUpperCase();
+		if(upper.indexOf("PIX") > -1)
+			return 'pix';
+		if(upper.indexOf("TRANSF") > -1)
+			return 'transfer';
+		if(upper.indexOf("CONV.") > -1 || upper.indexOf("DÉBITO PACOTE") > -1 || upper.indexOf("DEB.PARCELAS") > -1)
+			return 'auto_debit';
+		return 'other';
+	}
+	private _personFromComplementary(text: any): string|null {
+		if(!text || typeof text != "string")
+			return null;
+
+		const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+		for(let line of lines) {
+			if(/^(recebimento|pagamento)\s+pix/i.test(line))
+				continue;
+			if(/^\*+\.\d+\.\d+-\*+$/.test(line))
+				continue;
+			if(/^\d{2}\.\d{3}\.\d{3}/.test(line) || /^\d{2}\s+\d{3}\s+\d{3}/.test(line))
+				continue;
+			return line;
+		}
+		return null;
+	}
 	private _getCardCompany(cardType: string) {
+		const normalized = (cardType || "").trim();
 		const map: {[companyName:string]: string} = {
 			"MAESTRO": "mastercard débito",
 			"MASTERCARD": "mastercard",
 			"VISA ELECTRON": "visa débito",
 			"VISA": "visa",
-			//"DEB OUTRAS BANDEIRAS": "outros",
-			//"CRE OUTRAS BANDEIRAS": "outros"
-		}
-		// match will be exact.
+			"DEB OUTRAS BANDEIRAS": "outros débito",
+			"CRE OUTRAS BANDEIRAS": "outros"
+		};
 
-		let match: string = map[cardType];
+		let match: string = map[normalized];
 		if(!match) {
-			match = "other";
+			match = "outros";
 		}
 
 		return match;
