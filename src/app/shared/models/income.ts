@@ -69,32 +69,36 @@ export class Income {
 		return res;
 	}
 
+  // Sends the whole array in a single request; the server creates/updates
+  // each income one by one and reports a per-item result back, in order.
   public static sendArray(api: ApiService, incomes: Income[]): Promise<Income[]> {
   	let objs: Income[] = Income.fromJsonArray(Utils.clone(incomes));
-  	return Income._auxSendArray(api, objs);
-  }
-  send(api: ApiService): Promise<Income> {
-    return new Promise((resolve, reject) => {
+  	if(objs.length == 0) {
+  		return Promise.resolve(objs);
+  	}
 
-      let req: any = null;
-      if(this.id > 0) {
-        req = api.update('incomes', this.id, {income: this});
-      } else {
-        req = api.create('incomes', {income: this});
-      }
+  	return new Promise((resolve, reject) => {
+  		api.req('incomes', {incomes: objs}, {collection: 'batch'}, 'post').subscribe(
+  			(res: any[]) => {
+  				for(let i = 0; i < objs.length; i++) {
+  					let entry = res[i];
+  					if(!entry) continue;
 
-      req.subscribe(
-        (res: Income) => {
-        	this.auxStatus = 'ok';
-          resolve(new Income(res));
-        },
-        (err: any) => {
-          console.error("Income->Could not save income: ", this, err);
-         	this.auxStatus = 'error';
-          reject(err);
-        }
-      );
-    })
+  					if(entry.errors) {
+  						objs[i].auxStatus = 'error';
+  					} else {
+  						objs[i] = new Income(entry);
+  					}
+  				}
+  				resolve(objs);
+  			},
+  			(err: any) => {
+  				console.error("Income->Could not save batch: ", err);
+  				objs.forEach(income => income.auxStatus = 'error');
+  				reject(err);
+  			}
+  		);
+  	});
   }
 
 	public static arrayExists(api: ApiService, incomes: Income[]): Promise<Income[]> {
@@ -234,19 +238,4 @@ export class Income {
 		}
 		return arr;
 	}
-  private static _auxSendArray(api: ApiService, incomes: Income[], idx: number = 0): Promise<Income[]> {
-  	return new Promise((resolve, reject) => {
-  		if(idx >= incomes.length) {
-  			resolve(Income.fromJsonArray(incomes));
-  			return;
-  		}
-  		let income = incomes[idx];
-  		income.send(api).then(res => {
-  			incomes[idx] = res;
-  			resolve(Income._auxSendArray(api, incomes, idx + 1));
-  		}).catch(err => {
-  			resolve(Income._auxSendArray(api, incomes, idx + 1));
-  		});
-  	});
-  }
 }

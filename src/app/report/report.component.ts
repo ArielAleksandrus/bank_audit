@@ -1,9 +1,19 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { HttpHeaders } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import {
+  faArrowTrendUp,
+  faArrowTrendDown,
+  faFileInvoiceDollar,
+  faChartPie,
+  faFileLines,
+  faTags
+} from '@fortawesome/free-solid-svg-icons';
 
 import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
@@ -20,6 +30,7 @@ import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
 import { TagChartComponent } from './tag-chart/tag-chart.component';
+import { TagManagerComponent } from './tag-manager/tag-manager.component';
 import { TagDescriptionComponent } from '../shared/components/tag-description/tag-description.component';
 
 import { Reports, TagClassification, DescribedReport } from '../shared/parsers/reports';
@@ -28,14 +39,23 @@ import { Utils } from '../shared/helpers/utils';
 
 @Component({
   selector: 'app-report',
-  imports: [CommonModule, FormsModule, 
+  imports: [CommonModule, FormsModule, FaIconComponent,
             BoletoComponent, IncomeComponent, IncomeSumComponent, PurchaseComponent,
-            TagChartComponent, TagDescriptionComponent],
+            TagChartComponent, TagManagerComponent, TagDescriptionComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
 })
 export class ReportComponent {
-  company: Company;
+  // one company for the normal '/:companySlug/relatorio' route, several for
+  // the combined '/relatorio-multi' view
+  companies: Company[] = [];
+
+  incomeIcon = faArrowTrendUp;
+  purchaseIcon = faArrowTrendDown;
+  boletoIcon = faFileInvoiceDollar;
+  chartsIcon = faChartPie;
+  reportIcon = faFileLines;
+  tagsIcon = faTags;
 
   boletos: Boleto[] = [];
   boletosLoaded: boolean = false;
@@ -44,6 +64,9 @@ export class ReportComponent {
   purchases: Purchase[] = [];
   purchasesLoaded: boolean = false;
   suppliers: Supplier[] = [];
+
+  // company-wide, not scoped to the selected date range
+  tags: Tag[] = [];
 
   from: string;
   to: string;
@@ -55,7 +78,7 @@ export class ReportComponent {
   purchaseTagData?: TagClassification;
   incomeSummary?: IncomeSummary;
 
-  selection: 'none'|'reports'|'incomes'|'purchases'|'boletos' = 'none';
+  selection: 'none'|'reports'|'incomes'|'purchases'|'boletos'|'charts'|'tags' = 'none';
 
   selectedTag?: string;
   selectedPurchases: Purchase[] = [];
@@ -64,7 +87,6 @@ export class ReportComponent {
   printDescribedReportTable: boolean = false;
 
   constructor(private api: ApiService,
-              private router: Router,
               private route: ActivatedRoute) {
 
     const snapshot = this.route.snapshot;
@@ -75,22 +97,52 @@ export class ReportComponent {
     if(this.to)
       this.toPtbr = (Utils.dateToString(this.to, false) || "").split(" ")[0];
 
-    this.company = Company.loadCompany();
-    if(!this.company) {
-      this.router.navigate(['/login']);
-      return;
+    if(snapshot.paramMap.get('companySlug')) {
+      // companyGuard has already validated the company and set the auth headers.
+      this.companies = [Company.loadCompany()];
+    } else {
+      // selectedCompaniesGuard has already validated the selection.
+      this.companies = Company.loadSelectedCompanies();
     }
-    api.setAuth({token: this.company.token});
+
+    // Company/boleto/income/purchase queries pass their own per-company auth
+    // explicitly (see _queryAcrossCompanies) and don't depend on this. It's
+    // just a reasonable default for anything else on the page that still
+    // reads the shared auth state (e.g. the Tags section, single-company only).
+    if(this.companies[0]) {
+      this.api.setAuth({ token: this.companies[0].token });
+    }
+  }
+
+  get isSingleCompany(): boolean {
+    return this.companies.length === 1;
+  }
+
+  get companyNamesLabel(): string {
+    return this.companies.map(c => c.name).join(', ');
   }
 
   ngOnInit() {
     this.queryEntries();
+    if(this.isSingleCompany) {
+      this.loadTags();
+    }
+  }
+
+  selectSection(section: 'reports'|'incomes'|'purchases'|'boletos'|'charts'|'tags') {
+    this.selection = this.selection == section ? 'none' : section;
   }
 
   queryEntries() {
     this.boletoQuery();
     this.incomeQuery();
     this.purchaseQuery();
+  }
+
+  loadTags() {
+    Tag.loadTags(this.api).then((res: Tag[]) => {
+      this.tags = res;
+    });
   }
 
   setReports() {
@@ -101,6 +153,43 @@ export class ReportComponent {
     this.boletoTagData = this.reports.boletoTagChart(this.boletos);
     this.purchaseTagData = this.reports.purchaseTagChart(this.purchases);
   }
+
+  // Runs the same indexAll query once per selected company (switching the
+  // auth token each time) and concatenates the results into one array, so
+  // a combined report is just this app's normal single-company queries run
+  // N times and merged client-side.
+  private _queryAcrossCompanies<T>(resource: string, params: any, fromJsonArray: (arr: any[]) => T[]): Promise<T[]> {
+    return new Promise((resolve) => {
+      let combined: T[] = [];
+      let remaining = this.companies.length;
+      if(remaining === 0) {
+        resolve(combined);
+        return;
+      }
+
+      for(let company of this.companies) {
+        // Passed explicitly (not via api.setAuth) because these run
+        // concurrently, one per company: indexAll recurses asynchronously
+        // as each page comes back, and by then the shared customAuth may
+        // already belong to a different company's in-flight fetch - every
+        // page after the first would silently use the wrong token.
+        let authHeaders = new HttpHeaders({ token: company.token });
+
+        // indexAll also mutates its params object as it paginates, so each
+        // company needs its own copy to avoid racing the others there too.
+        this.api.indexAll(resource, Utils.clone(params), {}, 1, {}, authHeaders).subscribe(
+          (res: any) => {
+            combined = combined.concat(fromJsonArray(res[resource]));
+            remaining--;
+            if(remaining === 0) {
+              resolve(combined);
+            }
+          }
+        );
+      }
+    });
+  }
+
   boletoQuery() {
     let params: any = {
       q: {
@@ -111,13 +200,11 @@ export class ReportComponent {
       params = QueryHelpers.queryIntervalParams("payment_date", this.from, this.to);
     }
 
-    this.api.indexAll('boletos', params).subscribe(
-      (res: {boletos: Boleto[]}) => {
-        this.boletos = Boleto.fromJsonArray(res.boletos);
-        this.boletosLoaded = true;
-        this.setReports();
-      }
-    );
+    this._queryAcrossCompanies('boletos', params, Boleto.fromJsonArray).then((boletos: Boleto[]) => {
+      this.boletos = boletos;
+      this.boletosLoaded = true;
+      this.setReports();
+    });
   }
   incomeQuery() {
     let params: any = {
@@ -128,15 +215,13 @@ export class ReportComponent {
     if(this.to) {
       params = QueryHelpers.queryIntervalParams("date_received", this.from, this.to);
     }
-    
-    this.api.indexAll('incomes', params).subscribe(
-      (res: {incomes: Income[]}) => {
-        this.incomes = Income.fromJsonArray(res.incomes);
-        this.incomeSummary = Income.calculateIncomeSummary(this.incomes);
-        this.incomesLoaded = true;
-        this.setReports();
-      }
-    );
+
+    this._queryAcrossCompanies('incomes', params, Income.fromJsonArray).then((incomes: Income[]) => {
+      this.incomes = incomes;
+      this.incomeSummary = Income.calculateIncomeSummary(this.incomes);
+      this.incomesLoaded = true;
+      this.setReports();
+    });
   }
   purchaseQuery() {
     let params: any = {
@@ -147,14 +232,12 @@ export class ReportComponent {
     if(this.to) {
       params = QueryHelpers.queryIntervalParams("purchase_date", this.from, this.to);
     }
-    
-    this.api.indexAll('purchases', params).subscribe(
-      (res: {purchases: Purchase[]}) => {
-        this.purchases = Purchase.fromJsonArray(res.purchases);
-        this.purchasesLoaded = true;
-        this.setReports();
-      }
-    );
+
+    this._queryAcrossCompanies('purchases', params, Purchase.fromJsonArray).then((purchases: Purchase[]) => {
+      this.purchases = purchases;
+      this.purchasesLoaded = true;
+      this.setReports();
+    });
   }
 
   purchaseChartSelection(evt: {tagName: string, value: number}) {
@@ -173,7 +256,6 @@ export class ReportComponent {
   }
 
   generateReport() {
-    this.selection = 'none';
     if(this.reports) {
       this.describedReport = this.reports.describedReport();
     }

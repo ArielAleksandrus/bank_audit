@@ -1,4 +1,4 @@
-import { Purchase, Tag } from './index';
+import { Tag } from './index';
 import { Utils } from '../helpers/utils';
 import { ApiService } from '../services/api.service';
 
@@ -65,57 +65,38 @@ export class Boleto {
 		this.auxTags = tags;
 	}
 
+  // Sends the whole array in a single request; the server creates/updates
+  // each boleto one by one (auto-creating its purchase first when the
+  // boleto has no purchase_id yet, same as this used to do client-side)
+  // and reports a per-item result back, in order.
   public static sendArray(api: ApiService, boletos: Boleto[]): Promise<Boleto[]> {
   	let objs: Boleto[] = Boleto.fromJsonArray(Utils.clone(boletos));
-  	return Boleto._auxSendArray(api, objs);
-  }
-  send(api: ApiService): Promise<Boleto> {
-    return new Promise((resolve, reject) => {
-    	// if purchase_id is invalid, we have to create a purchase first.
-    	if(!(this.purchase_id > 0)) {
-    		let pur: Purchase = Purchase.fromBoleto(this);
-    		this.purchase_id = 99999;
+  	if(objs.length == 0) {
+  		return Promise.resolve(objs);
+  	}
 
-    		// I had two boletos of Anapool, of the same value, payed at the same time
-        // 1 of them was connected to my restaurant, and the other to the pizza restaurant
-        // therefore, when creating boletos, we have to disable Purchase's anti-duplicate check
-    		pur.send(api, false).then((purchase: Purchase) => {
-    			this.purchase_id = purchase.id;
-    			if(this.purchase_id > 0) {
-    				resolve(this.send(api));
-    			} else {
-    				this.auxStatus = 'error';
-    				console.error("Boleto->Could not save purchase beforehand: ", purchase, this);
-    				reject(purchase);
-    			}
-    		}).catch((err: any) => {
-    			this.auxStatus = 'error';
-    			console.error("Boleto->Error saving purchase beforehand: ", err, this);
-    			reject(err);
-    		});
+  	return new Promise((resolve, reject) => {
+  		api.req('boletos', {boletos: objs}, {collection: 'batch'}, 'post').subscribe(
+  			(res: any[]) => {
+  				for(let i = 0; i < objs.length; i++) {
+  					let entry = res[i];
+  					if(!entry) continue;
 
-    		return;
-    	}
-
-      let req: any = null;
-      if(this.id > 0) {
-        req = api.update('boletos', this.id, {boleto: this});
-      } else {
-        req = api.create('boletos', {boleto: this});
-      }
-
-      req.subscribe(
-        (res: Boleto) => {
-        	this.auxStatus = 'ok';
-          resolve(new Boleto(res));
-        },
-        (err: any) => {
-          console.error("Boleto->Could not save boleto: ", this, err);
-    			this.auxStatus = 'error';
-          reject(err);
-        }
-      );
-    })
+  					if(entry.errors) {
+  						objs[i].auxStatus = 'error';
+  					} else {
+  						objs[i] = new Boleto(entry);
+  					}
+  				}
+  				resolve(objs);
+  			},
+  			(err: any) => {
+  				console.error("Boleto->Could not save batch: ", err);
+  				objs.forEach(boleto => boleto.auxStatus = 'error');
+  				reject(err);
+  			}
+  		);
+  	});
   }
   destroy(api: ApiService): Promise<boolean> {
   	return new Promise((resolve, reject) => {
@@ -218,21 +199,6 @@ export class Boleto {
 		};
 	}
 
-  private static _auxSendArray(api: ApiService, boletos: Boleto[], idx: number = 0): Promise<Boleto[]> {
-  	return new Promise((resolve, reject) => {
-  		if(idx >= boletos.length) {
-  			resolve(Boleto.fromJsonArray(boletos));
-  			return;
-  		}
-  		let boleto = boletos[idx];
-  		boleto.send(api).then(res => {
-  			boletos[idx] = res;
-  			resolve(Boleto._auxSendArray(api, boletos, idx + 1));
-  		}).catch(err => {
-  			resolve(Boleto._auxSendArray(api, boletos, idx + 1));
-  		});
-  	});
-  }
 	private static _arrayExistsParams(boletos: Boleto[]) {
 		let arr = [];
 		for(let obj of boletos) {

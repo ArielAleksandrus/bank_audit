@@ -1,0 +1,34 @@
+.tag-toggle-list {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 1rem;
+}
+
+.tag-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	border: 1px solid #dbe3ee;
+	background: #fff;
+	color: #64748b;
+	border-radius: 999px;
+	padding: 0.35rem 0.9rem;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.tag-toggle:hover {
+	border-color: #0d9488;
+	color: #0d9488;
+}
+.tag-toggle.active {
+	background: #0d9488;
+	border-color: #0d9488;
+	color: #fff;
+}
+.tag-toggle-check {
+	font-size: 0.75rem;
+}

@@ -101,7 +101,12 @@ export class ApiService {
     );
   }
 
-  index(resource_plural: string, query_params: {} = {}, route: { member?: {id: number | string, value: string}, collection?: string} = {}): Observable<any> {
+  // authHeaders, when given, is used instead of the shared customAuth state
+  // for this call only. Needed by callers that run several requests
+  // concurrently under different auth (e.g. one company each) - customAuth
+  // is a single shared field, so two in-flight requests racing to read it
+  // can end up using each other's token.
+  index(resource_plural: string, query_params: {} = {}, route: { member?: {id: number | string, value: string}, collection?: string} = {}, authHeaders?: HttpHeaders): Observable<any> {
     let self = this;
 
     let url = self.getTargetUrl() + `/${resource_plural}`;
@@ -109,22 +114,25 @@ export class ApiService {
       url += `/${route.member.id}/${route.member.value}`;
     if(!!route.collection)
       url += `/${route.collection}`;
-    
+
     url += self.encodeParams(query_params);
     return self.http.get<any>(url, {
-      headers: self._getAuthHeaders()
+      headers: authHeaders || self._getAuthHeaders()
     }).pipe(
       catchError(self.handleError('index', resource_plural, query_params, []))
     );
   }
 
-  indexAll(resource_plural: string, query_params: any = {}, route: { member?: {id: number | string, value: string}, collection?: string} = {}, page = 1, finalResult: any = {}): Observable<any> {
+  // See the authHeaders note on index() above - it's threaded through every
+  // recursive page fetch here so a long paginated fetch can't have its auth
+  // silently swapped out from under it by another concurrent caller.
+  indexAll(resource_plural: string, query_params: any = {}, route: { member?: {id: number | string, value: string}, collection?: string} = {}, page = 1, finalResult: any = {}, authHeaders?: HttpHeaders): Observable<any> {
     let self = this;
 
     query_params.page = page;
     query_params.per_page = 100;
 
-    return new Observable((observer: any) => self.index(resource_plural, query_params, route).subscribe(
+    return new Observable((observer: any) => self.index(resource_plural, query_params, route, authHeaders).subscribe(
         (res: any) => {
           if(JSON.stringify(finalResult) == "{}")
             finalResult = res;
@@ -132,7 +140,7 @@ export class ApiService {
             finalResult[resource_plural] = finalResult[resource_plural].concat(res[resource_plural]);
 
           if(res.total > 100 * page) {
-            self.indexAll(resource_plural, query_params, route, page + 1, finalResult).subscribe(
+            self.indexAll(resource_plural, query_params, route, page + 1, finalResult, authHeaders).subscribe(
               (res2: any) => {
                 observer.next(res2);
               },

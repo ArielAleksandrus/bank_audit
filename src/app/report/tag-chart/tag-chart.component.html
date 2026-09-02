@@ -1,9 +1,10 @@
 <div class="tag-chart">
 	<p-chart type="line" [data]="chartData" class="h-[30rem]" class="chart" (onDataSelect)="dataSelected($event)"/>
-	<br/>
-	<div class="row">
-		<div class="col-md-4" *ngFor="let tagName of chartTags">
-			<input type="checkbox" [(ngModel)]="selectedTags[tagName]" (change)="changeTagSelection()"/> {{tagName}}
-		</div>
+	<div class="tag-toggle-list">
+		<button type="button" class="tag-toggle" *ngFor="let tagName of chartTags"
+						[class.active]="selectedTags[tagName]" (click)="toggleTag(tagName)">
+			<fa-icon class="tag-toggle-check" [icon]="checkIcon" *ngIf="selectedTags[tagName]"></fa-icon>
+			{{tagName}}
+		</button>
 	</div>
 </div>

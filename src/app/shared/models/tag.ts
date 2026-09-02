@@ -8,6 +8,9 @@ export class Tag {
 	description: string;
 	company_id: number;
 
+	// only present when loaded from the tags list endpoint
+	purchases_count: number;
+
 	created_at: string;
 	updated_at: string;
 
@@ -17,6 +20,7 @@ export class Tag {
 		this.name = jsonData.name;
 		this.description = jsonData.description;
 		this.company_id = jsonData.company_id;
+		this.purchases_count = jsonData.purchases_count;
 		this.created_at = jsonData.created_at;
 		this.updated_at = jsonData.updated_at;
 	}
@@ -32,8 +36,8 @@ export class Tag {
     return new Promise((resolve, reject) => {
       api.indexAll('tags').subscribe(
         (res: any) => {
-          res.tags = Filters.orderAlphabetically(res.tags, 'name', false);
-          resolve(res.tags);
+          let tags = Tag.fromJsonArray(Filters.orderAlphabetically(res.tags, 'name', false));
+          resolve(tags);
         },
         (err: any) => {
           console.error("Tag->Failed to load tags: ", err);
@@ -91,5 +95,37 @@ export class Tag {
   	}
 
   	return res;
+  }
+
+  rename(api: ApiService, name: string): Promise<Tag> {
+  	return new Promise((resolve, reject) => {
+  		api.update('tags', this.id, { tag: { name: name } }).subscribe(
+  			(res: any) => {
+  				this.name = res.name;
+  				resolve(this);
+  			},
+  			(err: any) => {
+  				console.error("Tag->Failed to rename tag: ", err);
+  				reject(err);
+  			}
+  		);
+  	});
+  }
+
+  // Moves every purchase tagged with this tag over to `target` (across the
+  // whole purchase history, not just what's currently loaded) and removes
+  // this tag.
+  mergeInto(api: ApiService, target: Tag): Promise<void> {
+  	return new Promise((resolve, reject) => {
+  		api.req('tags', { target_id: target.id }, { member: { id: this.id, value: 'merge' } }, 'post').subscribe(
+  			(res: any) => {
+  				resolve();
+  			},
+  			(err: any) => {
+  				console.error("Tag->Failed to merge tag: ", err);
+  				reject(err);
+  			}
+  		);
+  	});
   }
 }

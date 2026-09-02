@@ -89,34 +89,36 @@ export class Purchase {
 		this.tags = this.aux_tags = tags;
 	}
 	
-  public static sendArray(api: ApiService, purchases: Purchase[]): Promise<Purchase[]> {
+  // Sends the whole array in a single request; the server creates/updates
+  // each purchase one by one and reports a per-item result back, in order.
+  public static sendArray(api: ApiService, purchases: Purchase[], avoidDuplicates: boolean = true): Promise<Purchase[]> {
   	let objs: Purchase[] = Purchase.fromJsonArray(Utils.clone(purchases));
-  	return Purchase._auxSendArray(api, objs);
-  }
-  send(api: ApiService, avoidDuplicates: boolean = true): Promise<Purchase> {
-    return new Promise((resolve, reject) => {
-      let req: any = null;
-      if(this.id > 0) {
-        req = api.update('purchases', this.id, {purchase: this});
-      } else {
-        req = api.create('purchases', {
-          purchase: this,
-          avoid_duplicates: avoidDuplicates
-        });
-      }
+  	if(objs.length == 0) {
+  		return Promise.resolve(objs);
+  	}
 
-      req.subscribe(
-        (res: Purchase) => {
-        	this.auxStatus = 'ok';
-          resolve(new Purchase(res));
-        },
-        (err: any) => {
-          console.error("Purchase->Could not save purchase: ", this, err);
-  				this.auxStatus = 'error';
-          reject(err);
-        }
-      );
-    })
+  	return new Promise((resolve, reject) => {
+  		api.req('purchases', {purchases: objs, avoid_duplicates: avoidDuplicates}, {collection: 'batch'}, 'post').subscribe(
+  			(res: any[]) => {
+  				for(let i = 0; i < objs.length; i++) {
+  					let entry = res[i];
+  					if(!entry) continue;
+
+  					if(entry.errors) {
+  						objs[i].auxStatus = 'error';
+  					} else {
+  						objs[i] = new Purchase(entry);
+  					}
+  				}
+  				resolve(objs);
+  			},
+  			(err: any) => {
+  				console.error("Purchase->Could not save batch: ", err);
+  				objs.forEach(purchase => purchase.auxStatus = 'error');
+  				reject(err);
+  			}
+  		);
+  	});
   }
   destroy(api: ApiService): Promise<boolean> {
   	return new Promise((resolve, reject) => {
@@ -180,20 +182,6 @@ export class Purchase {
 		  );
 		});
   }
-	public static fromBoleto(boleto: Boleto) {
-		const today = (Utils.dateToISO(new Date()) || "1900-01-01 00:00:00").split(" ")[0];
-
-		return new Purchase({
-			supplier_name: boleto.supplier_name,
-			supplier_cnpj: boleto.supplier_cnpj,
-			bank_name: boleto.bank_name,
-			payment_type: "boleto",
-			installments: 1,
-			purchase_date: boleto.issue_date || boleto.payment_date || boleto.expiration_date || today,
-			base_value: boleto.value,
-			aux_tags: boleto.auxTags
-		});
-	}
 	public static loadReferrals(api: ApiService): Promise<string[]> {
 		return new Promise((resolve, reject) => {
 			api.show('purchases', 'referrals').subscribe(
@@ -304,19 +292,4 @@ export class Purchase {
 		}
 		return arr;
 	}
-  private static _auxSendArray(api: ApiService, purchases: Purchase[], idx: number = 0): Promise<Purchase[]> {
-  	return new Promise((resolve, reject) => {
-  		if(idx >= purchases.length) {
-  			resolve(Purchase.fromJsonArray(purchases));
-  			return;
-  		}
-  		let purchase = purchases[idx];
-  		purchase.send(api).then(res => {
-  			purchases[idx] = res;
-  			resolve(Purchase._auxSendArray(api, purchases, idx + 1));
-  		}).catch(err => {
-  			resolve(Purchase._auxSendArray(api, purchases, idx + 1));
-  		});
-  	});
-  }
 }

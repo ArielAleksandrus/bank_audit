@@ -1,36 +1,157 @@
 @media print {
-  div:not(.print) {
+  div:not(.print), nav {
   	display: none;
   }
 }
 
-.header {
+.report-page {
+	min-height: 100vh;
+	background: #f6f8fb;
+	font-family: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+	color: #0f172a;
+	padding: 1.75rem 1.5rem 3rem;
+}
+
+.report-header {
 	text-align: center;
-	.header-title {
-		font-size: 1.5em;
-		margin: 1em 0;
+	margin-bottom: 1.5rem;
+}
+.report-title {
+	font-size: 1.5rem;
+	color: #0f172a;
+}
+.report-companies {
+	margin-top: 0.35rem;
+	font-size: 0.95rem;
+	color: #64748b;
+}
+
+.report-layout {
+	display: flex;
+	align-items: flex-start;
+	gap: 1.5rem;
+	max-width: 1400px;
+	margin: 0 auto;
+}
+
+.report-sidebar {
+	flex: 0 0 15rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	background: #fff;
+	border: 1px solid #e6ebf2;
+	border-radius: 16px;
+	box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+	padding: 0.85rem;
+	position: sticky;
+	top: 1.5rem;
+}
+
+.sidebar-item {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	width: 100%;
+	border: none;
+	background: transparent;
+	border-radius: 10px;
+	padding: 0.65rem 0.8rem;
+	font-size: 0.98rem;
+	font-weight: 600;
+	color: #475569;
+	text-align: left;
+	cursor: pointer;
+	transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-item:hover {
+	background: #f1f5f9;
+	color: #0f172a;
+}
+.sidebar-item.active {
+	background: rgba(13, 148, 136, 0.1);
+	color: #0d9488;
+}
+.sidebar-icon {
+	width: 1.1rem;
+	flex: 0 0 auto;
+}
+.sidebar-label {
+	flex: 1 1 auto;
+}
+.sidebar-count {
+	flex: 0 0 auto;
+	min-width: 1.6rem;
+	text-align: center;
+	padding: 0.1rem 0.4rem;
+	border-radius: 999px;
+	background: #eef2f7;
+	color: #64748b;
+	font-size: 0.8rem;
+	font-weight: 700;
+}
+.sidebar-item.active .sidebar-count {
+	background: rgba(13, 148, 136, 0.18);
+	color: #0d9488;
+}
+.sidebar-divider {
+	height: 1px;
+	background: #e6ebf2;
+	margin: 0.4rem 0.2rem;
+}
+.sidebar-item-report {
+	color: #0f766e;
+}
+
+.report-content {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+.empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	min-height: 16rem;
+	background: #fff;
+	border: 1px dashed #dbe3ee;
+	border-radius: 16px;
+	color: #94a3b8;
+	font-size: 1.05rem;
+
+	fa-icon {
+		font-size: 1.75rem;
+		color: #cbd5e1;
 	}
-	.header-data {
-		div {
-			display: inline-block;
-			width: 24%;
-		}
+	p {
+		margin: 0;
 	}
 }
-.charts {
-	width: 100%;
-	padding: 1em;
+
+.content-pane {
+	background: #fff;
+	border: 1px solid #e6ebf2;
+	border-radius: 16px;
+	box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+	padding: 1.25rem;
+	overflow-x: auto;
+}
+
+.charts-pane {
 	text-align: center;
+
+	h3 {
+		margin-bottom: 1rem;
+	}
 	.title {
 		font-weight: bold;
 		font-size: 135%;
 		font-family: sans-serif;
 	}
 	.chart {
-		width: 46%;
+		width: 100%;
 		min-width: 20em;
 	}
-}
-.tables {
-	text-align: center;
 }

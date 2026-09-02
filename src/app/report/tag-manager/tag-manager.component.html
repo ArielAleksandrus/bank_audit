@@ -1,0 +1,53 @@
+<div class="tag-manager">
+	<div class="tag-row" *ngFor="let tag of tags()">
+		<ng-container *ngIf="editingId !== tag.id; else renaming">
+			<div class="tag-name">{{tag.name}}</div>
+			<div class="tag-meta">{{tag.purchases_count || 0}} compra(s)</div>
+			<div class="tag-actions">
+				<button type="button" class="btn-icon" (click)="startRename(tag)" title="Renomear">
+					<fa-icon [icon]="penIcon"></fa-icon>
+				</button>
+				<button type="button" class="btn-icon" (click)="startMerge(tag)" title="Mesclar" [disabled]="otherTags(tag).length === 0">
+					<fa-icon [icon]="mergeIcon"></fa-icon>
+				</button>
+			</div>
+		</ng-container>
+
+		<ng-template #renaming>
+			<div class="tag-edit">
+				<input type="text" [(ngModel)]="editingName" (keyup.enter)="saveRename(tag)" (keyup.escape)="cancelRename()"/>
+				<button type="button" class="btn-icon btn-icon-primary" (click)="saveRename(tag)" [disabled]="savingRename">
+					<fa-icon [icon]="saveIcon"></fa-icon>
+				</button>
+				<button type="button" class="btn-icon" (click)="cancelRename()">
+					<fa-icon [icon]="cancelIcon"></fa-icon>
+				</button>
+			</div>
+		</ng-template>
+
+		<div class="tag-error" *ngIf="editingId == tag.id && renameError">
+			<fa-icon [icon]="alertIcon"></fa-icon> {{renameError}}
+		</div>
+
+		<div class="merge-panel" *ngIf="mergingId === tag.id">
+			<span>Mesclar em:</span>
+			<select [(ngModel)]="mergeTargetId">
+				<option [ngValue]="null">Selecione uma tag...</option>
+				<option *ngFor="let other of otherTags(tag)" [ngValue]="other.id">{{other.name}}</option>
+			</select>
+			<button type="button" class="btn-icon btn-icon-primary" (click)="confirmMerge(tag)" [disabled]="savingMerge">
+				<fa-icon [icon]="saveIcon"></fa-icon>
+			</button>
+			<button type="button" class="btn-icon" (click)="cancelMerge()">
+				<fa-icon [icon]="cancelIcon"></fa-icon>
+			</button>
+			<div class="tag-error" *ngIf="mergeError">
+				<fa-icon [icon]="alertIcon"></fa-icon> {{mergeError}}
+			</div>
+		</div>
+	</div>
+
+	<div class="empty-state-inline" *ngIf="tags().length === 0">
+		Nenhuma tag cadastrada ainda.
+	</div>
+</div>

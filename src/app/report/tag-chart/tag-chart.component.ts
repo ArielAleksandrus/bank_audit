@@ -1,7 +1,8 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ChartModule } from 'primeng/chart';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
 
 import { Company } from '../../shared/models/company';
 import { Boleto } from '../../shared/models/boleto';
@@ -16,11 +17,13 @@ import { Utils } from '../../shared/helpers/utils';
 
 @Component({
   selector: 'app-tag-chart',
-  imports: [CommonModule, ChartModule, FormsModule],
+  imports: [CommonModule, ChartModule, FaIconComponent],
   templateUrl: './tag-chart.component.html',
   styleUrl: './tag-chart.component.scss'
 })
 export class TagChartComponent {
+  checkIcon = faCheck;
+
   selectedTags: {[tagName: string]: boolean} = {};
   chartTags: string[] = [];
   tagClassification = input.required<TagClassification>();
@@ -53,6 +56,11 @@ export class TagChartComponent {
       this.selectedTags[tagVal.tagName] = true;
     }
 
+    this.changeTagSelection();
+  }
+
+  toggleTag(tagName: string) {
+    this.selectedTags[tagName] = !this.selectedTags[tagName];
     this.changeTagSelection();
   }
 
