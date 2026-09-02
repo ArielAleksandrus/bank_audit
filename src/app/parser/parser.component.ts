@@ -70,9 +70,8 @@ export class ParserComponent {
     pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.min.mjs';
   }
   ngOnInit() {
+    // companyGuard has already validated the company and set the auth headers.
     this._loadCompany();
-    //TODO: replace token to user-defined token received via input and stored in localstorage
-    this.api.setAuth({token: this.company.token});
   }
 
   bankChanged() {

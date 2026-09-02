@@ -1,79 +1,105 @@
 <div class="companies-page">
 	<div class="companies-shell">
-		<header class="companies-header">
-			<h1>Suas empresas</h1>
-			<p class="companies-sub">Escolha uma empresa para continuar ou crie uma nova abaixo.</p>
-		</header>
+		<ng-container *ngIf="!pickingReportFor; else pickingDate">
+			<header class="companies-header">
+				<h1>Suas empresas</h1>
+				<p class="companies-sub">Escolha uma empresa para continuar ou crie uma nova abaixo.</p>
+			</header>
 
-		<div class="companies-card">
-			<div *ngIf="loading" class="companies-loading">
-				<span class="companies-spinner"></span>
-				Carregando suas empresas...
-			</div>
-
-			<div *ngIf="!loading && companies.length > 0" class="company-list">
-				<div class="company-item" *ngFor="let company of companies">
-					<div class="company-row">
-						<div class="company-icon" (click)="selectCompany(company)"><fa-icon [icon]="buildingIcon"></fa-icon></div>
-						<div class="company-name" (click)="selectCompany(company)">{{company.name}}</div>
-						<div class="company-actions">
-							<button class="btn-ghost" (click)="toggleAddMember(company)">
-								<fa-icon [icon]="addUserIcon"></fa-icon>
-								Adicionar usuário
-							</button>
-							<button class="btn-solid" (click)="selectCompany(company)">
-								Entrar
-								<fa-icon [icon]="enterIcon"></fa-icon>
-							</button>
-						</div>
-					</div>
-
-					<div class="add-member-panel" *ngIf="showAddMember[company.id]">
-						<div class="add-member-input">
-							<fa-icon class="leading-icon" [icon]="envelopeIcon"></fa-icon>
-							<input type="email" placeholder="e-mail do usuário"
-								[(ngModel)]="newMemberEmail[company.id]" (keyup.enter)="addMember(company)"/>
-						</div>
-						<button class="btn-solid btn-sm" [disabled]="addingMember[company.id]" (click)="addMember(company)">
-							{{ addingMember[company.id] ? 'Verificando...' : 'Adicionar' }}
-						</button>
-
-						<div class="add-member-message" *ngIf="addMemberMessage[company.id]"
-							[class.is-success]="addMemberStatus[company.id] === 'success'"
-							[class.is-error]="addMemberStatus[company.id] === 'error'">
-							<fa-icon [icon]="addMemberStatus[company.id] === 'success' ? successIcon : alertIcon"></fa-icon>
-							{{addMemberMessage[company.id]}}
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<div *ngIf="!loading && companies.length === 0" class="companies-empty">
-				<div class="companies-empty-icon"><fa-icon [icon]="buildingIcon"></fa-icon></div>
-				<p>Você ainda não faz parte de nenhuma empresa.</p>
-				<p class="companies-empty-hint">Crie uma abaixo para começar.</p>
-			</div>
-		</div>
-
-		<div class="companies-card create-card">
-			<h2>Criar nova empresa</h2>
-			<div class="create-row">
-				<div class="create-input">
-					<fa-icon class="leading-icon" [icon]="buildingIcon"></fa-icon>
-					<input type="text" placeholder="Nome da empresa"
-						[(ngModel)]="newCompanyName" (keyup.enter)="createCompany()"/>
-				</div>
-				<button class="btn-solid" [disabled]="creating" (click)="createCompany()">
-					<span class="companies-spinner btn-spinner" *ngIf="creating"></span>
-					<fa-icon [icon]="plusIcon" *ngIf="!creating"></fa-icon>
-					{{ creating ? 'Criando...' : 'Criar' }}
+			<div class="multi-toolbar" *ngIf="!loading && companies.length > 1">
+				<button class="btn-solid" (click)="viewAllCompanies()">
+					<fa-icon [icon]="allCompaniesIcon"></fa-icon>
+					Todas as Empresas
+				</button>
+				<button class="btn-solid" [disabled]="selectedCompanies.length === 0" (click)="viewSelectedCompanies()">
+					<fa-icon [icon]="selectedCompaniesIcon"></fa-icon>
+					Empresas Selecionadas
+					<span class="selected-count" *ngIf="selectedCompanies.length > 0">{{selectedCompanies.length}}</span>
 				</button>
 			</div>
 
-			<div class="companies-alert" *ngIf="errorMessage">
-				<fa-icon [icon]="alertIcon"></fa-icon>
-				{{errorMessage}}
+			<div class="companies-card">
+				<div *ngIf="loading" class="companies-loading">
+					<span class="companies-spinner"></span>
+					Carregando suas empresas...
+				</div>
+
+				<div *ngIf="!loading && companies.length > 0" class="company-list">
+					<div class="company-item" *ngFor="let company of companies">
+						<div class="company-row">
+							<input *ngIf="companies.length > 1" type="checkbox" class="company-checkbox"
+								[checked]="selectedIds[company.id]" (change)="toggleSelectCompany(company)"/>
+							<div class="company-icon" (click)="selectCompany(company)"><fa-icon [icon]="buildingIcon"></fa-icon></div>
+							<div class="company-name" (click)="selectCompany(company)">{{company.name}}</div>
+							<div class="company-actions">
+								<button class="btn-ghost" (click)="toggleAddMember(company)">
+									<fa-icon [icon]="addUserIcon"></fa-icon>
+									Adicionar usuário
+								</button>
+								<button class="btn-solid" (click)="selectCompany(company)">
+									Entrar
+									<fa-icon [icon]="enterIcon"></fa-icon>
+								</button>
+							</div>
+						</div>
+
+						<div class="add-member-panel" *ngIf="showAddMember[company.id]">
+							<div class="add-member-input">
+								<fa-icon class="leading-icon" [icon]="envelopeIcon"></fa-icon>
+								<input type="email" placeholder="e-mail do usuário"
+									[(ngModel)]="newMemberEmail[company.id]" (keyup.enter)="addMember(company)"/>
+							</div>
+							<button class="btn-solid btn-sm" [disabled]="addingMember[company.id]" (click)="addMember(company)">
+								{{ addingMember[company.id] ? 'Verificando...' : 'Adicionar' }}
+							</button>
+
+							<div class="add-member-message" *ngIf="addMemberMessage[company.id]"
+								[class.is-success]="addMemberStatus[company.id] === 'success'"
+								[class.is-error]="addMemberStatus[company.id] === 'error'">
+								<fa-icon [icon]="addMemberStatus[company.id] === 'success' ? successIcon : alertIcon"></fa-icon>
+								{{addMemberMessage[company.id]}}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div *ngIf="!loading && companies.length === 0" class="companies-empty">
+					<div class="companies-empty-icon"><fa-icon [icon]="buildingIcon"></fa-icon></div>
+					<p>Você ainda não faz parte de nenhuma empresa.</p>
+					<p class="companies-empty-hint">Crie uma abaixo para começar.</p>
+				</div>
 			</div>
-		</div>
+
+			<div class="companies-card create-card">
+				<h2>Criar nova empresa</h2>
+				<div class="create-row">
+					<div class="create-input">
+						<fa-icon class="leading-icon" [icon]="buildingIcon"></fa-icon>
+						<input type="text" placeholder="Nome da empresa"
+							[(ngModel)]="newCompanyName" (keyup.enter)="createCompany()"/>
+					</div>
+					<button class="btn-solid" [disabled]="creating" (click)="createCompany()">
+						<span class="companies-spinner btn-spinner" *ngIf="creating"></span>
+						<fa-icon [icon]="plusIcon" *ngIf="!creating"></fa-icon>
+						{{ creating ? 'Criando...' : 'Criar' }}
+					</button>
+				</div>
+
+				<div class="companies-alert" *ngIf="errorMessage">
+					<fa-icon [icon]="alertIcon"></fa-icon>
+					{{errorMessage}}
+				</div>
+			</div>
+		</ng-container>
+
+		<ng-template #pickingDate>
+			<header class="companies-header">
+				<h1>Relatório de {{pickingReportFor!.length}} empresa(s)</h1>
+				<p class="companies-sub"><ng-container *ngFor="let c of pickingReportFor; let last = last">{{c.name}}{{last ? '' : ', '}}</ng-container></p>
+			</header>
+			<div class="companies-card">
+				<app-date-range-picker (confirm)="onDateRangeConfirm($event)" (cancel)="cancelPickReport()"></app-date-range-picker>
+			</div>
+		</ng-template>
 	</div>
 </div>

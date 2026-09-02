@@ -63,12 +63,8 @@ export class InsertionComponent {
     this.purchase = new Purchase({value: ''});
     this.income = new Income({aux_tags: []});
 
+    // companyGuard has already validated the company and set the auth headers.
     this.company = Company.loadCompany();
-    if(!this.company) {
-      location.href = "/login";
-      return;
-    }
-    api.setAuth({token: this.company.token});
 
     this.fromDate = this.today;
   }

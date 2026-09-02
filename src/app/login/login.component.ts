@@ -48,8 +48,9 @@ export class LoginComponent implements OnInit {
   ngOnInit() {
     let user = User.loadUser();
     if(user && user.token) {
-      if(Company.loadCompany()) {
-        this.router.navigate(['/dashboard']);
+      let company = Company.loadCompany();
+      if(company) {
+        this.router.navigate(['/', Company.slugify(company.name), 'dashboard']);
       } else {
         this.router.navigate(['/companies']);
       }

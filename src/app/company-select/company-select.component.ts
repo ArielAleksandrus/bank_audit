@@ -9,6 +9,8 @@ import {
   faCircleCheck,
   faCircleExclamation,
   faEnvelope,
+  faLayerGroup,
+  faListCheck,
   faPlus,
   faRightToBracket,
   faUserPlus
@@ -18,10 +20,11 @@ import { Company } from '../shared/models/company';
 import { User } from '../shared/models/user';
 
 import { ApiService } from '../shared/services/api.service';
+import { DateRangePickerComponent } from '../shared/components/date-range-picker/date-range-picker.component';
 
 @Component({
   selector: 'app-company-select',
-  imports: [CommonModule, FormsModule, FaIconComponent],
+  imports: [CommonModule, FormsModule, FaIconComponent, DateRangePickerComponent],
   templateUrl: './company-select.component.html',
   styleUrl: './company-select.component.scss'
 })
@@ -41,6 +44,11 @@ export class CompanySelectComponent {
   addMemberMessage: Record<number, string> = {};
   addMemberStatus: Record<number, 'success' | 'error'> = {};
 
+  selectedIds: Record<number, boolean> = {};
+  // set while the date-range picker is shown, right before going to the
+  // combined report for these companies
+  pickingReportFor: Company[] | null = null;
+
   buildingIcon = faBuildingColumns;
   enterIcon = faRightToBracket;
   addUserIcon = faUserPlus;
@@ -48,6 +56,8 @@ export class CompanySelectComponent {
   envelopeIcon = faEnvelope;
   alertIcon = faCircleExclamation;
   successIcon = faCircleCheck;
+  allCompaniesIcon = faLayerGroup;
+  selectedCompaniesIcon = faListCheck;
 
   constructor(private api: ApiService, private router: Router) {
     this.user = User.loadUser();
@@ -65,7 +75,45 @@ export class CompanySelectComponent {
 
   selectCompany(company: Company) {
     Company.storeCompany(company);
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/', company.slug, 'dashboard']);
+  }
+
+  toggleSelectCompany(company: Company) {
+    this.selectedIds[company.id] = !this.selectedIds[company.id];
+  }
+
+  get selectedCompanies(): Company[] {
+    return this.companies.filter(c => this.selectedIds[c.id]);
+  }
+
+  viewAllCompanies() {
+    this.pickingReportFor = this.companies;
+  }
+
+  viewSelectedCompanies() {
+    if(this.selectedCompanies.length === 0) {
+      return;
+    }
+    this.pickingReportFor = this.selectedCompanies;
+  }
+
+  cancelPickReport() {
+    this.pickingReportFor = null;
+  }
+
+  onDateRangeConfirm(range: { from: string, to: string | null }) {
+    if(!this.pickingReportFor) {
+      return;
+    }
+
+    Company.storeSelectedCompanies(this.pickingReportFor);
+    this.pickingReportFor = null;
+
+    let params: any = { desde: range.from };
+    if(range.to)
+      params.ate = range.to;
+
+    this.router.navigate(['/relatorio-multi'], { queryParams: params });
   }
 
   toggleAddMember(company: Company) {

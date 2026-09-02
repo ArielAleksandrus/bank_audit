@@ -84,6 +84,32 @@
 	padding: 1.15rem 0.25rem;
 }
 
+.company-checkbox {
+	flex: 0 0 auto;
+	width: 1.5rem;
+	height: 1.5rem;
+	accent-color: #0f766e;
+	cursor: pointer;
+}
+
+.multi-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.7rem;
+	margin-bottom: 1.1rem;
+}
+
+.selected-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.4rem;
+	padding: 0.05rem 0.35rem;
+	border-radius: 999px;
+	background: rgba(4, 47, 46, 0.18);
+	font-size: 0.8rem;
+}
+
 .company-icon {
 	width: 42px;
 	height: 42px;
