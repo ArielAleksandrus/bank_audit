@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,21 +11,21 @@ import {
   faLock
 } from '@fortawesome/free-solid-svg-icons';
 
-import { Company } from '../shared/models/company';
 import { User } from '../shared/models/user';
 import { ApiService } from '../shared/services/api.service';
 import { AuthLayoutComponent } from '../shared/components/auth-layout/auth-layout.component';
 import { isValidEmail, parseApiError, parseFieldErrors } from '../shared/helpers/api-errors';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-signup',
   imports: [CommonModule, FormsModule, RouterLink, FaIconComponent, AuthLayoutComponent],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  templateUrl: './signup.component.html',
+  styleUrl: './signup.component.scss'
 })
-export class LoginComponent implements OnInit {
+export class SignupComponent {
   email: string = '';
   password: string = '';
+  passwordConfirmation: string = '';
 
   errorMessage: string = '';
   fieldErrors: Record<string, string> = {};
@@ -33,7 +33,9 @@ export class LoginComponent implements OnInit {
   submitted: boolean = false;
   emailTouched: boolean = false;
   passwordTouched: boolean = false;
+  confirmationTouched: boolean = false;
   showPassword: boolean = false;
+  showPasswordConfirmation: boolean = false;
 
   envelopeIcon = faEnvelope;
   lockIcon = faLock;
@@ -43,17 +45,6 @@ export class LoginComponent implements OnInit {
 
   constructor(private api: ApiService, private router: Router) {
     this.api.noAuth();
-  }
-
-  ngOnInit() {
-    let user = User.loadUser();
-    if(user && user.token) {
-      if(Company.loadCompany()) {
-        this.router.navigate(['/dashboard']);
-      } else {
-        this.router.navigate(['/companies']);
-      }
-    }
   }
 
   get emailError(): string {
@@ -66,25 +57,48 @@ export class LoginComponent implements OnInit {
   get passwordError(): string {
     if(!this.submitted && !this.passwordTouched) return '';
     if(!this.password) return 'Informe a senha';
+    if(this.password.length < 8) return 'A senha deve ter ao menos 8 caracteres';
     return this.fieldErrors['password'] || '';
   }
 
-  login() {
+  get confirmationError(): string {
+    if(!this.submitted && !this.confirmationTouched) return '';
+    if(!this.passwordConfirmation) return 'Confirme a senha';
+    if(this.password && this.passwordConfirmation !== this.password) return 'As senhas não conferem';
+    return this.fieldErrors['password_confirmation'] || this.fieldErrors['passwordConfirmation'] || '';
+  }
+
+  get passwordStrength(): { level: number, label: string } {
+    const password = this.password || '';
+    if(!password) return { level: 0, label: '' };
+    if(password.length < 8) return { level: 1, label: 'Fraca' };
+
+    let score = 1;
+    if(/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if(/\d/.test(password)) score++;
+    if(/[^A-Za-z0-9]/.test(password)) score++;
+
+    if(score <= 2) return { level: 2, label: 'Média' };
+    return { level: 3, label: 'Forte' };
+  }
+
+  signup() {
     this.submitted = true;
     this.emailTouched = true;
     this.passwordTouched = true;
+    this.confirmationTouched = true;
     this.errorMessage = '';
     this.fieldErrors = {};
 
-    if(this.emailError || this.passwordError) {
+    if(this.emailError || this.passwordError || this.confirmationError) {
       this.errorMessage = 'Corrija os campos destacados para continuar';
       return;
     }
 
     this.submitting = true;
 
-    this.api.create('session', {
-      session: { email: this.email.trim(), password: this.password }
+    this.api.create('users', {
+      user: { email: this.email.trim(), password: this.password }
     }).subscribe({
       next: (res: any) => {
         this.submitting = false;
@@ -95,14 +109,14 @@ export class LoginComponent implements OnInit {
       error: (err: any) => {
         this.submitting = false;
         this.fieldErrors = parseFieldErrors(err);
-        this.errorMessage = parseApiError(err, 'E-mail ou senha inválidos');
+        this.errorMessage = parseApiError(err, 'Não foi possível criar sua conta. Verifique os dados e tente novamente.');
         console.error(err);
       }
     });
   }
 
   onFieldChange() {
-    this.errorMessage = this.submitted && (this.emailError || this.passwordError)
+    this.errorMessage = this.submitted && (this.emailError || this.passwordError || this.confirmationError)
       ? 'Corrija os campos destacados para continuar'
       : '';
     this.fieldErrors = {};

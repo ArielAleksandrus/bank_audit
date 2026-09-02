@@ -4,3 +4,4 @@ export * from './income';
 export * from './purchase';
 export * from './supplier';
 export * from './tag';
+export * from './user';

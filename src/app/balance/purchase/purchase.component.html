@@ -3,7 +3,7 @@
 		<tr class="title">
 			<th colspan="6">
 				OUTRAS DESPESAS <i>({{purchases().length}})</i> &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed; stopEdit()">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
 				</button> &nbsp; &nbsp;
 				<button class="btn btn-sm btn-info" (click)="filtering = !filtering">FILTRAR</button>
@@ -48,12 +48,12 @@
 			</td>
 		</tr>
 	</thead>
-	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let purchase of purchases()" [class.danger]="purchase.auxStatus == 'error'" [class.hidden]="purchase.hidden">
+	<tbody *ngIf="!collapsed">
+		<tr *ngFor="let purchase of displayedPurchases; trackBy: trackByPurchase" [class.danger]="purchase.auxStatus == 'error'">
 			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{purchase.bank_name}}</td>
 			<td>
-				<ng-select *ngIf="!printMode" [items]="suppliers"
+				<ng-select *ngIf="!printMode && isEditing(purchase, 'supplier')" [items]="suppliers"
                     bindLabel="name"
                     autofocus
                     bindValue="name"
@@ -61,11 +61,14 @@
                     addTag="true">
         </ng-select>
         <span *ngIf="printMode">{{purchase.supplier_name}}</span>
+        <button *ngIf="!printMode && !isEditing(purchase, 'supplier')" type="button" class="editable" (click)="startEdit(purchase, 'supplier')">{{purchase.supplier_name || '—'}}</button>
       </td>
 			<td *ngIf="!printMode">
-				<ng-select [items]="referrals"
+				<ng-select *ngIf="isEditing(purchase, 'referral')" [items]="referrals"
 								addTag="true"
+								autofocus
 								[(ngModel)]="purchase.referral"></ng-select>
+				<button *ngIf="!isEditing(purchase, 'referral')" type="button" class="editable" (click)="startEdit(purchase, 'referral')">{{purchase.referral || '—'}}</button>
 			</td>
 			<td>{{purchase.total | currency:'BRL'}}</td>
 			<td *ngIf="!printMode">
@@ -78,18 +81,21 @@
 				<span *ngIf="printMode">{{paymentTranslation[purchase.payment_type]}}</span>
 			</td>
 			<td>
-				<ng-select *ngIf="!printMode" [items]="tags"
+				<ng-select *ngIf="!printMode && isEditing(purchase, 'tags')" [items]="tags"
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
 								bindLabel="name"
+								autofocus
 								[ngModel]="purchase.tags"
 								(change)="tagChanged(purchase, $event)"></ng-select>
 				<span *ngIf="printMode">{{purchase.tagsStr}}</span>
+				<button *ngIf="!printMode && !isEditing(purchase, 'tags')" type="button" class="editable" (click)="startEdit(purchase, 'tags')">{{tagNames(purchase)}}</button>
 			</td>
 			<td>
-				<textarea *ngIf="!printMode" rows="3" [(ngModel)]="purchase.additional_info" class="form-control"></textarea>
+				<textarea *ngIf="!printMode && isEditing(purchase, 'info')" rows="3" [(ngModel)]="purchase.additional_info" class="form-control" (blur)="stopEdit()"></textarea>
 				<p *ngIf="printMode">{{purchase.additional_info}}</p>
+				<button *ngIf="!printMode && !isEditing(purchase, 'info')" type="button" class="editable" (click)="startEdit(purchase, 'info')">{{purchase.additional_info || '—'}}</button>
 			</td>
 			<td *ngIf="!printMode">
 				<button class="btn btn-sm btn-danger" (click)="remove(purchase)">x</button>
@@ -111,6 +117,14 @@
 		</tr>
 	</tfoot>
 </table>
+<div class="pager" *ngIf="!collapsed && !printMode && visiblePurchases.length > pageSize">
+	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
+	<span>Página {{page}} de {{pageCount}} · {{visiblePurchases.length}} saídas</span>
+	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
+	<select class="form-control pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+		<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
+	</select>
+</div>
 <div *ngIf="canSave" class="send-container">
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
 		Enviar

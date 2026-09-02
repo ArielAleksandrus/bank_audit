@@ -233,7 +233,10 @@ export class ApiService {
         
       }
       if(error.status === 401) {
-        this.router.navigateByUrl('login');
+        const path = (this.router.url || '').split('?')[0];
+        if(path !== '/login' && path !== '/' && path !== '/signup') {
+          this.router.navigateByUrl('/login');
+        }
       }
       if(error.status === 403) {
         this.router.navigateByUrl('access-denied');

@@ -11,6 +11,7 @@ import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
 
 import { Company } from '../shared/models/company';
+import { User } from '../shared/models/user';
 import { Boleto } from '../shared/models/boleto';
 import { Income } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
@@ -41,6 +42,17 @@ export class DashboardComponent {
       return;
     }
     api.setAuth({token: this.company.token});
+  }
+
+  goToCompanies() {
+    this.router.navigate(['/companies']);
+  }
+
+  logout() {
+    User.clearUser();
+    Company.clearCompany();
+    this.api.noAuth();
+    this.router.navigate(['/login']);
   }
 
   resetAction() {

@@ -69,11 +69,19 @@ export class PurchaseComponent {
   total: number = 0;
   delayAFTimeout: any = null;
 
+  page = 1;
+  pageSize = 50;
+  pageSizes = [25, 50, 100];
+  visiblePurchases: Purchase[] = [];
+  pagedPurchases: Purchase[] = [];
+  editing: {purchase: Purchase, field: 'supplier'|'referral'|'tags'|'info'}|null = null;
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
     this.prepareFilter();
+    this._refreshView();
     
     Purchase.loadReferrals(this.api).then((res: string[]) => {
       this.referrals = res;
@@ -84,8 +92,35 @@ export class PurchaseComponent {
     Supplier.loadSuppliers(this.api).then((res: Supplier[]) => {
       this.suppliers = Supplier.fromJsonArray(res);
     });
-
-    this._recalculate();
+  }
+  trackByPurchase = (_index: number, purchase: Purchase) => purchase.id ?? _index;
+  get pageCount(): number {
+    return Math.max(1, Math.ceil(this.visiblePurchases.length / this.pageSize));
+  }
+  get displayedPurchases(): Purchase[] {
+    return this.printMode ? this.visiblePurchases : this.pagedPurchases;
+  }
+  startEdit(purchase: Purchase, field: 'supplier'|'referral'|'tags'|'info') {
+    this.editing = {purchase, field};
+  }
+  isEditing(purchase: Purchase, field: 'supplier'|'referral'|'tags'|'info'): boolean {
+    return this.editing?.purchase === purchase && this.editing.field === field;
+  }
+  stopEdit() {
+    this.editing = null;
+  }
+  tagNames(purchase: Purchase): string {
+    const names = (purchase.tags || []).map(tag => tag.name).filter(Boolean);
+    return names.length ? names.join(', ') : '—';
+  }
+  goToPage(page: number) {
+    this.page = Math.min(this.pageCount, Math.max(1, page));
+    this.stopEdit();
+    this._slicePage();
+  }
+  onPageSizeChange() {
+    this.page = 1;
+    this._slicePage();
   }
   prepareFilter() {
     this.availableBanks = [];
@@ -105,6 +140,7 @@ export class PurchaseComponent {
     if((field == "value_min" || field == "value_max") && value == "")
       value = null;
 
+    this.page = 1;
     this.applyFilter();
   }
   applyFilter() {
@@ -124,7 +160,7 @@ export class PurchaseComponent {
         obj.hidden = false;
       }
     }
-    this._recalculate();
+    this._refreshView();
   }
   delayApplyFilter() {
     if(this.delayAFTimeout) {
@@ -140,7 +176,8 @@ export class PurchaseComponent {
     for(let obj of objs) {
       obj.hidden = false;
     }
-    this._recalculate();
+    this.page = 1;
+    this._refreshView();
   }
 
   remove(obj: Purchase) {
@@ -152,20 +189,21 @@ export class PurchaseComponent {
           objs.splice(idx, 1);
           this.purchases.set(objs);
           this.onChange.emit({mode: 'destroy', purchase: obj});
+          this._refreshView();
         });
       } else {
         objs.splice(idx, 1);
         this.purchases.set(objs);
         this.onChange.emit({mode: 'destroy', purchase: obj});
       }
-      this._recalculate();
+      this._refreshView();
     }
   }
   add(obj: Purchase) {
     let objs = this.purchases();
     objs.push(obj);
     this.purchases.set(objs);
-    this._recalculate();
+    this._refreshView();
     this.onChange.emit({mode: 'create', purchase: obj});
   }
   edit(obj: Purchase) {
@@ -175,7 +213,7 @@ export class PurchaseComponent {
       objs[idx] = obj;
       this.purchases.set(objs);
       this.onChange.emit({mode: 'edit', purchase: obj});
-      this._recalculate();
+      this._refreshView();
     }
     this.selected = undefined;
   }
@@ -187,7 +225,7 @@ export class PurchaseComponent {
       this.api.destroy('purchases', obj.id).subscribe(
         res => {
           resolve(true);
-          this._recalculate();
+          this._refreshView();
         },
         err => {
           console.error("Error removing purchase: ", err);
@@ -272,5 +310,16 @@ export class PurchaseComponent {
   }
   private _recalculate() {
     this.total = Purchase.getTotal(this.purchases());
+  }
+  private _refreshView() {
+    this._recalculate();
+    this.visiblePurchases = this.purchases().filter(purchase => !purchase.hidden);
+    if(this.page > this.pageCount)
+      this.page = this.pageCount;
+    this._slicePage();
+  }
+  private _slicePage() {
+    const start = (this.page - 1) * this.pageSize;
+    this.pagedPurchases = this.visiblePurchases.slice(start, start + this.pageSize);
   }
 }

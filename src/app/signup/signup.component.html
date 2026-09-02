@@ -1,0 +1,96 @@
+<app-auth-layout
+	heading="Criar sua conta"
+	subheading="Preencha os dados abaixo para começar a auditar.">
+	<div class="auth-alert" *ngIf="errorMessage" role="alert">
+		<fa-icon class="auth-alert-icon" [icon]="alertIcon"></fa-icon>
+		<div>{{errorMessage}}</div>
+	</div>
+
+	<form (ngSubmit)="signup()" novalidate>
+		<div class="auth-field" [class.invalid]="!!emailError">
+			<label for="signup-email">E-mail</label>
+			<div class="auth-input-wrap">
+				<fa-icon class="leading-icon" [icon]="envelopeIcon"></fa-icon>
+				<input
+					id="signup-email"
+					type="email"
+					name="email"
+					autocomplete="email"
+					placeholder="voce@empresa.com"
+					[(ngModel)]="email"
+					(ngModelChange)="onFieldChange()"
+					(blur)="emailTouched = true"
+					[attr.aria-invalid]="!!emailError"
+					aria-describedby="signup-email-error"/>
+			</div>
+			<div id="signup-email-error" class="auth-field-error" *ngIf="emailError">{{emailError}}</div>
+		</div>
+
+		<div class="auth-field" [class.invalid]="!!passwordError">
+			<label for="signup-password">Senha</label>
+			<div class="auth-input-wrap">
+				<fa-icon class="leading-icon" [icon]="lockIcon"></fa-icon>
+				<input
+					id="signup-password"
+					[type]="showPassword ? 'text' : 'password'"
+					name="password"
+					autocomplete="new-password"
+					placeholder="Mínimo de 8 caracteres"
+					[(ngModel)]="password"
+					(ngModelChange)="onFieldChange()"
+					(blur)="passwordTouched = true"
+					[attr.aria-invalid]="!!passwordError"
+					aria-describedby="signup-password-error"/>
+				<button
+					type="button"
+					class="auth-toggle"
+					(click)="showPassword = !showPassword"
+					[attr.aria-label]="showPassword ? 'Ocultar senha' : 'Mostrar senha'">
+					<fa-icon [icon]="showPassword ? eyeSlashIcon : eyeIcon"></fa-icon>
+				</button>
+			</div>
+			<div class="auth-strength" *ngIf="password" [ngClass]="'level-' + passwordStrength.level">
+				<div class="auth-strength-bars" aria-hidden="true">
+					<span></span><span></span><span></span>
+				</div>
+				<span class="auth-strength-label">{{passwordStrength.label}}</span>
+			</div>
+			<div id="signup-password-error" class="auth-field-error" *ngIf="passwordError">{{passwordError}}</div>
+		</div>
+
+		<div class="auth-field" [class.invalid]="!!confirmationError">
+			<label for="signup-password-confirmation">Confirme a senha</label>
+			<div class="auth-input-wrap">
+				<fa-icon class="leading-icon" [icon]="lockIcon"></fa-icon>
+				<input
+					id="signup-password-confirmation"
+					[type]="showPasswordConfirmation ? 'text' : 'password'"
+					name="passwordConfirmation"
+					autocomplete="new-password"
+					placeholder="Repita a senha"
+					[(ngModel)]="passwordConfirmation"
+					(ngModelChange)="onFieldChange()"
+					(blur)="confirmationTouched = true"
+					[attr.aria-invalid]="!!confirmationError"
+					aria-describedby="signup-confirmation-error"/>
+				<button
+					type="button"
+					class="auth-toggle"
+					(click)="showPasswordConfirmation = !showPasswordConfirmation"
+					[attr.aria-label]="showPasswordConfirmation ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'">
+					<fa-icon [icon]="showPasswordConfirmation ? eyeSlashIcon : eyeIcon"></fa-icon>
+				</button>
+			</div>
+			<div id="signup-confirmation-error" class="auth-field-error" *ngIf="confirmationError">{{confirmationError}}</div>
+		</div>
+
+		<button class="auth-submit" type="submit" [disabled]="submitting">
+			<span class="auth-spinner" *ngIf="submitting"></span>
+			{{ submitting ? 'Cadastrando...' : 'Criar conta' }}
+		</button>
+	</form>
+
+	<p class="auth-footer">
+		Já tem conta? <a routerLink="/login">Entrar</a>
+	</p>
+</app-auth-layout>

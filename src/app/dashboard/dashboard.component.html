@@ -1,3 +1,13 @@
+<div class="dashboard-bar">
+	<button type="button" class="btn btn-lg btn-outline-primary companies-btn" (click)="goToCompanies()">
+		Empresas
+	</button>
+	<div class="dashboard-company" *ngIf="company">{{company.name}}</div>
+	<button type="button" class="btn btn-lg btn-danger logout-btn" (click)="logout()">
+		Sair
+	</button>
+</div>
+
 <div *ngIf="curAction == 'init'" class="actions">
 	<div>
 		<button class="btn btn-lg btn-primary" (click)="curAction = 'query'">CONSULTAR</button>
@@ -6,7 +16,7 @@
 		<button class="btn btn-lg btn-success" (click)="insertAction()">INSERIR MANUAL</button>
 	</div>
 	<div>
-		<button class="btn btn-lg btn-secondary" (click)="uploadAction()">UPLOAD EXTRATO</button>
+		<button class="btn btn-lg btn-secondary" (click)="uploadAction()">ENVIAR EXTRATO</button>
 	</div>
 </div>
 

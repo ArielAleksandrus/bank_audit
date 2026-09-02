@@ -1,9 +1,64 @@
-<div class="row">
-	<div class="col-lg-4">
-		<label class="field-label">Senha:</label>
-		<input type="password" class="form-control" [(ngModel)]="companyToken"/>
+<app-auth-layout
+	heading="Bem-vindo de volta"
+	subheading="Entre com seu e-mail e senha para acessar a auditoria.">
+	<div class="auth-alert" *ngIf="errorMessage" role="alert">
+		<fa-icon class="auth-alert-icon" [icon]="alertIcon"></fa-icon>
+		<div>{{errorMessage}}</div>
 	</div>
-	<div class="col-lg-2">
-		<button class="btn btn-md btn-primary login-btn" (click)="login()">ENTRAR</button>
-	</div>
-</div>
+
+	<form (ngSubmit)="login()" novalidate>
+		<div class="auth-field" [class.invalid]="!!emailError">
+			<label for="login-email">E-mail</label>
+			<div class="auth-input-wrap">
+				<fa-icon class="leading-icon" [icon]="envelopeIcon"></fa-icon>
+				<input
+					id="login-email"
+					type="email"
+					name="email"
+					autocomplete="username"
+					placeholder="voce@empresa.com"
+					[(ngModel)]="email"
+					(ngModelChange)="onFieldChange()"
+					(blur)="emailTouched = true"
+					[attr.aria-invalid]="!!emailError"
+					aria-describedby="login-email-error"/>
+			</div>
+			<div id="login-email-error" class="auth-field-error" *ngIf="emailError">{{emailError}}</div>
+		</div>
+
+		<div class="auth-field" [class.invalid]="!!passwordError">
+			<label for="login-password">Senha</label>
+			<div class="auth-input-wrap">
+				<fa-icon class="leading-icon" [icon]="lockIcon"></fa-icon>
+				<input
+					id="login-password"
+					[type]="showPassword ? 'text' : 'password'"
+					name="password"
+					autocomplete="current-password"
+					placeholder="Sua senha"
+					[(ngModel)]="password"
+					(ngModelChange)="onFieldChange()"
+					(blur)="passwordTouched = true"
+					[attr.aria-invalid]="!!passwordError"
+					aria-describedby="login-password-error"/>
+				<button
+					type="button"
+					class="auth-toggle"
+					(click)="showPassword = !showPassword"
+					[attr.aria-label]="showPassword ? 'Ocultar senha' : 'Mostrar senha'">
+					<fa-icon [icon]="showPassword ? eyeSlashIcon : eyeIcon"></fa-icon>
+				</button>
+			</div>
+			<div id="login-password-error" class="auth-field-error" *ngIf="passwordError">{{passwordError}}</div>
+		</div>
+
+		<button class="auth-submit" type="submit" [disabled]="submitting">
+			<span class="auth-spinner" *ngIf="submitting"></span>
+			{{ submitting ? 'Entrando...' : 'Entrar' }}
+		</button>
+	</form>
+
+	<p class="auth-footer">
+		Não tem conta? <a routerLink="/signup">Cadastre-se</a>
+	</p>
+</app-auth-layout>

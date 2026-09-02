@@ -21,4 +21,7 @@ export class Company {
 		const defaultCompany = JSON.stringify({company: null});
 		return JSON.parse(localStorage.getItem('current_company') || defaultCompany).company;
 	}
+	public static clearCompany() {
+		localStorage.removeItem('current_company');
+	}
 }

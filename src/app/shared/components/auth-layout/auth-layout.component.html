@@ -1,0 +1,61 @@
+<div class="auth-page">
+	<div class="auth-shell">
+		<aside class="auth-aside">
+			<div class="auth-brand">
+				<div class="auth-logo" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none">
+						<path d="M12 3 4.5 6.2v5.3c0 4.5 3.1 8.6 7.5 9.7 4.4-1.1 7.5-5.2 7.5-9.7V6.2L12 3Z" fill="currentColor" opacity=".2"/>
+						<path d="M12 3 4.5 6.2v5.3c0 4.5 3.1 8.6 7.5 9.7 4.4-1.1 7.5-5.2 7.5-9.7V6.2L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+						<path d="M8 13.2 10.4 15.5 16.2 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</div>
+				<div class="auth-brand-name">
+					Auditoria Bancária
+					<small>Extratos e lançamentos</small>
+				</div>
+			</div>
+
+			<div class="auth-aside-copy">
+				<h2>Clareza para cada movimento da conta</h2>
+				<p>Importe extratos, concilie lançamentos e acompanhe o que entra e o que sai — com relatórios prontos para a auditoria.</p>
+
+				<div class="auth-features">
+					<div class="auth-feature">
+						<div class="auth-feature-icon"><fa-icon [icon]="bankIcon"></fa-icon></div>
+						<div>Suporte a extratos de vários bancos em um só fluxo</div>
+					</div>
+					<div class="auth-feature">
+						<div class="auth-feature-icon"><fa-icon [icon]="invoiceIcon"></fa-icon></div>
+						<div>Compras, boletos e recebimentos organizados por categoria</div>
+					</div>
+					<div class="auth-feature">
+						<div class="auth-feature-icon"><fa-icon [icon]="chartIcon"></fa-icon></div>
+						<div>Relatórios por período para conferência rápida</div>
+					</div>
+				</div>
+			</div>
+		</aside>
+
+		<main class="auth-main">
+			<div class="auth-card">
+				<div class="auth-mobile-brand">
+					<div class="auth-logo" aria-hidden="true">
+						<svg viewBox="0 0 24 24" fill="none">
+							<path d="M12 3 4.5 6.2v5.3c0 4.5 3.1 8.6 7.5 9.7 4.4-1.1 7.5-5.2 7.5-9.7V6.2L12 3Z" fill="currentColor" opacity=".2"/>
+							<path d="M12 3 4.5 6.2v5.3c0 4.5 3.1 8.6 7.5 9.7 4.4-1.1 7.5-5.2 7.5-9.7V6.2L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+							<path d="M8 13.2 10.4 15.5 16.2 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+					<div class="auth-brand-name">
+						Auditoria Bancária
+						<small>Extratos e lançamentos</small>
+					</div>
+				</div>
+
+				<h1>{{heading}}</h1>
+				<p class="auth-sub">{{subheading}}</p>
+				<ng-content></ng-content>
+			</div>
+		</main>
+	</div>
+</div>
