@@ -65,11 +65,19 @@ export class BoletoComponent {
 
   delayAFTimeout: any = null;
 
+  page = 1;
+  pageSize = 50;
+  pageSizes = [25, 50, 100];
+  visibleBoletos: Boleto[] = [];
+  pagedBoletos: Boleto[] = [];
+  editing: {boleto: Boleto, field: 'supplier'|'tags'}|null = null;
+
   constructor(private api: ApiService) {
   }
   ngOnInit() {
     this.collapsed = this.collapse();
     this.prepareFilter();
+    this._refreshView();
 
     Tag.loadTags(this.api).then((res: Tag[]) => {
       this.tags = Tag.fromJsonArray(res);
@@ -77,8 +85,35 @@ export class BoletoComponent {
     Supplier.loadSuppliers(this.api).then((res: Supplier[]) => {
       this.suppliers = Supplier.fromJsonArray(res);
     });
-
-    this._recalculate();
+  }
+  trackByBoleto = (_index: number, boleto: Boleto) => boleto.id ?? _index;
+  tagNames(boleto: Boleto): string {
+    const names = (boleto.auxTags || []).map(tag => tag.name).filter(Boolean);
+    return names.length ? names.join(', ') : '—';
+  }
+  get pageCount(): number {
+    return Math.max(1, Math.ceil(this.visibleBoletos.length / this.pageSize));
+  }
+  get displayedBoletos(): Boleto[] {
+    return this.printMode ? this.visibleBoletos : this.pagedBoletos;
+  }
+  startEdit(boleto: Boleto, field: 'supplier'|'tags') {
+    this.editing = {boleto, field};
+  }
+  isEditing(boleto: Boleto, field: 'supplier'|'tags'): boolean {
+    return this.editing?.boleto === boleto && this.editing.field === field;
+  }
+  stopEdit() {
+    this.editing = null;
+  }
+  goToPage(page: number) {
+    this.page = Math.min(this.pageCount, Math.max(1, page));
+    this.stopEdit();
+    this._slicePage();
+  }
+  onPageSizeChange() {
+    this.page = 1;
+    this._slicePage();
   }
 
   prepareFilter() {
@@ -104,6 +139,7 @@ export class BoletoComponent {
     if((field == "value_min" || field == "value_max") && value == "")
       value = null;
 
+    this.page = 1;
     this.applyFilter();
   }
   applyFilter() {
@@ -125,7 +161,7 @@ export class BoletoComponent {
         obj.hidden = false;
       }
     }
-    this._recalculate();
+    this._refreshView();
   }
   delayApplyFilter() {
     if(this.delayAFTimeout) {
@@ -146,19 +182,21 @@ export class BoletoComponent {
           objs.splice(idx, 1);
           this.boletos.set(objs);
           this.onChange.emit({mode: 'destroy', boleto: obj});
+          this._refreshView();
         });
       } else {
         objs.splice(idx, 1);
         this.boletos.set(objs);
         this.onChange.emit({mode: 'destroy', boleto: obj});
       }
+      this._refreshView();
     }
   }
   add(obj: Boleto) {
     let objs = this.boletos();
     objs.push(obj);
     this.boletos.set(objs);
-    this._recalculate();
+    this._refreshView();
     this.onChange.emit({mode: 'create', boleto: obj});
   }
   edit(obj: Boleto) {
@@ -168,20 +206,20 @@ export class BoletoComponent {
       objs[idx] = obj;
       this.boletos.set(objs);
       this.onChange.emit({mode: 'edit', boleto: obj});
-      this._recalculate();
+      this._refreshView();
     }
     this.selected = undefined;
   }
 
   destroy(obj: Boleto): Promise<boolean> {
-    return new Promise((resolve, reject) => {  
+    return new Promise((resolve, reject) => {
       if(!(obj.id > 0)) {
         resolve(false);
       }
       this.api.destroy('boletos', obj.id).subscribe(
         (res: any) => {
           resolve(true);
-          this._recalculate();
+          this._refreshView();
         },
         (err: any) => {
           console.error("Error removing boleto: ", err);
@@ -200,7 +238,7 @@ export class BoletoComponent {
     this.sending = true;
     Boleto.sendArray(this.api, this.boletos()).then(res => {
       this.boletos.set(res);
-      this._recalculate();
+      this._refreshView();
       this.sending = false;
       alert("Boletos salvos");
     }).catch(err => {
@@ -269,5 +307,16 @@ export class BoletoComponent {
 
   private _recalculate() {
     this.total = Boleto.getTotal(this.boletos());
+  }
+  private _refreshView() {
+    this._recalculate();
+    this.visibleBoletos = this.boletos().filter(boleto => !boleto.hidden);
+    if(this.page > this.pageCount)
+      this.page = this.pageCount;
+    this._slicePage();
+  }
+  private _slicePage() {
+    const start = (this.page - 1) * this.pageSize;
+    this.pagedBoletos = this.visibleBoletos.slice(start, start + this.pageSize);
   }
 }

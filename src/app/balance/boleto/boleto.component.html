@@ -3,7 +3,7 @@
 		<tr class="title">
 			<th colspan="6">
 				BOLETOS <i>({{boletos().length}})</i> &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed">
+				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed; stopEdit()">
 					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
 				</button> &nbsp; &nbsp;
 				<button class="btn btn-sm btn-info" (click)="filtering = !filtering">FILTRAR</button>
@@ -49,13 +49,13 @@
 			</td>
 		</tr>
 	</thead>
-	<tbody #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-		<tr *ngFor="let boleto of boletos()" [class.danger]="boleto.auxStatus == 'error'" [class.hidden]="boleto.hidden">
+	<tbody *ngIf="!collapsed">
+		<tr *ngFor="let boleto of displayedBoletos; trackBy: trackByBoleto" [class.danger]="boleto.auxStatus == 'error'">
 			<td>{{boleto.bank_name}}</td>
 			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
 			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
 			<td>
-				<ng-select *ngIf="!printMode" [items]="suppliers"
+				<ng-select *ngIf="!printMode && isEditing(boleto, 'supplier')" [items]="suppliers"
                     bindLabel="name"
                     autofocus
                     bindValue="name"
@@ -63,18 +63,21 @@
                     addTag="true">
         </ng-select>
         <span *ngIf="printMode">{{boleto.supplier_name}}</span>
+        <button *ngIf="!printMode && !isEditing(boleto, 'supplier')" type="button" class="editable" (click)="startEdit(boleto, 'supplier')">{{boleto.supplier_name || '—'}}</button>
 			</td>
 			<td>{{boleto.value | currency:'BRL'}}</td>
 			<td>{{boleto.installments}}</td>
 			<td>
-				<ng-select *ngIf="!printMode" [items]="tags"
+				<ng-select *ngIf="!printMode && isEditing(boleto, 'tags')" [items]="tags"
 								addTag="true"
 								[multiple]="true"
 								placeholder="Selecione"
 								bindLabel="name"
+								autofocus
 								[ngModel]="boleto.auxTags"
 								(change)="tagChanged(boleto, $event)"></ng-select>
 				<span *ngIf="printMode">{{boleto.tagsStr}}</span>
+				<button *ngIf="!printMode && !isEditing(boleto, 'tags')" type="button" class="editable" (click)="startEdit(boleto, 'tags')">{{tagNames(boleto)}}</button>
 			</td>
 			<td *ngIf="!printMode">
 				<button class="btn btn-sm btn-danger" (click)="remove(boleto)">x</button>
@@ -94,6 +97,14 @@
 		</tr>
 	</tfoot>
 </table>
+<div class="pager" *ngIf="!collapsed && !printMode && visibleBoletos.length > pageSize">
+	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
+	<span>Página {{page}} de {{pageCount}} · {{visibleBoletos.length}} boletos</span>
+	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
+	<select class="form-control pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+		<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
+	</select>
+</div>
 <div *ngIf="canSave" class="send-container">
 	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
 		Enviar
