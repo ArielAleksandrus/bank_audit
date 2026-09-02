@@ -1,5 +1,6 @@
 import { Utils } from '../helpers/utils';
 import { Filters } from '../helpers/filters';
+import { TAG_CATEGORIES, tagCategoryOf } from '../helpers/tag-categories';
 
 import { Boleto } from '../models/boleto';
 import { Purchase } from '../models/purchase';
@@ -13,7 +14,11 @@ export type DescribedReport = {
 		tags: {name: string, purchases: Purchase[], total: number}[],
 		total: number
 	}[],
-	total: number
+	total: number,
+	recurringTotal: number,
+	expenseTotal: number,
+	materialInvestmentTotal: number,
+	financialInvestmentTotal: number
 };
 export class Reports {
 	boletos: Boleto[] = [];
@@ -39,7 +44,14 @@ export class Reports {
 
 		let describedPurchases = this._describePurchases(groupedPurchases);
 
-		let res: DescribedReport = {descriptions: [], total: 0};
+		let res: DescribedReport = {
+			descriptions: [],
+			total: 0,
+			recurringTotal: 0,
+			expenseTotal: 0,
+			materialInvestmentTotal: 0,
+			financialInvestmentTotal: 0
+		};
 		for(let description in describedPurchases) {
 			let descriptionEl:  {
 				description: string,
@@ -67,10 +79,35 @@ export class Reports {
 			}
 			descriptionEl.total = Number(descriptionEl.total.toFixed(2));
 			res.descriptions.push(descriptionEl);
-			res.total += descriptionEl.total;
+
+			const category = tagCategoryOf(description);
+			if(category?.kind === 'material-investment') {
+				res.materialInvestmentTotal += descriptionEl.total;
+			} else if(category?.kind === 'financial-investment') {
+				res.financialInvestmentTotal += descriptionEl.total;
+			} else {
+				res.expenseTotal += descriptionEl.total;
+				if(category?.recurring) {
+					res.recurringTotal += descriptionEl.total;
+				}
+			}
 		}
-		res.total = Number(res.total.toFixed(2));
+		res.descriptions.sort((a, b) => this._categoryOrder(a.description) - this._categoryOrder(b.description));
+		res.recurringTotal = Number(res.recurringTotal.toFixed(2));
+		res.expenseTotal = Number(res.expenseTotal.toFixed(2));
+		res.materialInvestmentTotal = Number(res.materialInvestmentTotal.toFixed(2));
+		res.financialInvestmentTotal = Number(res.financialInvestmentTotal.toFixed(2));
+		res.total = res.expenseTotal;
 		return res;
+	}
+
+	private _categoryOrder(name: string): number {
+		const idx = TAG_CATEGORIES.findIndex(c => c.name === name);
+		if(idx >= 0)
+			return idx;
+		if(name === 'Não categorizado')
+			return 1000;
+		return 500;
 	}
 
 	boletoTagChart(boletos: Boleto[]): TagClassification {

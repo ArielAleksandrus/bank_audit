@@ -5,5 +5,21 @@ export const Constants = {
 	accents: "ÀÁÂÃÄÅàáâãäåÒÓÔÕÕÖØòóôõöøÈÉÊËèéêëðÇçÐÌÍÎÏìíîïÙÚÛÜùúûüÑñŠšŸÿýŽž",
 	accentsOut: "AAAAAAaaaaaaOOOOOOOooooooEEEEeeeeeCcDIIIIiiiiUUUUuuuuNnSsYyyZz",
 
-	monthsPtbr: ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+	monthsPtbr: ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"],
+
+	defaultBanks: [
+		'banco do brasil',
+		'bradesco',
+		'c6',
+		'caixa',
+		'inter',
+		'itaú',
+		'nubank',
+		'pagseguro',
+		'santander',
+		'sicoob',
+		'sicredi',
+		'stone',
+		'outro'
+	]
 }

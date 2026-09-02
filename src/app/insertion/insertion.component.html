@@ -1,163 +1,218 @@
-<div class="ins-container">
-	<h4>Insira a informação</h4>
-	<ngb-datepicker [displayMonths]="1"
-									outsideDays="hidden"
-									[maxDate]="today"
-									[(ngModel)]="fromDate"/>
-	<div class="ins-body">
-		<div class="ins-type-btns">
-			<button class="btn btn-sm btn-default btn-purchase"
-							[class.selected]="insertType == 'purchase'"
-							(click)="insertType = 'purchase'">saída</button>
-			<button class="btn btn-sm btn-default btn-income"
-							[class.selected]="insertType == 'income'"
-							(click)="insertType = 'income'">entrada</button>
-		</div>
+<div class="insertion-page">
+	<div class="insertion-shell">
+		<header class="insertion-header">
+			<h1>Inserir lançamento</h1>
+			<p class="insertion-sub" *ngIf="company">{{company.name}}</p>
+		</header>
 
-		<!-- Purchase fields -->
-		<div *ngIf="insertType == 'purchase'">
-			<div class="field-div">
-				<label class="field-label">Fornecedor:</label>
-        <ng-select id="ngssup" [items]="suppliers"
-                    bindLabel="name"
-                    autofocus
-                    bindValue="name"
-                    [(ngModel)]="purchase.supplier_name"
-                    (change)="changedNgSelectObj($event)"
-                    addTag="true">
-        </ng-select>
+		<div class="insertion-card">
+			<div class="type-toggle" role="tablist" aria-label="Tipo de lançamento">
+				<button type="button" role="tab"
+								[class.active]="insertType == 'purchase'"
+								[attr.aria-selected]="insertType == 'purchase'"
+								(click)="insertType = 'purchase'">
+					<fa-icon [icon]="purchaseIcon"></fa-icon>
+					Saída
+				</button>
+				<button type="button" role="tab"
+								[class.active]="insertType == 'income'"
+								[attr.aria-selected]="insertType == 'income'"
+								(click)="insertType = 'income'">
+					<fa-icon [icon]="incomeIcon"></fa-icon>
+					Entrada
+				</button>
 			</div>
-			<div class="field-div">
-				<label class="field-label">CNPJ (só números):</label>
-				<input type="text" [(ngModel)]="purchase.supplier_cnpj" class="form-control"/>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Banco (de onde o dinheiro saiu): </label>
-        <ng-select id="ngsbank" [items]="banks"
-                    [(ngModel)]="purchase.bank_name"
-                    addTag="true">
-        </ng-select>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Foi pago a terceiros? (ex: reembolso pago ao sócio)</label> &nbsp; &nbsp;
-        <input type="checkbox" [(ngModel)]="hasReferral"/>
-			</div>
-			<div *ngIf="hasReferral" class="field-div">
-				<label class="field-label">Nome de quem recebeu: </label>
-        <ng-select id="ngsbank" [items]="referrals"
-                    autofocus
-                    [(ngModel)]="purchase.referral"
-                    addTag="true">
-        </ng-select>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Total de Parcelas: </label>
-        <input type="number" min="1" max="36" [(ngModel)]="purchase.installments" class="form-control"/>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Valor da compra: </label>
-        <input type="number" min="0.01" [(ngModel)]="purchase.base_value" class="form-control"/>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Tags: </label>
-				<ng-select [items]="availableTags"
-								addTag="true"
-								[multiple]="true"
-								placeholder="Selecione"
-								bindLabel="name"
-								[(ngModel)]="purchase.aux_tags"></ng-select>
-			</div>
-			<div *ngIf="purchase.installments >= 1 && purchase.base_value > 0" class="field-div">
-				<label class="field-label">Forma de Pagamento</label>
-				<select [(ngModel)]="purchase.payment_type" (change)="paymentTypeChanged()" class="form-control">
-					<option value="" disabled>Selecione</option>
-					<option value="boleto">Boleto</option>
-					<option value="debit_card">Cartão de Débito</option>
-					<option value="credit_card">Cartão de Crédito</option>
-					<option value="pix">PIX</option>
-					<option value="check">Cheque</option>
-					<option value="cash">Dinheiro</option>
-					<option value="transfer">Transferência</option>
-					<option value="other">Outro</option>
-				</select>
-			</div>
-			<div *ngIf="purchase.payment_type == 'boleto' && purchase.boletos.length > 0" class="field-div">
-				<table class="table table-hover">
-					<thead>
-						<tr>
-							<th>Parcela</th>
-							<th>Vencimento</th>
-							<th>Valor</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr *ngFor="let bol of purchase.boletos">
-							<td>{{bol.installments}}</td>
-							<td>
-								<input type="text" class="form-control" [(ngModel)]="bol.expiration_date" mask="99/99/9999"/>
-							</td>
-							<td>
-								<input type="text" class="form-control" [(ngModel)]="bol.value" mask="separator.2"/>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Observações:</label>
-				<textarea rows="5" class="form-control" [(ngModel)]="purchase.additional_info"></textarea>
-			</div>
-		</div>
-		<!--- --->
 
-		<!---------------------------------------->
+			<div class="field">
+				<label class="field-label" for="ins-date">Data</label>
+				<input id="ins-date" type="date" class="form-control"
+							 [(ngModel)]="dateIso" [max]="todayIso"/>
+			</div>
 
-		<div *ngIf="insertType == 'income'">
-			<div class="field-div">
-				<label class="field-label">Valor do recebimento: </label>
-        <input type="number" min="0.01" [(ngModel)]="income.value" class="form-control"/>
+			<!-- Purchase fields -->
+			<div *ngIf="insertType == 'purchase'" class="fields">
+				<div class="field-row">
+					<div class="field">
+						<label class="field-label" for="ins-value">Valor da compra</label>
+						<input id="ins-value" type="number" min="0.01" step="0.01" inputmode="decimal"
+									 [(ngModel)]="purchase.base_value" class="form-control" placeholder="0,00"/>
+					</div>
+					<div class="field">
+						<label class="field-label" for="ins-installments">Parcelas</label>
+						<input id="ins-installments" type="number" min="1" max="36" inputmode="numeric"
+									 [(ngModel)]="purchase.installments" class="form-control"/>
+					</div>
+				</div>
+
+				<div class="field">
+					<label class="field-label">Fornecedor</label>
+					<ng-select [items]="suppliers"
+										bindLabel="name"
+										bindValue="name"
+										[(ngModel)]="purchase.supplier_name"
+										(change)="changedNgSelectObj($event)"
+										addTag="true"
+										addTagText="Criar fornecedor"
+										notFoundText="Nenhum fornecedor encontrado"
+										placeholder="Selecione ou digite">
+					</ng-select>
+				</div>
+
+				<div class="field">
+					<label class="field-label" for="ins-cnpj">CNPJ (só números)</label>
+					<input id="ins-cnpj" type="text" inputmode="numeric" [(ngModel)]="purchase.supplier_cnpj" class="form-control"/>
+				</div>
+
+				<div class="field">
+					<label class="field-label">Banco (de onde o dinheiro saiu)</label>
+					<ng-select [items]="banks"
+										[(ngModel)]="purchase.bank_name"
+										[addTag]="addBankTag"
+										addTagText="Criar banco"
+										notFoundText="Nenhum banco encontrado"
+										placeholder="Selecione ou digite"
+										(change)="bankChanged($event)">
+					</ng-select>
+				</div>
+
+				<button type="button" class="check-row" [class.checked]="hasReferral"
+								[attr.aria-pressed]="hasReferral" (click)="toggleReferral()">
+					<span class="check-box" [class.checked]="hasReferral" aria-hidden="true"></span>
+					<span class="check-copy">
+						<span class="check-title">Pago a terceiros</span>
+						<span class="check-hint">Ex.: reembolso pago ao sócio</span>
+					</span>
+				</button>
+
+				<div *ngIf="hasReferral" class="field">
+					<label class="field-label">Quem recebeu</label>
+					<ng-select [items]="referrals"
+										[(ngModel)]="purchase.referral"
+										addTag="true"
+										addTagText="Criar nome"
+										notFoundText="Nenhum nome encontrado"
+										placeholder="Selecione ou digite">
+					</ng-select>
+				</div>
+
+				<div class="field">
+					<label class="field-label">Tags</label>
+					<ng-select [items]="availableTags"
+										addTag="true"
+										addTagText="Criar tag"
+										[multiple]="true"
+										placeholder="Selecione"
+										notFoundText="Nenhuma tag encontrada"
+										bindLabel="name"
+										[(ngModel)]="purchase.aux_tags"></ng-select>
+				</div>
+
+				<div *ngIf="purchase.installments >= 1 && purchase.base_value > 0" class="field">
+					<label class="field-label" for="ins-payment">Forma de pagamento</label>
+					<select id="ins-payment" [(ngModel)]="purchase.payment_type" (change)="paymentTypeChanged()" class="form-control">
+						<option value="" disabled>Selecione</option>
+						<option value="boleto">Boleto</option>
+						<option value="debit_card">Cartão de Débito</option>
+						<option value="credit_card">Cartão de Crédito</option>
+						<option value="pix">PIX</option>
+						<option value="check">Cheque</option>
+						<option value="cash">Dinheiro</option>
+						<option value="transfer">Transferência</option>
+						<option value="other">Outro</option>
+					</select>
+				</div>
+
+				<div *ngIf="purchase.payment_type == 'boleto' && purchase.boletos.length > 0" class="boleto-list">
+					<div class="boleto-heading">Parcelas do boleto</div>
+					<div class="boleto-card" *ngFor="let bol of purchase.boletos; let i = index">
+						<div class="boleto-title">Parcela {{i + 1}} de {{purchase.installments}}</div>
+						<div class="field-row">
+							<div class="field">
+								<label class="field-label">Vencimento</label>
+								<input type="text" class="form-control" inputmode="numeric"
+											 [(ngModel)]="bol.expiration_date" mask="99/99/9999" placeholder="dd/mm/aaaa"/>
+							</div>
+							<div class="field">
+								<label class="field-label">Valor</label>
+								<input type="text" class="form-control" inputmode="decimal"
+											 [(ngModel)]="bol.value" mask="separator.2"/>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="field">
+					<label class="field-label" for="ins-notes">Observações</label>
+					<textarea id="ins-notes" rows="4" class="form-control" [(ngModel)]="purchase.additional_info"></textarea>
+				</div>
 			</div>
-			<div class="field-div">
-				<label class="field-label">Origem (quem pagou):</label>
-				<input type="text" class="form-control" [(ngModel)]="income.origin"/>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Banco (onde o dinheiro foi depositado): </label>
-        <ng-select id="ngsbank" [items]="banks"
-                    [(ngModel)]="income.bank_name"
-                    addTag="true">
-        </ng-select>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Forma de Pagamento</label>
-				<select [(ngModel)]="income.income_type" class="form-control">
-					<option value="" disabled>Selecione</option>
-					<option value="cartao">Cartão</option>
-					<option value="cheque">Cheque</option>
-					<option value="dinheiro">Dinheiro</option>
-					<option value="pix">PIX</option>
-					<option value="outro">Outro</option>
-				</select>
-			</div>
-			<div class="field-div">
-				<label class="field-label">Observações:</label>
-				<textarea rows="5" class="form-control" [(ngModel)]="income.additional_info"></textarea>
+
+			<!-- Income fields -->
+			<div *ngIf="insertType == 'income'" class="fields">
+				<div class="field">
+					<label class="field-label" for="ins-income-value">Valor do recebimento</label>
+					<input id="ins-income-value" type="number" min="0.01" step="0.01" inputmode="decimal"
+								 [(ngModel)]="income.value" class="form-control" placeholder="0,00"/>
+				</div>
+
+				<div class="field">
+					<label class="field-label" for="ins-origin">Origem (quem pagou)</label>
+					<input id="ins-origin" type="text" class="form-control" [(ngModel)]="income.origin"
+								 placeholder="Nome de quem pagou" autocomplete="off"/>
+				</div>
+
+				<div class="field">
+					<label class="field-label">Banco (onde o dinheiro foi depositado)</label>
+					<ng-select [items]="banks"
+										[(ngModel)]="income.bank_name"
+										[addTag]="addBankTag"
+										addTagText="Criar banco"
+										notFoundText="Nenhum banco encontrado"
+										placeholder="Selecione ou digite"
+										(change)="bankChanged($event)">
+					</ng-select>
+				</div>
+
+				<div class="field">
+					<label class="field-label" for="ins-income-type">Forma de pagamento</label>
+					<select id="ins-income-type" [(ngModel)]="income.income_type" class="form-control">
+						<option value="" disabled>Selecione</option>
+						<option value="cartao">Cartão</option>
+						<option value="cheque">Cheque</option>
+						<option value="dinheiro">Dinheiro</option>
+						<option value="pix">PIX</option>
+						<option value="outro">Outro</option>
+					</select>
+				</div>
+
+				<div class="field">
+					<label class="field-label" for="ins-income-notes">Observações</label>
+					<textarea id="ins-income-notes" rows="4" class="form-control" [(ngModel)]="income.additional_info"></textarea>
+				</div>
 			</div>
 		</div>
 	</div>
-	<div class="footer-buttons">
-		<button class="btn btn-lg btn-warning" (click)="back()">VOLTAR</button> &nbsp; &nbsp; &nbsp;
-		<button *ngIf="insertType == 'purchase'"
-						class="btn btn-lg btn-primary"
-						(click)="sendPurchase()"
-						[disabled]="!fromDate || !purchase.supplier_name || !purchase.bank_name || !purchase.payment_type || !purchase.base_value">INSERIR</button>
-		<button *ngIf="insertType == 'income'"
-						class="btn btn-lg btn-primary"
-						(click)="sendIncome()"
-						[disabled]="!fromDate || !income.origin || !income.bank_name || !income.income_type || !income.value">INSERIR</button>
-	</div>
 
-	<br/>
-	<hr/>
-	<br/>
+	<div class="insertion-actions">
+		<div class="insertion-actions-inner">
+			<button type="button" class="btn-ghost" (click)="back()" [disabled]="sending">
+				<fa-icon [icon]="backIcon"></fa-icon>
+				Voltar
+			</button>
+			<button *ngIf="insertType == 'purchase'"
+							type="button"
+							class="btn-solid"
+							(click)="sendPurchase()"
+							[disabled]="sending || !dateIso || !purchase.supplier_name || !purchase.bank_name || !purchase.payment_type || !purchase.base_value">
+				{{ sending ? 'Inserindo...' : 'Inserir' }}
+			</button>
+			<button *ngIf="insertType == 'income'"
+							type="button"
+							class="btn-solid"
+							(click)="sendIncome()"
+							[disabled]="sending || !dateIso || !income.origin || !income.bank_name || !income.income_type || !income.value">
+				{{ sending ? 'Inserindo...' : 'Inserir' }}
+			</button>
+		</div>
+	</div>
 </div>

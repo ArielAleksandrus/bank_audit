@@ -125,8 +125,20 @@
 						}
 						<tfoot>
 							<tr>
+								<td><b>COMPROMETIMENTO RECORRENTE (Fixa + Variável)</b></td>
+								<td><b>{{describedReport.recurringTotal | currency:'BRL'}}</b></td>
+							</tr>
+							<tr>
 								<td><b>TOTAL DESPESAS</b></td>
-								<td><b>{{describedReport.total | currency:'BRL'}}</b></td>
+								<td><b>{{describedReport.expenseTotal | currency:'BRL'}}</b></td>
+							</tr>
+							<tr *ngIf="describedReport.materialInvestmentTotal">
+								<td>Investimento material</td>
+								<td>{{describedReport.materialInvestmentTotal | currency:'BRL'}}</td>
+							</tr>
+							<tr *ngIf="describedReport.financialInvestmentTotal">
+								<td>Investimento financeiro</td>
+								<td>{{describedReport.financialInvestmentTotal | currency:'BRL'}}</td>
 							</tr>
 						</tfoot>
 					</table>

@@ -194,6 +194,20 @@ export class Purchase {
 			);
 		})
 	}
+
+	public static loadBanks(api: ApiService): Promise<string[]> {
+		return new Promise((resolve) => {
+			api.show('purchases', 'banks').subscribe(
+				(res: string[]) => {
+					resolve(res || []);
+				},
+				(err: any) => {
+					console.error("Purchase->Could not load banks: ", err);
+					resolve([]);
+				}
+			);
+		});
+	}
 	public static getTags(purchases: Purchase[]): Tag[] {
 		let res: Tag[] = [];
 
