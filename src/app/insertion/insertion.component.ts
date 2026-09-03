@@ -23,10 +23,11 @@ import { Purchase } from '../shared/models/purchase';
 import { Supplier } from '../shared/models/supplier';
 import { Tag } from '../shared/models/tag';
 import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
+import { RecentInsertionsComponent } from './recent-insertions/recent-insertions.component';
 
 @Component({
   selector: 'app-insertion',
-  imports: [CommonModule, FormsModule, NgSelectModule, NgxMaskDirective, FaIconComponent],
+  imports: [CommonModule, FormsModule, NgSelectModule, NgxMaskDirective, FaIconComponent, RecentInsertionsComponent],
   providers: [provideNgxMask()],
   templateUrl: './insertion.component.html',
   styleUrl: './insertion.component.scss'

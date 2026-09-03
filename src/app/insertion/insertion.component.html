@@ -5,6 +5,7 @@
 			<p class="insertion-sub" *ngIf="company">{{company.name}}</p>
 		</header>
 
+		<div class="insertion-layout">
 		<div class="insertion-card">
 			<div class="type-toggle" role="tablist" aria-label="Tipo de lançamento">
 				<button type="button" role="tab"
@@ -190,6 +191,9 @@
 					<textarea id="ins-income-notes" rows="4" class="form-control" [(ngModel)]="income.additional_info"></textarea>
 				</div>
 			</div>
+		</div>
+
+		<app-recent-insertions class="insertion-recent"></app-recent-insertions>
 		</div>
 	</div>
 

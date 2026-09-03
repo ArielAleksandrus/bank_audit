@@ -45,7 +45,7 @@ export class PurchaseComponent {
   selected?: Purchase;
 
   propagate: boolean = true;
-  propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags do purchase serão copiadas para todos os purchases deste fornecedor";
+  propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags da despesa serão copiadas para todas as despesas deste fornecedor";
 
   paymentTranslation = PAYMENT_TRANSLATION;
 

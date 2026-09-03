@@ -199,6 +199,85 @@
 	padding: 0 0.25rem 1.15rem;
 }
 
+.add-member-role {
+	min-height: 44px;
+	border: 1.5px solid #dbe3ee;
+	border-radius: 12px;
+	padding: 0.55rem 0.7rem;
+	font-size: 0.92rem;
+	font-family: inherit;
+	color: #0f172a;
+	background: #fff;
+}
+
+.members-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	padding: 0 0.25rem 1.15rem;
+}
+
+.member-row {
+	display: flex;
+	align-items: center;
+	gap: 0.7rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid #eef1f6;
+	border-radius: 10px;
+	background: #f8fafc;
+}
+
+.member-email {
+	flex: 1;
+	font-size: 0.92rem;
+	color: #0f172a;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.member-role {
+	flex: 0 0 auto;
+	font-size: 0.78rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: #0f766e;
+	background: rgba(15, 118, 110, 0.1);
+	border-radius: 999px;
+	padding: 0.2rem 0.6rem;
+}
+
+.member-role.is-owner {
+	color: #92400e;
+	background: rgba(217, 119, 6, 0.14);
+}
+
+.btn-icon-danger {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: #94a3b8;
+	cursor: pointer;
+	transition: background 0.12s ease, color 0.12s ease;
+}
+
+.btn-icon-danger:hover:not(:disabled) {
+	background: rgba(220, 38, 38, 0.1);
+	color: #dc2626;
+}
+
+.btn-icon-danger:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 .add-member-input,
 .create-input {
 	position: relative;

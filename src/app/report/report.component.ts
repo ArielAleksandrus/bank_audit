@@ -20,6 +20,7 @@ import { ApiService } from '../shared/services/api.service';
 import { QueryHelpers } from '../shared/helpers/query-helpers';
 
 import { Company } from '../shared/models/company';
+import { User } from '../shared/models/user';
 import { Boleto } from '../shared/models/boleto';
 import { Income, IncomeSummary } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
@@ -115,13 +116,24 @@ export class ReportComponent {
     // explicitly (see _queryAcrossCompanies) and don't depend on this. It's
     // just a reasonable default for anything else on the page that still
     // reads the shared auth state (e.g. the Tags section, single-company only).
+    const user = User.loadUser();
     if(this.companies[0]) {
-      this.api.setAuth({ token: this.companies[0].token });
+      const authHeaders: any = { token: this.companies[0].token };
+      if(user?.token)
+        authHeaders['User-Token'] = user.token;
+      this.api.setAuth(authHeaders);
     }
   }
 
   get isSingleCompany(): boolean {
     return this.companies.length === 1;
+  }
+
+  // Buyers can add incomes but their reports are limited to boletos and
+  // purchases - hidden whenever any of the selected companies has them
+  // as a buyer, single or combined report alike.
+  get canViewIncomes(): boolean {
+    return !this.companies.some(c => c.isBuyer);
   }
 
   get companyNamesLabel(): string {
@@ -148,8 +160,15 @@ export class ReportComponent {
 
   queryEntries() {
     this.boletoQuery();
-    this.incomeQuery();
     this.purchaseQuery();
+    if(this.canViewIncomes) {
+      this.incomeQuery();
+    } else {
+      this.incomes = [];
+      this.incomeSummary = Income.calculateIncomeSummary([]);
+      this.incomesLoaded = true;
+      this.setReports();
+    }
   }
 
   loadTags() {
@@ -186,7 +205,8 @@ export class ReportComponent {
         // as each page comes back, and by then the shared customAuth may
         // already belong to a different company's in-flight fetch - every
         // page after the first would silently use the wrong token.
-        let authHeaders = new HttpHeaders({ token: company.token });
+        const user = User.loadUser();
+        let authHeaders = new HttpHeaders(user?.token ? { token: company.token, 'User-Token': user.token } : { token: company.token });
 
         // indexAll also mutates its params object as it paginates, so each
         // company needs its own copy to avoid racing the others there too.

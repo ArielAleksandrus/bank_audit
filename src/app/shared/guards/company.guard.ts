@@ -32,6 +32,9 @@ export const companyGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return false;
   }
 
-  api.setAuth({ token: company.token });
+  // Both tokens are sent so the API can resolve the user's membership role
+  // in this company (e.g. capping what a 'buyer' can read back) - not just
+  // that the company token is valid.
+  api.setAuth({ token: company.token, 'User-Token': user.token });
   return true;
 };

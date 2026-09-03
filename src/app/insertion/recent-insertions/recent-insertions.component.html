@@ -1,0 +1,82 @@
+<div class="recent-card">
+	<div class="recent-header">
+		<h2>Últimos lançamentos</h2>
+		<span class="recent-count" *ngIf="!loading">{{items.length}}</span>
+	</div>
+
+	<div *ngIf="loading" class="recent-loading">
+		<span class="recent-spinner"></span>
+		Carregando...
+	</div>
+
+	<div *ngIf="!loading && items.length === 0" class="recent-empty">
+		Nenhum lançamento ainda.
+	</div>
+
+	<div *ngIf="!loading && items.length > 0" class="recent-list">
+		<div class="recent-item" *ngFor="let item of pagedItems" [class.type-purchase]="item.type == 'purchase'" [class.type-income]="item.type == 'income'" [class.type-boleto]="item.type == 'boleto'">
+			<ng-container *ngIf="!isEditing(item)">
+				<div class="item-icon">
+					<fa-icon [icon]="typeIcon(item.type)"></fa-icon>
+				</div>
+				<div class="item-body">
+					<div class="item-top">
+						<span class="item-type">{{typeLabel(item.type)}}</span>
+						<span class="item-date">{{item.date | date:'dd/MM/YYYY'}}</span>
+					</div>
+					<div class="item-title">{{item.title}}</div>
+					<div class="item-subtitle" *ngIf="item.subtitle">{{item.subtitle}}</div>
+				</div>
+				<div class="item-value">{{item.value | currency:'BRL'}}</div>
+				<div class="item-actions">
+					<button type="button" class="btn-icon" (click)="startEdit(item)" title="Editar">
+						<fa-icon [icon]="editIcon"></fa-icon>
+					</button>
+					<button type="button" class="btn-icon btn-icon-danger"
+									[disabled]="removingId === (item.type + '-' + item.id)"
+									(click)="remove(item)" title="Remover">
+						<fa-icon [icon]="removeIcon"></fa-icon>
+					</button>
+				</div>
+			</ng-container>
+
+			<div class="item-edit" *ngIf="isEditing(item)">
+				<div class="edit-row" *ngIf="editing!.type != 'boleto'">
+					<label>{{editing!.type == 'purchase' ? 'Fornecedor' : 'Origem'}}</label>
+					<input type="text" class="form-control" [(ngModel)]="editing!.label"/>
+				</div>
+				<div class="edit-row">
+					<label>Banco</label>
+					<input type="text" class="form-control" [(ngModel)]="editing!.bank_name"/>
+				</div>
+				<div class="edit-row-split">
+					<div class="edit-row">
+						<label>Valor</label>
+						<input type="number" min="0" step="0.01" class="form-control" [(ngModel)]="editing!.value"/>
+					</div>
+					<div class="edit-row">
+						<label>Data</label>
+						<input type="date" class="form-control" [(ngModel)]="editing!.date"/>
+					</div>
+				</div>
+				<div class="edit-actions">
+					<button type="button" class="btn-icon" (click)="cancelEdit()" title="Cancelar">
+						<fa-icon [icon]="cancelIcon"></fa-icon>
+					</button>
+					<button type="button" class="btn-icon btn-icon-primary" [disabled]="saving" (click)="saveEdit()" title="Salvar">
+						<fa-icon [icon]="saveIcon"></fa-icon>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="recent-pager" *ngIf="!loading && items.length > pageSize">
+		<button type="button" class="btn-page" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
+		<span>Página {{page}} de {{pageCount}}</span>
+		<button type="button" class="btn-page" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
+		<select class="pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+			<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
+		</select>
+	</div>
+</div>

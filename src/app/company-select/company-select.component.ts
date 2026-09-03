@@ -13,11 +13,20 @@ import {
   faListCheck,
   faPlus,
   faRightToBracket,
-  faUserPlus
+  faTrash,
+  faUserPlus,
+  faUsers
 } from '@fortawesome/free-solid-svg-icons';
 
-import { Company } from '../shared/models/company';
+import { Company, MembershipRole } from '../shared/models/company';
+import { Membership } from '../shared/models/membership';
 import { User } from '../shared/models/user';
+
+export const ROLE_LABELS: Record<MembershipRole, string> = {
+  owner: 'Dono',
+  admin: 'Administrador',
+  buyer: 'Comprador'
+};
 
 import { ApiService } from '../shared/services/api.service';
 import { DateRangePickerComponent } from '../shared/components/date-range-picker/date-range-picker.component';
@@ -40,9 +49,17 @@ export class CompanySelectComponent {
 
   showAddMember: Record<number, boolean> = {};
   newMemberEmail: Record<number, string> = {};
+  newMemberRole: Record<number, 'admin'|'buyer'> = {};
   addingMember: Record<number, boolean> = {};
   addMemberMessage: Record<number, string> = {};
   addMemberStatus: Record<number, 'success' | 'error'> = {};
+
+  showMembers: Record<number, boolean> = {};
+  membersLoading: Record<number, boolean> = {};
+  members: Record<number, Membership[]> = {};
+  removingMember: Record<number, boolean> = {};
+
+  roleLabels = ROLE_LABELS;
 
   selectedIds: Record<number, boolean> = {};
   // set while the date-range picker is shown, right before going to the
@@ -58,6 +75,8 @@ export class CompanySelectComponent {
   successIcon = faCircleCheck;
   allCompaniesIcon = faLayerGroup;
   selectedCompaniesIcon = faListCheck;
+  membersIcon = faUsers;
+  removeIcon = faTrash;
 
   constructor(private api: ApiService, private router: Router) {
     this.user = User.loadUser();
@@ -121,6 +140,7 @@ export class CompanySelectComponent {
     this.showAddMember[company.id] = !this.showAddMember[company.id];
     this.addMemberMessage[company.id] = '';
     this.newMemberEmail[company.id] = '';
+    this.newMemberRole[company.id] = 'admin';
   }
 
   addMember(company: Company) {
@@ -130,6 +150,7 @@ export class CompanySelectComponent {
       this.addMemberMessage[company.id] = 'Preencha o e-mail do usuário';
       return;
     }
+    const role: 'admin'|'buyer' = this.newMemberRole[company.id] || 'admin';
 
     this.addMemberMessage[company.id] = '';
     this.addingMember[company.id] = true;
@@ -142,20 +163,23 @@ export class CompanySelectComponent {
         return;
       }
 
-      const confirmed = confirm(`Usuário encontrado. Deseja adicionar "${email}" a esta empresa?`);
+      const confirmed = confirm(`Usuário encontrado. Deseja adicionar "${email}" a esta empresa como ${this.roleLabels[role]}?`);
       if(!confirmed) {
         this.addingMember[company.id] = false;
         return;
       }
 
       this.api.create(`companies/${company.id}/members`, {
-        membership: { email: email }
+        membership: { email: email, role: role }
       }).subscribe(
         (res: any) => {
           this.addingMember[company.id] = false;
           this.addMemberStatus[company.id] = 'success';
-          this.addMemberMessage[company.id] = `Usuário "${email}" adicionado com sucesso`;
+          this.addMemberMessage[company.id] = `Usuário "${email}" adicionado como ${this.roleLabels[role]}`;
           this.newMemberEmail[company.id] = '';
+          if(this.members[company.id]) {
+            this.members[company.id] = this.members[company.id].concat(new Membership(res));
+          }
         },
         (err: any) => {
           this.addingMember[company.id] = false;
@@ -170,6 +194,45 @@ export class CompanySelectComponent {
       this.addMemberMessage[company.id] = 'Não foi possível verificar o e-mail. Tente novamente';
       console.error(err);
     });
+  }
+
+  toggleMembers(company: Company) {
+    this.showMembers[company.id] = !this.showMembers[company.id];
+    if(this.showMembers[company.id] && !this.members[company.id]) {
+      this.loadMembers(company);
+    }
+  }
+
+  loadMembers(company: Company) {
+    this.membersLoading[company.id] = true;
+    this.api.index(`companies/${company.id}/members`).subscribe(
+      (res: any[]) => {
+        this.membersLoading[company.id] = false;
+        this.members[company.id] = Membership.fromJsonArray(res);
+      },
+      (err: any) => {
+        this.membersLoading[company.id] = false;
+        console.error(err);
+      }
+    );
+  }
+
+  removeMember(company: Company, membership: Membership) {
+    if(!confirm(`Remover "${membership.email}" desta empresa?`))
+      return;
+
+    this.removingMember[membership.user_id] = true;
+    this.api.destroy(`companies/${company.id}/members`, membership.user_id).subscribe(
+      (res: any) => {
+        this.removingMember[membership.user_id] = false;
+        this.members[company.id] = (this.members[company.id] || []).filter(m => m.user_id !== membership.user_id);
+      },
+      (err: any) => {
+        this.removingMember[membership.user_id] = false;
+        alert(err?.status === 422 ? 'Não é possível remover o último dono da empresa' : 'Não foi possível remover o usuário');
+        console.error(err);
+      }
+    );
   }
 
   private _checkUserExists(email: string): Promise<boolean> {

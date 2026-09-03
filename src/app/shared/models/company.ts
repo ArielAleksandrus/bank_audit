@@ -1,7 +1,13 @@
+export type MembershipRole = 'owner'|'admin'|'buyer';
+
 export class Company {
 	id: number;
 	name: string;
 	token: string;
+
+	// the requesting user's role in this company - only present on
+	// responses that carry membership info (e.g. companies#index/#create).
+	role?: MembershipRole;
 
 	created_at: string;
 	updated_at: string;
@@ -10,12 +16,20 @@ export class Company {
 		this.id = jsonData.id;
 		this.name = jsonData.name;
 		this.token = jsonData.token;
+		this.role = jsonData.role;
 		this.created_at = jsonData.created_at;
 		this.updated_at = jsonData.updated_at;
 	}
 
 	get slug(): string {
 		return Company.slugify(this.name);
+	}
+
+	get isOwner(): boolean {
+		return this.role === 'owner';
+	}
+	get isBuyer(): boolean {
+		return this.role === 'buyer';
 	}
 
 	public static slugify(name: string): string {

@@ -32,13 +32,35 @@
 							<div class="company-icon" (click)="selectCompany(company)"><fa-icon [icon]="buildingIcon"></fa-icon></div>
 							<div class="company-name" (click)="selectCompany(company)">{{company.name}}</div>
 							<div class="company-actions">
-								<button class="btn-ghost" (click)="toggleAddMember(company)">
-									<fa-icon [icon]="addUserIcon"></fa-icon>
-									Adicionar usuário
-								</button>
+								<ng-container *ngIf="company.isOwner">
+									<button class="btn-ghost" (click)="toggleMembers(company)">
+										<fa-icon [icon]="membersIcon"></fa-icon>
+										Membros
+									</button>
+									<button class="btn-ghost" (click)="toggleAddMember(company)">
+										<fa-icon [icon]="addUserIcon"></fa-icon>
+										Adicionar usuário
+									</button>
+								</ng-container>
 								<button class="btn-solid" (click)="selectCompany(company)">
 									Entrar
 									<fa-icon [icon]="enterIcon"></fa-icon>
+								</button>
+							</div>
+						</div>
+
+						<div class="members-panel" *ngIf="showMembers[company.id]">
+							<div *ngIf="membersLoading[company.id]" class="companies-loading">
+								<span class="companies-spinner"></span>
+								Carregando membros...
+							</div>
+							<div class="member-row" *ngFor="let member of members[company.id]">
+								<span class="member-email">{{member.email}}</span>
+								<span class="member-role" [class.is-owner]="member.role === 'owner'">{{roleLabels[member.role]}}</span>
+								<button class="btn-icon-danger" *ngIf="member.role !== 'owner'"
+									[disabled]="removingMember[member.user_id]"
+									(click)="removeMember(company, member)" title="Remover">
+									<fa-icon [icon]="removeIcon"></fa-icon>
 								</button>
 							</div>
 						</div>
@@ -49,6 +71,10 @@
 								<input type="email" placeholder="e-mail do usuário"
 									[(ngModel)]="newMemberEmail[company.id]" (keyup.enter)="addMember(company)"/>
 							</div>
+							<select class="add-member-role" [(ngModel)]="newMemberRole[company.id]">
+								<option value="admin">Administrador</option>
+								<option value="buyer">Comprador</option>
+							</select>
 							<button class="btn-solid btn-sm" [disabled]="addingMember[company.id]" (click)="addMember(company)">
 								{{ addingMember[company.id] ? 'Verificando...' : 'Adicionar' }}
 							</button>

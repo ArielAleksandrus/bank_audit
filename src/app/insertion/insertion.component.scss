@@ -15,7 +15,41 @@
 
 .insertion-shell {
 	width: 100%;
-	max-width: 640px;
+	max-width: 1180px;
+}
+
+.insertion-layout {
+	display: flex;
+	align-items: flex-start;
+	gap: 1.15rem;
+}
+
+.insertion-layout > .insertion-card {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.insertion-recent {
+	flex: 1 1 0;
+	min-width: 0;
+	position: sticky;
+	top: 1.5rem;
+}
+
+@media (max-width: 900px) {
+	.insertion-layout {
+		flex-direction: column;
+	}
+
+	.insertion-layout > .insertion-card,
+	.insertion-recent {
+		flex: 1 1 auto;
+		width: 100%;
+	}
+
+	.insertion-recent {
+		position: static;
+	}
 }
 
 .insertion-header {

@@ -11,7 +11,7 @@
 			<div class="sidebar-company-name">{{companyNamesLabel}}</div>
 			<hr/>
 
-			<button type="button" class="sidebar-item" [class.active]="selection == 'incomes'" (click)="selectSection('incomes')">
+			<button type="button" class="sidebar-item" *ngIf="canViewIncomes" [class.active]="selection == 'incomes'" (click)="selectSection('incomes')">
 				<fa-icon class="sidebar-icon" [icon]="incomeIcon"></fa-icon>
 				<span class="sidebar-label">Entradas</span>
 				<span class="sidebar-count">{{incomes.length}}</span>
@@ -57,7 +57,7 @@
 				<p>Selecione uma seção ao lado para começar</p>
 			</div>
 
-			<div class="content-pane" *ngIf="selection == 'incomes'">
+			<div class="content-pane" *ngIf="selection == 'incomes' && canViewIncomes">
 				<app-income-sum *ngIf="incomeSummary" [summary]="incomeSummary"></app-income-sum>
 				<app-income [incomes]="incomes" [collapse]="false" [canSave]="isSingleCompany" [canDestroy]="isSingleCompany"></app-income>
 			</div>
