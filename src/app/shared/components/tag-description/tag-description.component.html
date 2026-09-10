@@ -39,7 +39,7 @@
 	                    [clearable]="true"
 	                    notFoundText="Nenhuma categoria encontrada"
 	                    placeholder="Fixa, Variável, Esporádica..."
-	                    (change)="valueChanged($event)">
+	                    (change)="valueChanged(tag, $event)">
 	        </ng-select>
 				</td>
 			</tr>
@@ -47,7 +47,6 @@
 	</table>
 
 	<div class="button-container">
-		<button class="btn btn-md btn-primary" (click)="send()">Salvar</button> &nbsp; &nbsp; &nbsp;
 		<button class="btn btn-md btn-secondary" (click)="next()">Prosseguir</button> &nbsp; &nbsp; &nbsp;
 	</div>
 </div>

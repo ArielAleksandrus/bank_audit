@@ -38,6 +38,7 @@ import { TagDescriptionComponent } from '../shared/components/tag-description/ta
 import { Reports, TagClassification, DescribedReport } from '../shared/parsers/reports';
 
 import { Utils } from '../shared/helpers/utils';
+import { Filters } from '../shared/helpers/filters';
 
 @Component({
   selector: 'app-report',
@@ -89,7 +90,7 @@ export class ReportComponent {
   selectedPurchases: Purchase[] = [];
 
   describedReport?: DescribedReport;
-  printDescribedReportTable: boolean = false;
+  tagModalData?: {name: string, purchases: Purchase[]};
 
   constructor(private api: ApiService,
               private route: ActivatedRoute,
@@ -133,6 +134,12 @@ export class ReportComponent {
   // purchases - hidden whenever any of the selected companies has them
   // as a buyer, single or combined report alike.
   get canViewIncomes(): boolean {
+    return !this.companies.some(c => c.isBuyer);
+  }
+
+  // "Gerar Relatório" is an owner/admin tool - buyers never see it, on a
+  // single company or a combined one.
+  get canGenerateReport(): boolean {
     return !this.companies.some(c => c.isBuyer);
   }
 
@@ -295,16 +302,20 @@ export class ReportComponent {
   }
 
   print(htmlId: string) {
-    let el = document.getElementById(htmlId);
-    if(!el)
+    if(!document.getElementById(htmlId))
       return;
 
-    this.printDescribedReportTable = true;
-    setTimeout(() => {
-      window.print();
-    }, 200);
-    setTimeout(() => {
-      //this.printDescribedReportTable = false;
-    }, 3000);
+    window.print();
+  }
+
+  openTagPurchasesModal(tagItem: {name: string, purchases: Purchase[]}) {
+    this.tagModalData = {
+      name: tagItem.name,
+      purchases: Filters.orderDates(tagItem.purchases, 'purchase_date', true)
+    };
+  }
+
+  closeTagPurchasesModal() {
+    this.tagModalData = undefined;
   }
 }

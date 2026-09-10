@@ -32,7 +32,7 @@ export class Reports {
 		this.incomes = incomes;
 		this.purchases = purchases;
 		this.boletos = boletos;
-		this.tags = Purchase.getTags(this.purchases);
+		this.tags = Filters.orderAlphabetically(Purchase.getTags(this.purchases), 'name', false);
 		this.tagDescriptions = Tag.getDescriptions(this.tags);
 	}
 
@@ -78,6 +78,7 @@ export class Reports {
 				descriptionEl.tags.push(tagEl);
 			}
 			descriptionEl.total = Number(descriptionEl.total.toFixed(2));
+			descriptionEl.tags.sort((a, b) => b.total - a.total);
 			res.descriptions.push(descriptionEl);
 
 			const category = tagCategoryOf(description);

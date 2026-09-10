@@ -63,7 +63,6 @@ const TAG_CATEGORY_HINTS: {[name: string]: string} = {
 })
 export class TagDescriptionComponent {
   tags = model.required<Tag[]>();
-  onSave = output<Tag[]>();
   onClose = output<'next'|'close'>();
 
   categories: TagCategoryDef[] = TAG_CATEGORIES;
@@ -81,24 +80,18 @@ export class TagDescriptionComponent {
     });
   }
 
-  valueChanged(desc: string) {
+  // Saves this one tag as soon as its category changes, instead of batching
+  // every visible tag behind a "Salvar" button - so one tag's failure can't
+  // block another tag's category from being saved.
+  valueChanged(tag: Tag, desc: string) {
     if(desc && this.categoryNames.indexOf(desc) == -1 && !isRetiredTagCategory(desc)) {
       this.categoryNames = this.mergeCategories([desc]);
     }
-  }
 
-  send(idx: number = 0) {
-    let tag: Tag = this.tags()[idx];
-    if(!tag) {
-      this.tags.set(this.tags());
-      alert("Categorias salvas");
-      this.onSave.emit(this.tags());
-      return;
-    }
-
-    this._sendTag(tag).then(res => {
-      this.send(idx + 1);
-    });
+    this._sendTag(tag).then(
+      () => this.tags.set(this.tags()),
+      () => alert(`Não foi possível salvar a categoria de "${tag.name}"`)
+    );
   }
 
   next() {
