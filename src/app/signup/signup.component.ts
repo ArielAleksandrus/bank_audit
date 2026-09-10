@@ -8,7 +8,8 @@ import {
   faEnvelope,
   faEye,
   faEyeSlash,
-  faLock
+  faLock,
+  faUser
 } from '@fortawesome/free-solid-svg-icons';
 
 import { User } from '../shared/models/user';
@@ -23,6 +24,7 @@ import { isValidEmail, parseApiError, parseFieldErrors } from '../shared/helpers
   styleUrl: './signup.component.scss'
 })
 export class SignupComponent {
+  name: string = '';
   email: string = '';
   password: string = '';
   passwordConfirmation: string = '';
@@ -31,12 +33,14 @@ export class SignupComponent {
   fieldErrors: Record<string, string> = {};
   submitting: boolean = false;
   submitted: boolean = false;
+  nameTouched: boolean = false;
   emailTouched: boolean = false;
   passwordTouched: boolean = false;
   confirmationTouched: boolean = false;
   showPassword: boolean = false;
   showPasswordConfirmation: boolean = false;
 
+  userIcon = faUser;
   envelopeIcon = faEnvelope;
   lockIcon = faLock;
   eyeIcon = faEye;
@@ -45,6 +49,12 @@ export class SignupComponent {
 
   constructor(private api: ApiService, private router: Router) {
     this.api.noAuth();
+  }
+
+  get nameError(): string {
+    if(!this.submitted && !this.nameTouched) return '';
+    if(!this.name.trim()) return 'Informe seu nome';
+    return this.fieldErrors['name'] || '';
   }
 
   get emailError(): string {
@@ -84,13 +94,14 @@ export class SignupComponent {
 
   signup() {
     this.submitted = true;
+    this.nameTouched = true;
     this.emailTouched = true;
     this.passwordTouched = true;
     this.confirmationTouched = true;
     this.errorMessage = '';
     this.fieldErrors = {};
 
-    if(this.emailError || this.passwordError || this.confirmationError) {
+    if(this.nameError || this.emailError || this.passwordError || this.confirmationError) {
       this.errorMessage = 'Corrija os campos destacados para continuar';
       return;
     }
@@ -98,7 +109,7 @@ export class SignupComponent {
     this.submitting = true;
 
     this.api.create('users', {
-      user: { email: this.email.trim(), password: this.password }
+      user: { name: this.name.trim(), email: this.email.trim(), password: this.password }
     }).subscribe({
       next: (res: any) => {
         this.submitting = false;
@@ -116,7 +127,7 @@ export class SignupComponent {
   }
 
   onFieldChange() {
-    this.errorMessage = this.submitted && (this.emailError || this.passwordError || this.confirmationError)
+    this.errorMessage = this.submitted && (this.nameError || this.emailError || this.passwordError || this.confirmationError)
       ? 'Corrija os campos destacados para continuar'
       : '';
     this.fieldErrors = {};

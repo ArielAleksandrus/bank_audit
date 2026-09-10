@@ -1,5 +1,6 @@
 export class User {
 	id: number;
+	name: string;
 	email: string;
 	token: string;
 
@@ -8,6 +9,7 @@ export class User {
 
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
+		this.name = jsonData.name;
 		this.email = jsonData.email;
 		this.token = jsonData.token;
 		this.created_at = jsonData.created_at;

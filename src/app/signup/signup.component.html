@@ -7,6 +7,25 @@
 	</div>
 
 	<form (ngSubmit)="signup()" novalidate>
+		<div class="auth-field" [class.invalid]="!!nameError">
+			<label for="signup-name">Nome</label>
+			<div class="auth-input-wrap">
+				<fa-icon class="leading-icon" [icon]="userIcon"></fa-icon>
+				<input
+					id="signup-name"
+					type="text"
+					name="name"
+					autocomplete="name"
+					placeholder="Seu nome"
+					[(ngModel)]="name"
+					(ngModelChange)="onFieldChange()"
+					(blur)="nameTouched = true"
+					[attr.aria-invalid]="!!nameError"
+					aria-describedby="signup-name-error"/>
+			</div>
+			<div id="signup-name-error" class="auth-field-error" *ngIf="nameError">{{nameError}}</div>
+		</div>
+
 		<div class="auth-field" [class.invalid]="!!emailError">
 			<label for="signup-email">E-mail</label>
 			<div class="auth-input-wrap">
