@@ -11,25 +11,29 @@
 			<div class="sidebar-company-name">{{companyNamesLabel}}</div>
 			<hr/>
 
-			<button type="button" class="sidebar-item" *ngIf="canViewIncomes" [class.active]="selection == 'incomes'" (click)="selectSection('incomes')">
-				<fa-icon class="sidebar-icon" [icon]="incomeIcon"></fa-icon>
+			<button type="button" class="sidebar-item" *ngIf="canViewIncomes" [class.active]="selection == 'incomes'"
+							[disabled]="!incomesLoaded" (click)="selectSection('incomes')">
+				<fa-icon class="sidebar-icon" [class.spinning]="!incomesLoaded" [icon]="incomesLoaded ? incomeIcon : spinnerIcon"></fa-icon>
 				<span class="sidebar-label">Entradas</span>
-				<span class="sidebar-count">{{incomes.length}}</span>
+				<span class="sidebar-count" *ngIf="incomesLoaded">{{incomes.length}}</span>
 			</button>
-			<button type="button" class="sidebar-item" [class.active]="selection == 'purchases'" (click)="selectSection('purchases')">
-				<fa-icon class="sidebar-icon" [icon]="purchaseIcon"></fa-icon>
+			<button type="button" class="sidebar-item" [class.active]="selection == 'purchases'"
+							[disabled]="!purchasesLoaded" (click)="selectSection('purchases')">
+				<fa-icon class="sidebar-icon" [class.spinning]="!purchasesLoaded" [icon]="purchasesLoaded ? purchaseIcon : spinnerIcon"></fa-icon>
 				<span class="sidebar-label">Saídas</span>
-				<span class="sidebar-count">{{purchases.length}}</span>
+				<span class="sidebar-count" *ngIf="purchasesLoaded">{{purchases.length}}</span>
 			</button>
-			<button type="button" class="sidebar-item" [class.active]="selection == 'boletos'" (click)="selectSection('boletos')">
-				<fa-icon class="sidebar-icon" [icon]="boletoIcon"></fa-icon>
+			<button type="button" class="sidebar-item" [class.active]="selection == 'boletos'"
+							[disabled]="!boletosLoaded" (click)="selectSection('boletos')">
+				<fa-icon class="sidebar-icon" [class.spinning]="!boletosLoaded" [icon]="boletosLoaded ? boletoIcon : spinnerIcon"></fa-icon>
 				<span class="sidebar-label">Boletos</span>
-				<span class="sidebar-count">{{boletos.length}}</span>
+				<span class="sidebar-count" *ngIf="boletosLoaded">{{boletos.length}}</span>
 			</button>
-			<button type="button" class="sidebar-item" [class.active]="selection == 'tags'" (click)="selectSection('tags')" *ngIf="isSingleCompany">
-				<fa-icon class="sidebar-icon" [icon]="tagsIcon"></fa-icon>
+			<button type="button" class="sidebar-item" [class.active]="selection == 'tags'" *ngIf="isSingleCompany"
+							[disabled]="!tagsLoaded" (click)="selectSection('tags')">
+				<fa-icon class="sidebar-icon" [class.spinning]="!tagsLoaded" [icon]="tagsLoaded ? tagsIcon : spinnerIcon"></fa-icon>
 				<span class="sidebar-label">Tags</span>
-				<span class="sidebar-count">{{tags.length}}</span>
+				<span class="sidebar-count" *ngIf="tagsLoaded">{{tags.length}}</span>
 			</button>
 			<button type="button" class="sidebar-item" [class.active]="selection == 'charts'" (click)="selectSection('charts')" *ngIf="canViewCharts">
 				<fa-icon class="sidebar-icon" [icon]="chartsIcon"></fa-icon>
@@ -52,9 +56,15 @@
 		</nav>
 
 		<div class="report-content">
-			<div class="empty-state" *ngIf="selection == 'none'">
-				<fa-icon [icon]="chartsIcon"></fa-icon>
-				<p>Selecione uma seção ao lado para começar</p>
+			<div class="empty-state" *ngIf="selection == 'none'" [class.is-loading]="isLoadingReportData">
+				<ng-container *ngIf="isLoadingReportData">
+					<span class="report-spinner" aria-hidden="true"></span>
+					<p>Carregando Dados... Aguarde...</p>
+				</ng-container>
+				<ng-container *ngIf="!isLoadingReportData">
+					<fa-icon [icon]="chartsIcon"></fa-icon>
+					<p>Selecione uma seção ao lado para começar</p>
+				</ng-container>
 			</div>
 
 			<div class="content-pane" *ngIf="selection == 'incomes' && canViewIncomes">
@@ -103,44 +113,77 @@
 					<table id="describedReportTable" class="table table-hover table-striped">
 						<thead>
 							<tr>
-								<th colspan="2">Relatório do dia {{fromPtbr}}<span *ngIf="toPtbr"> até {{toPtbr}}</span> - Empresa {{companyNamesLabel}}</th>
+								<th colspan="3">Relatório do dia {{fromPtbr}}<span *ngIf="toPtbr"> até {{toPtbr}}</span> - Empresa {{companyNamesLabel}}</th>
 							</tr>
 						</thead>
-						@for (descriptionEl of describedReport.descriptions; track descriptionEl) {
+						@for (descriptionEl of describedReport.descriptions; track descriptionEl.description) {
 						<thead>
 							<tr class="category-row">
 								<th>{{descriptionEl.description}}</th>
 								<th>{{descriptionEl.total | currency:'BRL'}}</th>
+								<th class="tag-expand-col"></th>
 							</tr>
 						</thead>
 						<tbody>
-							@for (tagItem of descriptionEl.tags; track tagItem) {
-								<tr class="tag-row" (click)="openTagPurchasesModal(tagItem)">
-									<td class="tag-link">{{tagItem.name}}</td>
-									<td>{{tagItem.total | currency:'BRL'}}</td>
-								</tr>
-							}
+							<ng-container *ngTemplateOutlet="tagTree; context: {nodes: descriptionEl.tags, depth: 0, path: ''}"></ng-container>
 						</tbody>
 						}
 						<tfoot>
 							<tr>
 								<td><b>COMPROMETIMENTO RECORRENTE (Fixa + Variável)</b></td>
 								<td><b>{{describedReport.recurringTotal | currency:'BRL'}}</b></td>
+								<td class="tag-expand-col"></td>
 							</tr>
 							<tr>
 								<td><b>TOTAL DESPESAS</b></td>
 								<td><b>{{describedReport.expenseTotal | currency:'BRL'}}</b></td>
+								<td class="tag-expand-col"></td>
 							</tr>
 							<tr *ngIf="describedReport.materialInvestmentTotal">
 								<td>Investimento material</td>
 								<td>{{describedReport.materialInvestmentTotal | currency:'BRL'}}</td>
+								<td class="tag-expand-col"></td>
 							</tr>
 							<tr *ngIf="describedReport.financialInvestmentTotal">
 								<td>Investimento financeiro</td>
 								<td>{{describedReport.financialInvestmentTotal | currency:'BRL'}}</td>
+								<td class="tag-expand-col"></td>
 							</tr>
 						</tfoot>
 					</table>
+					<ng-template #tagTree let-nodes="nodes" let-depth="depth" let-path="path">
+						@for (node of nodes; track tagPath(path, node.name); let i = $index) {
+							<tr class="tag-row" [class.tag-row-nested]="depth > 0">
+								<td>
+									<span class="tag-cell" [style.padding-left.rem]="depth * 1.15">
+										@if (depth > 0) {
+											<span class="tag-return" aria-hidden="true">
+												@if (i === 0) {
+													<fa-icon [icon]="returnIcon"></fa-icon>
+												}
+											</span>
+										}
+										<button type="button" class="tag-link" (click)="openTagPurchasesModal(node, $event)">{{node.name}}</button>
+									</span>
+								</td>
+								<td>{{node.total | currency:'BRL'}}</td>
+								<td class="tag-expand-col">
+									@if (node.children.length > 0) {
+										<button type="button" class="tag-expand"
+														[class.open]="isTagExpanded(tagPath(path, node.name))"
+														(click)="toggleTagExpand(tagPath(path, node.name), $event)"
+														[attr.aria-expanded]="isTagExpanded(tagPath(path, node.name))"
+														[attr.aria-label]="'Expandir ' + node.name">
+											<fa-icon [icon]="isTagExpanded(tagPath(path, node.name)) ? collapseIcon : expandIcon"></fa-icon>
+										</button>
+									}
+								</td>
+							</tr>
+							@if (isTagExpanded(tagPath(path, node.name)) && node.children.length > 0) {
+								<ng-container *ngTemplateOutlet="tagTree; context: {nodes: node.children, depth: depth + 1, path: tagPath(path, node.name)}"></ng-container>
+							}
+						}
+					</ng-template>
 					<div class="button-container">
 						<button class="btn btn-md btn-secondary" (click)="print('describedReportTable')">Imprimir</button>
 					</div>

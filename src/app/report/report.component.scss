@@ -11,6 +11,9 @@
   	-webkit-print-color-adjust: exact;
   	print-color-adjust: exact;
   }
+  .tag-expand-col {
+  	display: none !important;
+  }
 }
 
 .report-page {
@@ -152,6 +155,42 @@
 	}
 }
 
+.empty-state.is-loading {
+	border-style: solid;
+	border-color: #e6ebf2;
+	color: #334155;
+}
+
+.report-spinner {
+	width: 2.1rem;
+	height: 2.1rem;
+	border: 3px solid rgba(15, 118, 110, 0.2);
+	border-top-color: #0f766e;
+	border-radius: 50%;
+	animation: report-spin 0.7s linear infinite;
+}
+
+.sidebar-icon.spinning {
+	color: #0f766e;
+	animation: report-spin 0.7s linear infinite;
+}
+
+.sidebar-item:disabled {
+	opacity: 0.7;
+	cursor: wait;
+}
+
+@keyframes report-spin {
+	to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.report-spinner,
+	.sidebar-icon.spinning {
+		animation: none;
+	}
+}
+
 .content-pane {
 	background: #fff;
 	border: 1px solid #e6ebf2;
@@ -183,11 +222,67 @@
 }
 
 .tag-row {
-	cursor: pointer;
+	cursor: default;
+}
+.tag-cell {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+.tag-return {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1rem;
+	flex: 0 0 1rem;
+	color: #94a3b8;
+	font-size: 0.85rem;
 }
 .tag-link {
+	border: 0;
+	padding: 0;
+	background: transparent;
 	color: #0d6efd;
 	text-decoration: underline;
+	font: inherit;
+	cursor: pointer;
+	text-align: left;
+}
+.tag-link:hover,
+.tag-link:focus-visible {
+	color: #0a58ca;
+	outline: none;
+}
+.tag-expand-col {
+	width: 2.6rem;
+	text-align: center;
+	vertical-align: middle;
+}
+.tag-expand {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
+	border: 1.5px solid #dbe3ee;
+	border-radius: 8px;
+	background: #fff;
+	color: #0f766e;
+	cursor: pointer;
+}
+.tag-expand:hover,
+.tag-expand:focus-visible {
+	border-color: #0f766e;
+	background: rgba(15, 118, 110, 0.06);
+	outline: none;
+}
+.tag-expand.open {
+	background: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 100%);
+	border-color: transparent;
+	color: #042f2e;
+}
+.tag-row-nested td {
+	background: #f8fafc;
 }
 
 .modal-overlay {

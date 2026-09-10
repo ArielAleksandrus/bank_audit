@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, NgTemplateOutlet } from '@angular/common';
 import { HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -13,7 +13,11 @@ import {
   faChartPie,
   faFileLines,
   faTags,
-  faArrowLeft
+  faArrowLeft,
+  faChevronDown,
+  faChevronUp,
+  faTurnDown,
+  faSpinner
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ApiService } from '../shared/services/api.service';
@@ -35,14 +39,14 @@ import { TagChartComponent } from './tag-chart/tag-chart.component';
 import { TagManagerComponent } from './tag-manager/tag-manager.component';
 import { TagDescriptionComponent } from '../shared/components/tag-description/tag-description.component';
 
-import { Reports, TagClassification, DescribedReport } from '../shared/parsers/reports';
+import { Reports, TagClassification, DescribedReport, ReportTagNode } from '../shared/parsers/reports';
 
 import { Utils } from '../shared/helpers/utils';
 import { Filters } from '../shared/helpers/filters';
 
 @Component({
   selector: 'app-report',
-  imports: [CommonModule, FormsModule, FaIconComponent,
+  imports: [CommonModule, NgTemplateOutlet, FormsModule, FaIconComponent,
             BoletoComponent, IncomeComponent, IncomeSumComponent, PurchaseComponent,
             TagChartComponent, TagManagerComponent, TagDescriptionComponent],
   templateUrl: './report.component.html',
@@ -62,6 +66,10 @@ export class ReportComponent {
   reportIcon = faFileLines;
   tagsIcon = faTags;
   backIcon = faArrowLeft;
+  expandIcon = faChevronDown;
+  collapseIcon = faChevronUp;
+  returnIcon = faTurnDown;
+  spinnerIcon = faSpinner;
 
   boletos: Boleto[] = [];
   boletosLoaded: boolean = false;
@@ -73,6 +81,7 @@ export class ReportComponent {
 
   // company-wide, not scoped to the selected date range
   tags: Tag[] = [];
+  tagsLoaded: boolean = false;
 
   from: string;
   to: string;
@@ -91,6 +100,7 @@ export class ReportComponent {
 
   describedReport?: DescribedReport;
   tagModalData?: {name: string, purchases: Purchase[]};
+  expandedTagPaths: {[path: string]: boolean} = {};
 
   constructor(private api: ApiService,
               private route: ActivatedRoute,
@@ -155,10 +165,20 @@ export class ReportComponent {
     return this.companies.map(c => c.name).join(', ');
   }
 
+  get isLoadingReportData(): boolean {
+    if(!this.boletosLoaded || !this.purchasesLoaded || !this.incomesLoaded)
+      return true;
+    if(this.isSingleCompany && !this.tagsLoaded)
+      return true;
+    return false;
+  }
+
   ngOnInit() {
     this.queryEntries();
     if(this.isSingleCompany) {
       this.loadTags();
+    } else {
+      this.tagsLoaded = true;
     }
   }
 
@@ -186,6 +206,8 @@ export class ReportComponent {
   loadTags() {
     Tag.loadTags(this.api).then((res: Tag[]) => {
       this.tags = res;
+    }).finally(() => {
+      this.tagsLoaded = true;
     });
   }
 
@@ -302,8 +324,23 @@ export class ReportComponent {
 
   generateReport() {
     if(this.reports) {
+      this.expandedTagPaths = {};
       this.describedReport = this.reports.describedReport();
     }
+  }
+
+  tagPath(parentPath: string, name: string): string {
+    return parentPath ? parentPath + '/' + name : name;
+  }
+
+  isTagExpanded(path: string): boolean {
+    return !!this.expandedTagPaths[path];
+  }
+
+  toggleTagExpand(path: string, event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.expandedTagPaths[path] = !this.expandedTagPaths[path];
   }
 
   print(htmlId: string) {
@@ -328,7 +365,9 @@ export class ReportComponent {
     setTimeout(done, 1000);
   }
 
-  openTagPurchasesModal(tagItem: {name: string, purchases: Purchase[]}) {
+  openTagPurchasesModal(tagItem: ReportTagNode, event?: Event) {
+    event?.preventDefault();
+    event?.stopPropagation();
     this.tagModalData = {
       name: tagItem.name,
       purchases: Filters.orderDates(tagItem.purchases, 'purchase_date', true)
