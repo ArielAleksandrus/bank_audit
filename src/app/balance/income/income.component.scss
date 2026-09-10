@@ -1,42 +1,5 @@
-.field-label {
-	display: block;
-	font-weight: bold;
-}
+@use '../../shared/styles/ledger';
+
 .hidden {
 	display: none;
-}
-.title th {
-	text-align: center;
-}
-.mustard td{
-	background-color: #f2eb80;
-}
-.grass td{
-	background-color: #9fd283;
-}
-.send-container {
-	text-align: center;
-}
-.pager {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	gap: 0.75em;
-	margin: 0.75em 0 1.25em;
-	flex-wrap: wrap;
-}
-.pager-size {
-	width: auto;
-	max-width: 11em;
-	display: inline-block;
-}
-th.sortable {
-	cursor: pointer;
-	user-select: none;
-}
-th.sortable:hover {
-	background: rgba(0, 0, 0, 0.04);
-}
-.sort-indicator {
-	font-size: 0.75em;
 }

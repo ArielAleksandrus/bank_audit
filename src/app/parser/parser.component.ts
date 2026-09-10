@@ -1,12 +1,14 @@
-import { Component } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import * as pdfjsLib from 'pdfjs-dist';
-
-//import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import {
+  faArrowLeft,
+  faCheck,
+  faFileArrowUp
+} from '@fortawesome/free-solid-svg-icons';
 
 import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
@@ -33,14 +35,14 @@ import { ApiService } from '../shared/services/api.service';
 import { Utils } from '../shared/helpers/utils';
 import { Filters } from '../shared/helpers/filters';
 
+type ParserBankId = 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
+
 @Component({
   selector: 'app-parser',
   imports: [
     CommonModule,
-    NgbCollapseModule,
-    //NgSelectComponent,
-    NgbPopoverModule,
     FormsModule,
+    FaIconComponent,
     IncomeSumComponent,
     IncomeComponent,
     BoletoComponent,
@@ -52,7 +54,7 @@ import { Filters } from '../shared/helpers/filters';
 export class ParserComponent {
   company: Company = {id: -1} as Company;
 
-  selectedBank?: 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
+  selectedBank?: ParserBankId;
   excelData: any[] = [];
   pdfData: any = {};
   parser: BalanceParser;
@@ -61,10 +63,29 @@ export class ParserComponent {
 
   sending: boolean = false;
   sendingCount: number = 0;
+  readingFile: boolean = false;
+  dragOver: boolean = false;
+  fileError: string = '';
+  comprovanteText: string = '';
+  comprovanteSent: boolean = false;
 
-  extratoFile: any;
+  extratoFile?: File;
 
-  constructor(private api: ApiService) {
+  banks: {id: ParserBankId, name: string, formatLabel: string}[] = [
+    { id: 'brb', name: 'BRB', formatLabel: 'PDF' },
+    { id: 'itau', name: 'Itaú', formatLabel: 'PDF' },
+    { id: 'sicoob', name: 'Sicoob', formatLabel: 'Excel' },
+    { id: 'sicredi', name: 'Sicredi', formatLabel: 'OFX' },
+    { id: 'stone', name: 'Stone', formatLabel: 'Excel' }
+  ];
+
+  backIcon = faArrowLeft;
+  uploadIcon = faFileArrowUp;
+  checkIcon = faCheck;
+
+  @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
+
+  constructor(private api: ApiService, private router: Router) {
     this.parser = new SicoobParser();
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.min.mjs';
@@ -72,6 +93,50 @@ export class ParserComponent {
   ngOnInit() {
     // companyGuard has already validated the company and set the auth headers.
     this._loadCompany();
+  }
+
+  get hasResults(): boolean {
+    return this.parser.incomes.length > 0 || this.parser.purchases.length > 0 || this.parser.boletos.length > 0;
+  }
+
+  formatHint(formats: string): string {
+    return (formats || '')
+      .split(',')
+      .map(part => part.trim().replace(/^\./, '').toUpperCase())
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  selectBank(bankId: ParserBankId) {
+    this.selectedBank = bankId;
+    this.extratoFile = undefined;
+    this.fileError = '';
+    this.comprovanteText = '';
+    this.comprovanteSent = false;
+    this.readingFile = false;
+    if(this.fileInput)
+      this.fileInput.nativeElement.value = '';
+    this.bankChanged();
+  }
+
+  back() {
+    const slug = this.company?.slug || Company.slugify(this.company?.name);
+    this.router.navigate(['/', slug, 'dashboard']);
+  }
+
+  onDragOver(evt: DragEvent) {
+    evt.preventDefault();
+    this.dragOver = true;
+  }
+  onDragLeave() {
+    this.dragOver = false;
+  }
+  onDrop(evt: DragEvent) {
+    evt.preventDefault();
+    this.dragOver = false;
+    const file = evt.dataTransfer?.files?.[0];
+    if(file)
+      this.processFile(file);
   }
 
   bankChanged() {
@@ -100,13 +165,33 @@ export class ParserComponent {
   }
 
   extratoFileChanged(evt: any) {
-    const file: File = evt.target.files[0];
+    const file: File = evt.target.files?.[0];
+    if(file)
+      this.processFile(file);
+  }
+
+  processFile(file: File) {
+    const extension = (file.name.split(".").pop() || "").toLowerCase();
+    const accepted = (this.parser.acceptedFormats || "")
+      .split(",")
+      .map(part => part.trim().replace(/^\./, "").toLowerCase())
+      .filter(Boolean);
+
+    this.fileError = "";
+    this.comprovanteSent = false;
+    if(accepted.length > 0 && !accepted.includes(extension)) {
+      this.extratoFile = undefined;
+      this.fileError = `Este banco aceita ${this.formatHint(this.parser.acceptedFormats)}`;
+      if(this.fileInput)
+        this.fileInput.nativeElement.value = "";
+      return;
+    }
+
     this.extratoFile = file;
-    let auxArr = file.name.split(".");
-    let extension = auxArr[auxArr.length - 1];
+    this.readingFile = true;
 
     if(extension == "pdf") {
-      this._useArrayBuffer(file, extension)
+      this._useArrayBuffer(file, extension);
     } else {
       this._useFileReader(file, extension);
     }
@@ -132,6 +217,7 @@ export class ParserComponent {
     }
     }
 
+    this.readingFile = false;
     this.checkIfBoletosExist();
     this.checkIfIncomesExist();
     this.checkIfPurchasesExist();
@@ -151,13 +237,12 @@ export class ParserComponent {
   }
 
   setComprovante() {
-    let txtArea: any = document.getElementById("comprovanteTxt");
-    if(!txtArea)
+    const value = (this.comprovanteText || "").trim();
+    if(!value)
       return;
 
-    let value = txtArea.value;
     this.parser.parseComprovantes(value);
-    alert("Comprovantes enviados. Favor conferir se as informações estão corretas.");
+    this.comprovanteSent = true;
     this.checkIfBoletosExist();
   }
 
@@ -270,7 +355,8 @@ export class ParserComponent {
       this.loadExtrato(file, rows, extension);
     } catch (error) {
       console.error('PDF extraction error:', error);
-      alert('Erro ao processar o PDF');
+      this.readingFile = false;
+      this.fileError = 'Erro ao processar o PDF';
     }
   }
 
@@ -330,6 +416,10 @@ export class ParserComponent {
     reader.onload = (e: any) => {
       self.loadExtrato(file, e.target.result, extension);
     }
+    reader.onerror = () => {
+      self.readingFile = false;
+      self.fileError = 'Erro ao ler o arquivo';
+    };
     
     if(extension == "ofx")
       reader.readAsText(file);

@@ -1,26 +1,64 @@
-<div class="dashboard-bar">
-	<button type="button" class="btn btn-lg btn-outline-primary companies-btn" (click)="goToCompanies()">
-		Empresas
-	</button>
-	<div class="dashboard-company" *ngIf="company">{{company.name}}</div>
-	<button type="button" class="btn btn-lg btn-danger logout-btn" (click)="logout()">
-		Sair
-	</button>
+<div class="dashboard-page">
+	<div class="dashboard-shell">
+		<header class="dashboard-header">
+			<div class="dashboard-brand">
+				<div class="dashboard-logo" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none">
+						<path d="M12 3 4.5 6.2v5.3c0 4.5 3.1 8.6 7.5 9.7 4.4-1.1 7.5-5.2 7.5-9.7V6.2L12 3Z" fill="currentColor" opacity=".2"/>
+						<path d="M12 3 4.5 6.2v5.3c0 4.5 3.1 8.6 7.5 9.7 4.4-1.1 7.5-5.2 7.5-9.7V6.2L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+						<path d="M8 13.2 10.4 15.5 16.2 9.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</div>
+				<div class="dashboard-brand-copy">
+					<div class="dashboard-brand-kicker">Auditoria Bancária</div>
+					<div class="dashboard-company" *ngIf="company">{{company.name}}</div>
+				</div>
+			</div>
+			<div class="dashboard-header-actions">
+				<button type="button" class="btn-ghost" (click)="goToCompanies()">
+					<fa-icon [icon]="companiesIcon"></fa-icon>
+					Empresas
+				</button>
+				<button type="button" class="btn-logout" (click)="logout()">
+					<fa-icon [icon]="logoutIcon"></fa-icon>
+					Sair
+				</button>
+			</div>
+		</header>
+
+		<section *ngIf="curAction == 'init'" class="dashboard-body">
+			<p class="dashboard-lead">O que você deseja fazer?</p>
+			<div class="dashboard-actions">
+				<button type="button" class="action-card action-card-primary" (click)="curAction = 'query'">
+					<span class="action-icon"><fa-icon [icon]="consultIcon"></fa-icon></span>
+					<span class="action-copy">
+						<span class="action-title">Consultar</span>
+						<span class="action-desc">Saídas, boletos e tags por período</span>
+					</span>
+				</button>
+				<button type="button" class="action-card" (click)="insertAction()">
+					<span class="action-icon"><fa-icon [icon]="insertIcon"></fa-icon></span>
+					<span class="action-copy">
+						<span class="action-title">Inserir manual</span>
+						<span class="action-desc">Lançar compras, boletos ou entradas</span>
+					</span>
+				</button>
+				<button type="button" class="action-card" (click)="uploadAction()">
+					<span class="action-icon"><fa-icon [icon]="uploadIcon"></fa-icon></span>
+					<span class="action-copy">
+						<span class="action-title">Enviar extrato</span>
+						<span class="action-desc">Importar PDF ou planilha do banco</span>
+					</span>
+				</button>
+			</div>
+		</section>
+
+		<section *ngIf="curAction == 'query'" class="dashboard-body dashboard-body-picker">
+			<div class="dashboard-picker-card">
+				<app-date-range-picker
+					(confirm)="onDateRangeConfirm($event)"
+					(cancel)="resetAction()"></app-date-range-picker>
+			</div>
+		</section>
+	</div>
 </div>
-
-<div *ngIf="curAction == 'init'" class="actions">
-	<div>
-		<button class="btn btn-lg btn-primary" (click)="curAction = 'query'">CONSULTAR</button>
-	</div>
-	<div>
-		<button class="btn btn-lg btn-success" (click)="insertAction()">INSERIR MANUAL</button>
-	</div>
-	<div>
-		<button class="btn btn-lg btn-secondary" (click)="uploadAction()">ENVIAR EXTRATO</button>
-	</div>
-</div>
-
-
-<app-date-range-picker *ngIf="curAction == 'query'"
-												(confirm)="onDateRangeConfirm($event)"
-												(cancel)="resetAction()"></app-date-range-picker>

@@ -28,8 +28,14 @@ export class Company {
 	get isOwner(): boolean {
 		return this.role === 'owner';
 	}
+	get isAdmin(): boolean {
+		return this.role === 'admin';
+	}
 	get isBuyer(): boolean {
 		return this.role === 'buyer';
+	}
+	get isAdminOrOwner(): boolean {
+		return this.role === 'owner' || this.role === 'admin';
 	}
 
 	public static slugify(name: string): string {
@@ -48,9 +54,11 @@ export class Company {
 	public static storeCompany(comp: Company) {
 		localStorage.setItem('current_company', JSON.stringify({company: comp}));
 	}
-	public static loadCompany() {
+	public static loadCompany(): Company | null {
 		const defaultCompany = JSON.stringify({company: null});
-		return JSON.parse(localStorage.getItem('current_company') || defaultCompany).company;
+		const data = JSON.parse(localStorage.getItem('current_company') || defaultCompany).company;
+		// JSON.parse returns a plain object; wrap it so class getters work.
+		return data ? new Company(data) : null;
 	}
 	public static clearCompany() {
 		localStorage.removeItem('current_company');

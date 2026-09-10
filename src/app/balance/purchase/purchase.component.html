@@ -1,136 +1,151 @@
-<table id="purchaseTable" class="table table-hover table-striped">
-	<thead>
-		<tr class="title">
-			<th colspan="6">
-				OUTRAS DESPESAS <i>({{purchases().length}})</i> &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed; stopEdit()">
-					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button> &nbsp; &nbsp;
-				<button class="btn btn-sm btn-info" (click)="filtering = !filtering">FILTRAR</button>
-			</th>
-		</tr>
-		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-			<th class="sortable" (click)="sortBy('purchase_date')">DATA <span class="sort-indicator" *ngIf="sortField == 'purchase_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('bank_name')">BANCO <span class="sort-indicator" *ngIf="sortField == 'bank_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('supplier_name')">FORNECEDOR <span class="sort-indicator" *ngIf="sortField == 'supplier_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th *ngIf="!printMode" class="sortable" (click)="sortBy('referral')">RECEBEDOR <span class="sort-indicator" *ngIf="sortField == 'referral'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('total')">TOTAL <span class="sort-indicator" *ngIf="sortField == 'total'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th *ngIf="!printMode" class="sortable" (click)="sortBy('installments')">PARCELAS <span class="sort-indicator" *ngIf="sortField == 'installments'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('payment_type')">TIPO <span class="sort-indicator" *ngIf="sortField == 'payment_type'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th>TAGS &nbsp;
-				<span *ngIf="!printMode" class="form-switch">
-					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
-					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
-				</span>
-			</th>
-			<th class="sortable" (click)="sortBy('additional_info')">INF. ADIC. <span class="sort-indicator" *ngIf="sortField == 'additional_info'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th *ngIf="!printMode"> &nbsp; &nbsp; </th>
-		</tr>
-		<tr *ngIf="filtering" #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-			<td></td>
-			<td>
-				<ng-select [items]="availableBanks" [(ngModel)]="filters.bank_names" multiple="true"
-				(change)="changeFilter('bank_names', $event)"></ng-select>
-			</td>
-			<td></td>
-			<td>
-				<input type="number" [(ngModel)]="filters.value_min" placeholder="V. Mín" 
-				class="form-control" (keyup)="delayApplyFilter()"/>
-			</td>
-			<td>
-				<input type="number" [(ngModel)]="filters.value_max" placeholder="V. Máx" 
-				class="form-control" (keyup)="delayApplyFilter()"/>
-			</td>
-			<td></td>
-			<td>
-				<ng-select [items]="availablePaymentTypes" [(ngModel)]="filters.payment_types" multiple="true"
-				(change)="changeFilter('payment_types', $event)"></ng-select>
-			</td>
-		</tr>
-	</thead>
-	<tbody *ngIf="!collapsed">
-		<tr *ngFor="let purchase of displayedPurchases; trackBy: trackByPurchase" [class.danger]="purchase.auxStatus == 'error'">
-			<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
-			<td>{{purchase.bank_name}}</td>
-			<td>
-				<ng-select *ngIf="!printMode && isEditing(purchase, 'supplier')" [items]="suppliers"
-                    bindLabel="name"
-                    autofocus
-                    bindValue="name"
-                    [(ngModel)]="purchase.supplier_name"
-                    addTag="true">
-        </ng-select>
-        <span *ngIf="printMode">{{purchase.supplier_name}}</span>
-        <button *ngIf="!printMode && !isEditing(purchase, 'supplier')" type="button" class="editable" (click)="startEdit(purchase, 'supplier')">{{purchase.supplier_name || '—'}}</button>
-      </td>
-			<td *ngIf="!printMode">
-				<ng-select *ngIf="isEditing(purchase, 'referral')" [items]="referrals"
-								addTag="true"
-								autofocus
-								[(ngModel)]="purchase.referral"></ng-select>
-				<button *ngIf="!isEditing(purchase, 'referral')" type="button" class="editable" (click)="startEdit(purchase, 'referral')">{{purchase.referral || '—'}}</button>
-			</td>
-			<td>{{purchase.total | currency:'BRL'}}</td>
-			<td *ngIf="!printMode">
-				<input type="number" class="form-control" [(ngModel)]="purchase.installments" style="max-width:4em"/>
-			</td>
-			<td>
-				<select *ngIf="!printMode" [(ngModel)]="purchase.payment_type" class="form-control">
-					<option *ngFor="let item of paymentTranslation | keyvalue" [value]="item.key">{{item.value}}</option>
-				</select>
-				<span *ngIf="printMode">{{paymentTranslation[purchase.payment_type]}}</span>
-			</td>
-			<td>
-				<ng-select *ngIf="!printMode && isEditing(purchase, 'tags')" [items]="tags"
-								addTag="true"
-								[multiple]="true"
-								placeholder="Selecione"
-								bindLabel="name"
-								autofocus
-								[ngModel]="purchase.tags"
-								(change)="tagChanged(purchase, $event)"></ng-select>
-				<span *ngIf="printMode">{{purchase.tagsStr}}</span>
-				<button *ngIf="!printMode && !isEditing(purchase, 'tags')" type="button" class="editable" (click)="startEdit(purchase, 'tags')">{{tagNames(purchase)}}</button>
-			</td>
-			<td>
-				<textarea *ngIf="!printMode && isEditing(purchase, 'info')" rows="3" [(ngModel)]="purchase.additional_info" class="form-control" (blur)="stopEdit()"></textarea>
-				<p *ngIf="printMode">{{purchase.additional_info}}</p>
-				<button *ngIf="!printMode && !isEditing(purchase, 'info')" type="button" class="editable" (click)="startEdit(purchase, 'info')">{{purchase.additional_info || '—'}}</button>
-			</td>
-			<td *ngIf="!printMode">
-				<button class="btn btn-sm btn-danger" (click)="remove(purchase)">x</button>
-			</td>
-		</tr>
-	</tbody>
-	<tfoot>
-		<tr>
-			<td></td>
-			<td *ngIf="!printMode"></td>
-			<td *ngIf="!printMode"></td>
-			<td *ngIf="!printMode"></td>
-			<td></td>
-			<td>Total:</td>
-			<td>{{total | currency:'BRL'}}</td>
-			<td></td>
-			<td></td>
-			<td></td>
-		</tr>
-	</tfoot>
-</table>
-<div class="pager" *ngIf="!collapsed && !printMode && visiblePurchases.length > pageSize">
-	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
-	<span>Página {{page}} de {{pageCount}} · {{visiblePurchases.length}} saídas</span>
-	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
-	<select class="form-control pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-		<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
-	</select>
-</div>
-<div *ngIf="canSave" class="send-container">
-	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
-		Enviar
-	</button> <i *ngIf="sending">Enviando... por favor aguarde</i>
-	&nbsp; &nbsp; &nbsp;
-	<button class="btn btn-lg btn-warning" (click)="export()" [disabled]="sending || purchases().length == 0">
-		Exportar
-	</button>
+<div class="ledger">
+	<div class="ledger-toolbar">
+		<div class="ledger-heading">
+			<h3>Outras despesas</h3>
+			<span class="ledger-count">{{purchases().length}}</span>
+		</div>
+		<div class="ledger-toolbar-actions">
+			<span class="ledger-total-chip" *ngIf="collapsed">{{total | currency:'BRL'}}</span>
+			<button type="button" class="btn-chip" [class.active]="!collapsed" (click)="collapsed = !collapsed; stopEdit()">
+				{{collapsed ? 'Expandir' : 'Recolher'}}
+			</button>
+			<button type="button" class="btn-chip" [class.active]="filtering" [disabled]="collapsed" (click)="filtering = !filtering">
+				Filtrar
+			</button>
+		</div>
+	</div>
+
+	<div class="ledger-table-wrap" *ngIf="!collapsed">
+		<table id="purchaseTable" class="ledger-table">
+			<thead>
+				<tr>
+					<th class="sortable" (click)="sortBy('purchase_date')">Data <span class="sort-indicator" *ngIf="sortField == 'purchase_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('bank_name')">Banco <span class="sort-indicator" *ngIf="sortField == 'bank_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('supplier_name')">Fornecedor <span class="sort-indicator" *ngIf="sortField == 'supplier_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th *ngIf="!printMode" class="sortable" (click)="sortBy('referral')">Recebedor <span class="sort-indicator" *ngIf="sortField == 'referral'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('total')">Total <span class="sort-indicator" *ngIf="sortField == 'total'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th *ngIf="!printMode" class="sortable" (click)="sortBy('installments')">Parcelas <span class="sort-indicator" *ngIf="sortField == 'installments'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('payment_type')">Tipo <span class="sort-indicator" *ngIf="sortField == 'payment_type'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th>
+						Tags
+						<label *ngIf="!printMode" class="copy-tag" [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">
+							<input type="checkbox" [(ngModel)]="propagate"/>
+							Copiar tag
+						</label>
+					</th>
+					<th class="sortable" (click)="sortBy('additional_info')">Inf. adic. <span class="sort-indicator" *ngIf="sortField == 'additional_info'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th *ngIf="!printMode" class="col-actions"></th>
+				</tr>
+				<tr class="filter-row" *ngIf="filtering">
+					<td></td>
+					<td>
+						<ng-select [items]="availableBanks" [(ngModel)]="filters.bank_names" multiple="true"
+							(change)="changeFilter('bank_names', $event)"></ng-select>
+					</td>
+					<td></td>
+					<td *ngIf="!printMode"></td>
+					<td>
+						<input type="number" [(ngModel)]="filters.value_min" placeholder="V. mín"
+							class="form-control" (keyup)="delayApplyFilter()"/>
+					</td>
+					<td>
+						<input type="number" [(ngModel)]="filters.value_max" placeholder="V. máx"
+							class="form-control" (keyup)="delayApplyFilter()"/>
+					</td>
+					<td>
+						<ng-select [items]="availablePaymentTypes" [(ngModel)]="filters.payment_types" multiple="true"
+							(change)="changeFilter('payment_types', $event)"></ng-select>
+					</td>
+					<td></td>
+					<td></td>
+					<td *ngIf="!printMode"></td>
+				</tr>
+			</thead>
+			<tbody>
+				<tr *ngFor="let purchase of displayedPurchases; trackBy: trackByPurchase" [class.is-error]="purchase.auxStatus == 'error'">
+					<td>{{purchase.purchase_date | date:'dd/MM/YYYY'}}</td>
+					<td>{{purchase.bank_name}}</td>
+					<td>
+						<ng-select *ngIf="!printMode && isEditing(purchase, 'supplier')" [items]="suppliers"
+							bindLabel="name"
+							autofocus
+							bindValue="name"
+							[(ngModel)]="purchase.supplier_name"
+							addTag="true">
+						</ng-select>
+						<span *ngIf="printMode">{{purchase.supplier_name}}</span>
+						<button *ngIf="!printMode && !isEditing(purchase, 'supplier')" type="button" class="editable" (click)="startEdit(purchase, 'supplier')">{{purchase.supplier_name || '—'}}</button>
+					</td>
+					<td *ngIf="!printMode">
+						<ng-select *ngIf="isEditing(purchase, 'referral')" [items]="referrals"
+							addTag="true"
+							autofocus
+							[(ngModel)]="purchase.referral"></ng-select>
+						<button *ngIf="!isEditing(purchase, 'referral')" type="button" class="editable" (click)="startEdit(purchase, 'referral')">{{purchase.referral || '—'}}</button>
+					</td>
+					<td>{{purchase.total | currency:'BRL'}}</td>
+					<td *ngIf="!printMode">
+						<input type="number" class="form-control" [(ngModel)]="purchase.installments" style="max-width:4.5em; min-width:4.5em"/>
+					</td>
+					<td>
+						<select *ngIf="!printMode" [(ngModel)]="purchase.payment_type" class="form-control">
+							<option *ngFor="let item of paymentTranslation | keyvalue" [value]="item.key">{{item.value}}</option>
+						</select>
+						<span *ngIf="printMode">{{paymentTranslation[purchase.payment_type]}}</span>
+					</td>
+					<td>
+						<ng-select *ngIf="!printMode && isEditing(purchase, 'tags')" [items]="tags"
+							addTag="true"
+							[multiple]="true"
+							placeholder="Selecione"
+							bindLabel="name"
+							autofocus
+							[ngModel]="purchase.tags"
+							(change)="tagChanged(purchase, $event)"></ng-select>
+						<span *ngIf="printMode">{{purchase.tagsStr}}</span>
+						<button *ngIf="!printMode && !isEditing(purchase, 'tags')" type="button" class="editable" (click)="startEdit(purchase, 'tags')">{{tagNames(purchase)}}</button>
+					</td>
+					<td>
+						<textarea *ngIf="!printMode && isEditing(purchase, 'info')" rows="3" [(ngModel)]="purchase.additional_info" class="form-control" (blur)="stopEdit()"></textarea>
+						<p *ngIf="printMode">{{purchase.additional_info}}</p>
+						<button *ngIf="!printMode && !isEditing(purchase, 'info')" type="button" class="editable" (click)="startEdit(purchase, 'info')">{{purchase.additional_info || '—'}}</button>
+					</td>
+					<td *ngIf="!printMode" class="col-actions">
+						<button type="button" class="btn-icon-danger" (click)="remove(purchase)" title="Remover">&times;</button>
+					</td>
+				</tr>
+			</tbody>
+			<tfoot>
+				<tr>
+					<td></td>
+					<td *ngIf="!printMode"></td>
+					<td *ngIf="!printMode"></td>
+					<td *ngIf="!printMode"></td>
+					<td></td>
+					<td>Total</td>
+					<td>{{total | currency:'BRL'}}</td>
+					<td></td>
+					<td></td>
+					<td *ngIf="!printMode"></td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+
+	<div class="ledger-pager" *ngIf="!collapsed && !printMode && visiblePurchases.length > pageSize">
+		<button type="button" class="btn-ghost" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
+		<span>Página {{page}} de {{pageCount}} · {{visiblePurchases.length}} saídas</span>
+		<button type="button" class="btn-ghost" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
+		<select class="pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+			<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
+		</select>
+	</div>
+
+	<div class="ledger-send" *ngIf="canSave">
+		<button type="button" class="btn-ghost" (click)="export()" [disabled]="sending || purchases().length == 0">Exportar</button>
+		<button type="button" class="btn-solid" (click)="save()" [disabled]="sending">
+			{{ sending ? 'Enviando...' : 'Enviar' }}
+		</button>
+		<span class="ledger-send-status" *ngIf="sending">Por favor aguarde</span>
+	</div>
 </div>

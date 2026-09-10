@@ -31,7 +31,7 @@
 				<span class="sidebar-label">Tags</span>
 				<span class="sidebar-count">{{tags.length}}</span>
 			</button>
-			<button type="button" class="sidebar-item" [class.active]="selection == 'charts'" (click)="selectSection('charts')">
+			<button type="button" class="sidebar-item" [class.active]="selection == 'charts'" (click)="selectSection('charts')" *ngIf="canViewCharts">
 				<fa-icon class="sidebar-icon" [icon]="chartsIcon"></fa-icon>
 				<span class="sidebar-label">Gráficos</span>
 			</button>
@@ -74,7 +74,7 @@
 				<app-tag-manager [tags]="tags" (changed)="loadTags()"></app-tag-manager>
 			</div>
 
-			<div class="content-pane charts-pane" *ngIf="selection == 'charts'">
+			<div class="content-pane charts-pane" *ngIf="selection == 'charts' && canViewCharts">
 				<h3>GASTOS</h3>
 				<div class="row">
 					<!-- Purchase tag chart -->
@@ -103,7 +103,7 @@
 					<table id="describedReportTable" class="table table-hover table-striped">
 						<thead>
 							<tr>
-								<th colspan="2">Relatório do dia {{fromPtbr}} <span *ngIf="toPtbr"> até {{toPtbr}}</span></th>
+								<th colspan="2">Relatório do dia {{fromPtbr}}<span *ngIf="toPtbr"> até {{toPtbr}}</span> - Empresa {{companyNamesLabel}}</th>
 							</tr>
 						</thead>
 						@for (descriptionEl of describedReport.descriptions; track descriptionEl) {

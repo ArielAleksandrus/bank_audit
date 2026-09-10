@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
 
-import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 import { Boleto } from '../../shared/models/boleto';
@@ -17,10 +16,7 @@ import { ApiService } from '../../shared/services/api.service';
 
 @Component({
   selector: 'app-boleto',
-  imports: [CommonModule, FormsModule,
-            NgbCollapseModule, NgbPopoverModule,
-            NgSelectComponent
-          ],
+  imports: [CommonModule, FormsModule, NgbPopoverModule, NgSelectComponent],
   providers: [DatePipe, CurrencyPipe],
   templateUrl: './boleto.component.html',
   styleUrl: './boleto.component.scss'

@@ -1,13 +1,15 @@
+@use '../../shared/styles/ledger';
 
-.title th {
-	text-align: center;
+.hidden {
+	display: none;
 }
-.mustard td{
-	background-color: #f2eb80;
+
+.ledger-summary {
+	margin-bottom: 1rem;
 }
-.info td {
-	background-color: #ddeeff;
-}
-.grass td{
-	background-color: #9fd283;
+
+.is-subtotal td {
+	background: #f8fafc;
+	font-weight: 600;
+	color: #334155;
 }

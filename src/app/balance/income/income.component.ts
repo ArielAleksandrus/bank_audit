@@ -4,9 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
 
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 import { NgSelectComponent } from '@ng-select/ng-select';
 
 import { Income } from '../../shared/models/income';
@@ -15,11 +12,7 @@ import { Utils } from '../../shared/helpers/utils';
 
 @Component({
   selector: 'app-income',
-  imports: [CommonModule, FormsModule, FontAwesomeModule,
-            NgbCollapseModule, NgbPopoverModule,
-            NgSelectComponent
-            //NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent
-          ],
+  imports: [CommonModule, FormsModule, NgSelectComponent],
   providers: [DatePipe, CurrencyPipe],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'

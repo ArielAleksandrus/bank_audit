@@ -1,23 +1,50 @@
-import { Component, inject, output } from '@angular/core';
+import { Component, inject, LOCALE_ID, OnDestroy, OnInit, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NgbCalendar, NgbDatepickerModule, NgbDate } from '@ng-bootstrap/ng-bootstrap';
+import { NgbCalendar, NgbDatepickerI18n, NgbDatepickerI18nDefault, NgbDatepickerModule, NgbDate } from '@ng-bootstrap/ng-bootstrap';
 
 @Component({
   selector: 'app-date-range-picker',
   imports: [CommonModule, NgbDatepickerModule],
+  providers: [
+    { provide: LOCALE_ID, useValue: 'pt-BR' },
+    { provide: NgbDatepickerI18n, useClass: NgbDatepickerI18nDefault }
+  ],
   templateUrl: './date-range-picker.component.html',
   styleUrl: './date-range-picker.component.scss'
 })
-export class DateRangePickerComponent {
+export class DateRangePickerComponent implements OnInit, OnDestroy {
   today = inject(NgbCalendar).getToday();
   hoveredDate: NgbDate | null = null;
 
   fromDate: NgbDate | null = null;
   toDate: NgbDate | null = null;
+  displayMonths = 2;
+
+  private mq?: MediaQueryList;
+  private onMqChange = (e: MediaQueryListEvent) => {
+    this.displayMonths = e.matches ? 1 : 2;
+  };
 
   // to is null when only a single day was picked
   confirm = output<{ from: string, to: string | null }>();
   cancel = output<void>();
+
+  ngOnInit() {
+    this.mq = window.matchMedia('(max-width: 720px)');
+    this.displayMonths = this.mq.matches ? 1 : 2;
+    this.mq.addEventListener('change', this.onMqChange);
+  }
+
+  ngOnDestroy() {
+    this.mq?.removeEventListener('change', this.onMqChange);
+  }
+
+  formatDate(date: NgbDate | null): string {
+    if(!date) return '';
+    const day = String(date.day).padStart(2, '0');
+    const month = String(date.month).padStart(2, '0');
+    return `${day}/${month}/${date.year}`;
+  }
 
   onConfirm() {
     let fromStr = this.ngbDateToISO(this.fromDate);

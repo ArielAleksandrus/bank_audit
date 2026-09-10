@@ -60,7 +60,7 @@ export class InsertionComponent {
     this.income = new Income({aux_tags: []});
 
     // companyGuard has already validated the company and set the auth headers.
-    this.company = Company.loadCompany();
+    this.company = Company.loadCompany()!;
 
     this.todayIso = this._toIso(new Date());
     this.dateIso = this.todayIso;

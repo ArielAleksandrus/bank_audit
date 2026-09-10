@@ -106,7 +106,8 @@ export class ReportComponent {
 
     if(snapshot.paramMap.get('companySlug')) {
       // companyGuard has already validated the company and set the auth headers.
-      this.companies = [Company.loadCompany()];
+      const company = Company.loadCompany();
+      this.companies = company ? [company] : [];
     } else {
       // selectedCompaniesGuard has already validated the selection.
       this.companies = Company.loadSelectedCompanies();
@@ -130,17 +131,21 @@ export class ReportComponent {
     return this.companies.length === 1;
   }
 
-  // Buyers can add incomes but their reports are limited to boletos and
-  // purchases - hidden whenever any of the selected companies has them
-  // as a buyer, single or combined report alike.
-  get canViewIncomes(): boolean {
-    return !this.companies.some(c => c.isBuyer);
+  // Entradas, Gráficos and Gerar Relatório are owner/admin tools. A
+  // comprador (buyer) only sees Saídas, Boletos, Tags and Voltar. Hidden
+  // whenever any selected company has them as a buyer (or a role that is
+  // neither admin nor owner), single or combined report alike.
+  get canViewAdminSections(): boolean {
+    return this.companies.length > 0 && this.companies.every(c => c.isAdminOrOwner);
   }
-
-  // "Gerar Relatório" is an owner/admin tool - buyers never see it, on a
-  // single company or a combined one.
+  get canViewIncomes(): boolean {
+    return this.canViewAdminSections;
+  }
+  get canViewCharts(): boolean {
+    return this.canViewAdminSections;
+  }
   get canGenerateReport(): boolean {
-    return !this.companies.some(c => c.isBuyer);
+    return this.canViewAdminSections;
   }
 
   get companyNamesLabel(): string {
@@ -305,7 +310,22 @@ export class ReportComponent {
     if(!document.getElementById(htmlId))
       return;
 
+    this.closeTagPurchasesModal();
+
+    const body = document.body;
+    body.classList.add('printing-report');
+
+    let cleaned = false;
+    const done = () => {
+      if(cleaned)
+        return;
+      cleaned = true;
+      body.classList.remove('printing-report');
+      window.removeEventListener('afterprint', done);
+    };
+    window.addEventListener('afterprint', done);
     window.print();
+    setTimeout(done, 1000);
   }
 
   openTagPurchasesModal(tagItem: {name: string, purchases: Purchase[]}) {

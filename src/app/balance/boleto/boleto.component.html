@@ -1,116 +1,129 @@
-<table id="boletoTable" class="table table-hover table-striped">
-	<thead>
-		<tr class="title">
-			<th colspan="6">
-				BOLETOS <i>({{boletos().length}})</i> &nbsp;&nbsp;
-				<button class="btn btn-sm btn-primary"  [class.btn-warning]="!collapsed" (click)="collapsed = !collapsed; stopEdit()">
-					{{collapsed ? "EXPANDIR" : "RECOLHER"}}
-				</button> &nbsp; &nbsp;
-				<button class="btn btn-sm btn-info" (click)="filtering = !filtering">FILTRAR</button>
-			</th>
-		</tr>
-		<tr #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-			<th class="sortable" (click)="sortBy('bank_name')">BANCO <span class="sort-indicator" *ngIf="sortField == 'bank_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('payment_date')">PGTO. <span class="sort-indicator" *ngIf="sortField == 'payment_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('expiration_date')">VENC. <span class="sort-indicator" *ngIf="sortField == 'expiration_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('supplier_name')">FORNECEDOR <span class="sort-indicator" *ngIf="sortField == 'supplier_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('value')">VALOR <span class="sort-indicator" *ngIf="sortField == 'value'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th class="sortable" (click)="sortBy('installments')">PARCELA <span class="sort-indicator" *ngIf="sortField == 'installments'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
-			<th>TAGS &nbsp;
-				<span *ngIf="!printMode" class="form-switch">
-					<input class="form-check-input" type="checkbox" role="switch" [(ngModel)]="propagate"/>
-					<i [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">Copiar Tag?</i>
-				</span>
-			</th>
-			<th *ngIf="!printMode"> &nbsp; &nbsp; </th>
-		</tr>
-		<tr *ngIf="filtering" #collapse="ngbCollapse" [(ngbCollapse)]="collapsed">
-			<td>
-				<ng-select [items]="availableBanks" [(ngModel)]="filters.bank_names" multiple="true"
-				(change)="changeFilter('bank_names', $event)"></ng-select>
-			</td>
-			<td></td>
-			<td></td>
-			<td>
-				<ng-select [items]="availableSuppliers" [(ngModel)]="filters.suppliers" multiple="true"
-				(change)="changeFilter('suppliers', $event)"></ng-select>
-			</td>
-			<td>
-				<input type="number" [(ngModel)]="filters.value_min" placeholder="V. Mín" 
-				class="form-control" (keyup)="delayApplyFilter()"/>
-			</td>
-			<td>
-				<input type="number" [(ngModel)]="filters.value_max" placeholder="V. Máx" 
-				class="form-control" (keyup)="delayApplyFilter()"/>
-			</td>
-			<td>
-				<ng-select [items]="availableTags" [(ngModel)]="filters.tags" multiple="true"
-				(change)="changeFilter('tags', $event)"></ng-select>
-			</td>
-		</tr>
-	</thead>
-	<tbody *ngIf="!collapsed">
-		<tr *ngFor="let boleto of displayedBoletos; trackBy: trackByBoleto" [class.danger]="boleto.auxStatus == 'error'">
-			<td>{{boleto.bank_name}}</td>
-			<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
-			<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
-			<td>
-				<ng-select *ngIf="!printMode && isEditing(boleto, 'supplier')" [items]="suppliers"
-                    bindLabel="name"
-                    autofocus
-                    bindValue="name"
-                    [(ngModel)]="boleto.supplier_name"
-                    addTag="true">
-        </ng-select>
-        <span *ngIf="printMode">{{boleto.supplier_name}}</span>
-        <button *ngIf="!printMode && !isEditing(boleto, 'supplier')" type="button" class="editable" (click)="startEdit(boleto, 'supplier')">{{boleto.supplier_name || '—'}}</button>
-			</td>
-			<td>{{boleto.value | currency:'BRL'}}</td>
-			<td>{{boleto.installments}}</td>
-			<td>
-				<ng-select *ngIf="!printMode && isEditing(boleto, 'tags')" [items]="tags"
-								addTag="true"
-								[multiple]="true"
-								placeholder="Selecione"
-								bindLabel="name"
-								autofocus
-								[ngModel]="boleto.auxTags"
-								(change)="tagChanged(boleto, $event)"></ng-select>
-				<span *ngIf="printMode">{{boleto.tagsStr}}</span>
-				<button *ngIf="!printMode && !isEditing(boleto, 'tags')" type="button" class="editable" (click)="startEdit(boleto, 'tags')">{{tagNames(boleto)}}</button>
-			</td>
-			<td *ngIf="!printMode">
-				<button class="btn btn-sm btn-danger" (click)="remove(boleto)">x</button>
-			</td>
-		</tr>
-	</tbody>
-	<tfoot>
-		<tr>
-			<td></td>
-			<td></td>
-			<td></td>
-			<td></td>
-			<td></td>
-			<td>Total:</td>
-			<td>{{total | currency:'BRL'}}</td>
-			<td></td>
-		</tr>
-	</tfoot>
-</table>
-<div class="pager" *ngIf="!collapsed && !printMode && visibleBoletos.length > pageSize">
-	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
-	<span>Página {{page}} de {{pageCount}} · {{visibleBoletos.length}} boletos</span>
-	<button type="button" class="btn btn-sm btn-outline-secondary" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
-	<select class="form-control pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
-		<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
-	</select>
-</div>
-<div *ngIf="canSave" class="send-container">
-	<button class="btn btn-lg btn-primary" (click)="save()" [disabled]="sending">
-		Enviar
-	</button> <i *ngIf="sending">Enviando... por favor aguarde</i>
-	&nbsp; &nbsp; &nbsp;
-	<button class="btn btn-lg btn-warning" (click)="export()" [disabled]="sending || boletos().length == 0">
-		Exportar
-	</button>
+<div class="ledger">
+	<div class="ledger-toolbar">
+		<div class="ledger-heading">
+			<h3>Boletos</h3>
+			<span class="ledger-count">{{boletos().length}}</span>
+		</div>
+		<div class="ledger-toolbar-actions">
+			<span class="ledger-total-chip" *ngIf="collapsed">{{total | currency:'BRL'}}</span>
+			<button type="button" class="btn-chip" [class.active]="!collapsed" (click)="collapsed = !collapsed; stopEdit()">
+				{{collapsed ? 'Expandir' : 'Recolher'}}
+			</button>
+			<button type="button" class="btn-chip" [class.active]="filtering" [disabled]="collapsed" (click)="filtering = !filtering">
+				Filtrar
+			</button>
+		</div>
+	</div>
+
+	<div class="ledger-table-wrap" *ngIf="!collapsed">
+		<table id="boletoTable" class="ledger-table">
+			<thead>
+				<tr>
+					<th class="sortable" (click)="sortBy('bank_name')">Banco <span class="sort-indicator" *ngIf="sortField == 'bank_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('payment_date')">Pgto. <span class="sort-indicator" *ngIf="sortField == 'payment_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('expiration_date')">Venc. <span class="sort-indicator" *ngIf="sortField == 'expiration_date'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('supplier_name')">Fornecedor <span class="sort-indicator" *ngIf="sortField == 'supplier_name'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('value')">Valor <span class="sort-indicator" *ngIf="sortField == 'value'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th class="sortable" (click)="sortBy('installments')">Parcela <span class="sort-indicator" *ngIf="sortField == 'installments'">{{sortDir == 'asc' ? '▲' : '▼'}}</span></th>
+					<th>
+						Tags
+						<label *ngIf="!printMode" class="copy-tag" [ngbPopover]="propagatePopover" triggers="mouseenter:mouseleave">
+							<input type="checkbox" [(ngModel)]="propagate"/>
+							Copiar tag
+						</label>
+					</th>
+					<th *ngIf="!printMode" class="col-actions"></th>
+				</tr>
+				<tr class="filter-row" *ngIf="filtering">
+					<td>
+						<ng-select [items]="availableBanks" [(ngModel)]="filters.bank_names" multiple="true"
+							(change)="changeFilter('bank_names', $event)"></ng-select>
+					</td>
+					<td></td>
+					<td></td>
+					<td>
+						<ng-select [items]="availableSuppliers" [(ngModel)]="filters.suppliers" multiple="true"
+							(change)="changeFilter('suppliers', $event)"></ng-select>
+					</td>
+					<td>
+						<input type="number" [(ngModel)]="filters.value_min" placeholder="V. mín"
+							class="form-control" (keyup)="delayApplyFilter()"/>
+					</td>
+					<td>
+						<input type="number" [(ngModel)]="filters.value_max" placeholder="V. máx"
+							class="form-control" (keyup)="delayApplyFilter()"/>
+					</td>
+					<td>
+						<ng-select [items]="availableTags" [(ngModel)]="filters.tags" multiple="true"
+							(change)="changeFilter('tags', $event)"></ng-select>
+					</td>
+					<td *ngIf="!printMode"></td>
+				</tr>
+			</thead>
+			<tbody>
+				<tr *ngFor="let boleto of displayedBoletos; trackBy: trackByBoleto" [class.is-error]="boleto.auxStatus == 'error'">
+					<td>{{boleto.bank_name}}</td>
+					<td>{{boleto.payment_date | date:'dd/MM/YYYY'}}</td>
+					<td>{{boleto.expiration_date | date:'dd/MM/YYYY'}}</td>
+					<td>
+						<ng-select *ngIf="!printMode && isEditing(boleto, 'supplier')" [items]="suppliers"
+							bindLabel="name"
+							autofocus
+							bindValue="name"
+							[(ngModel)]="boleto.supplier_name"
+							addTag="true">
+						</ng-select>
+						<span *ngIf="printMode">{{boleto.supplier_name}}</span>
+						<button *ngIf="!printMode && !isEditing(boleto, 'supplier')" type="button" class="editable" (click)="startEdit(boleto, 'supplier')">{{boleto.supplier_name || '—'}}</button>
+					</td>
+					<td>{{boleto.value | currency:'BRL'}}</td>
+					<td>{{boleto.installments}}</td>
+					<td>
+						<ng-select *ngIf="!printMode && isEditing(boleto, 'tags')" [items]="tags"
+							addTag="true"
+							[multiple]="true"
+							placeholder="Selecione"
+							bindLabel="name"
+							autofocus
+							[ngModel]="boleto.auxTags"
+							(change)="tagChanged(boleto, $event)"></ng-select>
+						<span *ngIf="printMode">{{boleto.tagsStr}}</span>
+						<button *ngIf="!printMode && !isEditing(boleto, 'tags')" type="button" class="editable" (click)="startEdit(boleto, 'tags')">{{tagNames(boleto)}}</button>
+					</td>
+					<td *ngIf="!printMode" class="col-actions">
+						<button type="button" class="btn-icon-danger" (click)="remove(boleto)" title="Remover">&times;</button>
+					</td>
+				</tr>
+			</tbody>
+			<tfoot>
+				<tr>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td></td>
+					<td>Total</td>
+					<td>{{total | currency:'BRL'}}</td>
+					<td *ngIf="!printMode"></td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+
+	<div class="ledger-pager" *ngIf="!collapsed && !printMode && visibleBoletos.length > pageSize">
+		<button type="button" class="btn-ghost" (click)="goToPage(page - 1)" [disabled]="page <= 1">Anterior</button>
+		<span>Página {{page}} de {{pageCount}} · {{visibleBoletos.length}} boletos</span>
+		<button type="button" class="btn-ghost" (click)="goToPage(page + 1)" [disabled]="page >= pageCount">Próxima</button>
+		<select class="pager-size" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+			<option *ngFor="let size of pageSizes" [ngValue]="size">{{size}} por página</option>
+		</select>
+	</div>
+
+	<div class="ledger-send" *ngIf="canSave">
+		<button type="button" class="btn-ghost" (click)="export()" [disabled]="sending || boletos().length == 0">Exportar</button>
+		<button type="button" class="btn-solid" (click)="save()" [disabled]="sending">
+			{{ sending ? 'Enviando...' : 'Enviar' }}
+		</button>
+		<span class="ledger-send-status" *ngIf="sending">Por favor aguarde</span>
+	</div>
 </div>

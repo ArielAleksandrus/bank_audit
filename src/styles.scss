@@ -5,3 +5,47 @@
 
 @use "@ng-select/ng-select/themes/default.theme.css";
 
+@media print {
+	@page {
+		margin: 12mm;
+	}
+
+	body.printing-report {
+		background: #fff !important;
+	}
+
+	/* visibility (not display) so the table can reappear even if an ancestor is hidden */
+	body.printing-report * {
+		visibility: hidden;
+	}
+
+	body.printing-report #describedReportTable,
+	body.printing-report #describedReportTable * {
+		visibility: visible;
+	}
+
+	body.printing-report #describedReportTable {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		margin: 0;
+		background: #fff;
+		box-shadow: none;
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+	body.printing-report #describedReportTable .category-row th {
+		background-color: #fbe4e4 !important;
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+
+	body.printing-report #describedReportTable .tag-link,
+	body.printing-report #describedReportTable a {
+		color: #000 !important;
+		text-decoration: none !important;
+	}
+}
+

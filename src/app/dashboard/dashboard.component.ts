@@ -1,9 +1,14 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-
-import { FormsModule } from '@angular/forms';
-import { NgSelectModule } from '@ng-select/ng-select';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import {
+  faBuildingColumns,
+  faFileArrowUp,
+  faMagnifyingGlass,
+  faPenToSquare,
+  faRightFromBracket
+} from '@fortawesome/free-solid-svg-icons';
 
 import { ApiService } from '../shared/services/api.service';
 import { DateRangePickerComponent } from '../shared/components/date-range-picker/date-range-picker.component';
@@ -13,7 +18,7 @@ import { User } from '../shared/models/user';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [CommonModule, FormsModule, NgSelectModule, DateRangePickerComponent],
+  imports: [CommonModule, FaIconComponent, DateRangePickerComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -23,12 +28,18 @@ export class DashboardComponent {
 
   curAction: 'init'|'query'|'insert' = 'init';
 
+  companiesIcon = faBuildingColumns;
+  logoutIcon = faRightFromBracket;
+  consultIcon = faMagnifyingGlass;
+  insertIcon = faPenToSquare;
+  uploadIcon = faFileArrowUp;
+
 
   constructor(private api: ApiService,
               private router: Router,
               private route: ActivatedRoute) {
     // companyGuard has already validated the slug and set the auth headers.
-    this.company = Company.loadCompany();
+    this.company = Company.loadCompany()!;
     this.companySlug = this.route.snapshot.paramMap.get('companySlug')!;
   }
 

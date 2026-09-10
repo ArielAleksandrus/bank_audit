@@ -4,9 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
 
-import { NgLabelTemplateDirective, NgOptionTemplateDirective, NgSelectComponent } from '@ng-select/ng-select';
-import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { NgSelectComponent } from '@ng-select/ng-select';
 import { NgbPopoverModule } from '@ng-bootstrap/ng-bootstrap';
 
 //import { NgxMaskDirective, provideNgxMask } from 'ngx-mask';
@@ -20,11 +18,7 @@ import { ApiService } from '../../shared/services/api.service';
 
 @Component({
   selector: 'app-purchase',
-  imports: [CommonModule, FormsModule, FontAwesomeModule,
-            NgbCollapseModule, NgbPopoverModule,
-            //NgxMaskDirective,
-            NgSelectComponent
-          ],
+  imports: [CommonModule, FormsModule, NgbPopoverModule, NgSelectComponent],
   providers: [/*provideNgxMask()*/ DatePipe, CurrencyPipe],
   templateUrl: './purchase.component.html',
   styleUrl: './purchase.component.scss'
