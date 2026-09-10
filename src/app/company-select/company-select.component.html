@@ -2,6 +2,10 @@
 	<div class="companies-shell">
 		<ng-container *ngIf="!pickingReportFor; else pickingDate">
 			<header class="companies-header">
+				<div class="companies-topbar" *ngIf="user">
+					<p class="companies-welcome">Bem-vindo(a), {{(user.name || user.email).toUpperCase()}}</p>
+					<button type="button" class="btn btn-sm btn-outline-danger logout-btn" (click)="logout()">Sair</button>
+				</div>
 				<h1>Suas empresas</h1>
 				<p class="companies-sub">Escolha uma empresa para continuar ou crie uma nova abaixo.</p>
 			</header>

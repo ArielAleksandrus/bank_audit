@@ -92,6 +92,14 @@ export class CompanySelectComponent {
     this._loadCompanies();
   }
 
+  logout() {
+    User.clearUser();
+    Company.clearCompany();
+    Company.clearSelectedCompanies();
+    this.api.noAuth();
+    this.router.navigate(['/login']);
+  }
+
   selectCompany(company: Company) {
     Company.storeCompany(company);
     this.router.navigate(['/', company.slug, 'dashboard']);

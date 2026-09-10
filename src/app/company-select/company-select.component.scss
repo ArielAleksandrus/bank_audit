@@ -23,6 +23,28 @@
 	margin-bottom: 1.5rem;
 }
 
+.companies-topbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem 0.75rem;
+	margin-bottom: 0.5rem;
+	text-align: left;
+}
+
+.companies-welcome {
+	margin: 0;
+	color: #0d9488;
+	font-weight: 600;
+	font-size: 0.95rem;
+	letter-spacing: 0.02em;
+}
+
+.logout-btn {
+	flex: 0 0 auto;
+}
+
 .companies-header h1 {
 	font-size: 1.85rem;
 	font-weight: 700;
