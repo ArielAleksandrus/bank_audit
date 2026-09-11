@@ -30,7 +30,7 @@ export class Income {
 	id: number;
 	company_id: number;
 
-	income_type: 'cartao'|'pix'|'deposito'|'cheque'|'outros';
+	income_type: 'cartao'|'pix'|'deposito'|'cheque'|'transferencia'|'outros';
 	date_received: string;
 	value: string|number;
 	origin: string;
