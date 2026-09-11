@@ -1,7 +1,7 @@
 import { environment } from '../../../environments/environment';
 
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse, HttpResponse, HttpRequest, HttpEventType } from '@angular/common/http';
 import { Router } from '@angular/router';
 
 import { Observable, of } from 'rxjs';
@@ -174,6 +174,44 @@ export class ApiService {
       headers: self._getAuthHeaders()
     }).pipe(
       catchError(self.handleError('show', resource_plural, params, [], onError))
+    );
+  }
+
+  // onProgress, when given, is fed real upload-progress percentages (0-100)
+  // as the browser reports them; the resolved/errored observable still only
+  // ever emits the parsed response body, same as every other ApiService call.
+  uploadFile(resource_plural: string, file: File, field: string = 'file', extra: Record<string, string> = {}, onProgress?: (percent: number) => void): Observable<any> {
+    const form = new FormData();
+    form.append(field, file, file.name);
+    for(const key of Object.keys(extra)) {
+      if(extra[key] != null && extra[key] !== '')
+        form.append(key, extra[key]);
+    }
+
+    let headers = this._getAuthHeaders();
+    if(headers.has('Content-Type'))
+      headers = headers.delete('Content-Type');
+
+    const request = new HttpRequest('POST', this.getTargetUrl() + `/${resource_plural}`, form, {
+      headers: headers,
+      reportProgress: !!onProgress
+    });
+
+    return new Observable<any>(observer => {
+      const sub = this.http.request(request).subscribe({
+        next: (event: any) => {
+          if(event.type === HttpEventType.UploadProgress && onProgress) {
+            onProgress(event.total ? Math.round(100 * event.loaded / event.total) : 0);
+          } else if(event.type === HttpEventType.Response) {
+            observer.next(event.body);
+            observer.complete();
+          }
+        },
+        error: (err: any) => observer.error(err)
+      });
+      return () => sub.unsubscribe();
+    }).pipe(
+      catchError(this.handleError('create', resource_plural, {}, []))
     );
   }
 

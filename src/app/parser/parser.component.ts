@@ -1,30 +1,18 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import * as pdfjsLib from 'pdfjs-dist';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import {
-  faArrowLeft,
-  faCheck,
-  faFileArrowUp
-} from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faCheck, faFileArrowUp } from '@fortawesome/free-solid-svg-icons';
+import { NgSelectModule } from '@ng-select/ng-select';
 
 import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { BoletoComponent } from '../balance/boleto/boleto.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
 
-import * as XLSX from 'xlsx';
+import { AiParser } from '../shared/parsers/ai-parser';
 
-import { BalanceParser } from '../shared/parsers/balance-parser';
-import { BrbParser } from '../shared/parsers/brb-parser';
-import { ItauParser } from '../shared/parsers/itau-parser';
-import { SicoobParser } from '../shared/parsers/sicoob-parser';
-import { SicrediParser } from '../shared/parsers/sicredi-parser';
-import { StoneParser } from '../shared/parsers/stone-parser';
-
-import { Tag } from '../shared/models/tag';
 import { Company } from '../shared/models/company';
 import { Boleto } from '../shared/models/boleto';
 import { Income } from '../shared/models/income';
@@ -32,10 +20,15 @@ import { Purchase } from '../shared/models/purchase';
 
 import { ApiService } from '../shared/services/api.service';
 
-import { Utils } from '../shared/helpers/utils';
-import { Filters } from '../shared/helpers/filters';
+import { parseApiError } from '../shared/helpers/api-errors';
+import { BRAZILIAN_BANKS } from '../shared/helpers/brazilian-banks';
 
-type ParserBankId = 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
+// There is no more bank-specific frontend parsing: every file, whatever the
+// bank, goes to the API, which tries a stored parser and falls back to an
+// AI-discovered one (see ExtratoParserService on the backend). The bank
+// picker below only feeds that lookup a hint - it never decides how the
+// file gets parsed.
+const ACCEPTED_EXTENSIONS = ["ofx", "csv", "xls", "xlsx"];
 
 @Component({
   selector: 'app-parser',
@@ -43,6 +36,7 @@ type ParserBankId = 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
     CommonModule,
     FormsModule,
     FaIconComponent,
+    NgSelectModule,
     IncomeSumComponent,
     IncomeComponent,
     BoletoComponent,
@@ -51,33 +45,45 @@ type ParserBankId = 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
   templateUrl: './parser.component.html',
   styleUrl: './parser.component.scss'
 })
-export class ParserComponent {
+export class ParserComponent implements OnInit, OnDestroy {
   company: Company = {id: -1} as Company;
 
-  selectedBank?: ParserBankId;
-  excelData: any[] = [];
-  pdfData: any = {};
-  parser: BalanceParser;
+  bankOptions = BRAZILIAN_BANKS;
+  selectedBank?: string;
 
-  suggestions: {[supplierName: string]: Tag[]} = {};
+  parser: AiParser = new AiParser();
 
   sending: boolean = false;
   sendingCount: number = 0;
-  readingFile: boolean = false;
+
+  uploading: boolean = false;
+  uploadPercent: number = 0;
+  parsing: boolean = false;
+
   dragOver: boolean = false;
   fileError: string = '';
+  extratoFile?: File;
+  extratoId?: number;
+
   comprovanteText: string = '';
   comprovanteSent: boolean = false;
+  suppliersMissing: boolean = false;
 
-  extratoFile?: File;
+  showFeedbackModal: boolean = false;
+  feedbackGiven?: 'up'|'down';
 
-  banks: {id: ParserBankId, name: string, formatLabel: string}[] = [
-    { id: 'brb', name: 'BRB', formatLabel: 'PDF' },
-    { id: 'itau', name: 'Itaú', formatLabel: 'PDF' },
-    { id: 'sicoob', name: 'Sicoob', formatLabel: 'Excel' },
-    { id: 'sicredi', name: 'Sicredi', formatLabel: 'OFX' },
-    { id: 'stone', name: 'Stone', formatLabel: 'Excel' }
-  ];
+  private static readonly POLL_GIVEUP_MS = 15 * 60 * 1000;
+  // Ask for a thumbs up/down once the user has had a moment to actually look
+  // at the parsed result, not the instant it appears on screen.
+  private static readonly FEEDBACK_DELAY_MS = 50 * 1000;
+  // Parsing runs entirely server-side (a Sidekiq job) - a page reload must
+  // not lose it. We persist just enough here to reattach to the same
+  // extrato and resume polling on load.
+  private static readonly PENDING_EXTRATO_KEY = 'ncontas_pending_extrato';
+  private pollTimer?: ReturnType<typeof setTimeout>;
+  private pollStartedAt = 0;
+  private feedbackTimer?: ReturnType<typeof setTimeout>;
+  private destroyed = false;
 
   backIcon = faArrowLeft;
   uploadIcon = faFileArrowUp;
@@ -85,38 +91,65 @@ export class ParserComponent {
 
   @ViewChild('fileInput') fileInput?: ElementRef<HTMLInputElement>;
 
-  constructor(private api: ApiService, private router: Router) {
-    this.parser = new SicoobParser();
+  constructor(private api: ApiService, private router: Router) { }
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/assets/pdf.worker.min.mjs';
-  }
   ngOnInit() {
     // companyGuard has already validated the company and set the auth headers.
     this._loadCompany();
+    this.resumePendingExtrato();
+  }
+
+  ngOnDestroy() {
+    this.destroyed = true;
+    this.stopPoll();
+    this.stopFeedbackTimer();
+  }
+
+  get busy(): boolean {
+    return this.uploading || this.parsing;
   }
 
   get hasResults(): boolean {
     return this.parser.incomes.length > 0 || this.parser.purchases.length > 0 || this.parser.boletos.length > 0;
   }
 
-  formatHint(formats: string): string {
-    return (formats || '')
-      .split(',')
-      .map(part => part.trim().replace(/^\./, '').toUpperCase())
-      .filter(Boolean)
-      .join(', ');
+  get showComprovantes(): boolean {
+    return this.hasResults && !this.busy && (this.parser.allowsComprovantes || this.genericPurchaseHint);
   }
 
-  selectBank(bankId: ParserBankId) {
-    this.selectedBank = bankId;
-    this.extratoFile = undefined;
-    this.fileError = '';
-    this.comprovanteText = '';
-    this.comprovanteSent = false;
-    this.readingFile = false;
-    if(this.fileInput)
-      this.fileInput.nativeElement.value = '';
-    this.bankChanged();
+  get genericPurchaseHint(): boolean {
+    if(this.suppliersMissing)
+      return true;
+    const groups = new Map<string, number>();
+    let genericCount = 0;
+    for(const purchase of this.parser.purchases) {
+      if(!this.parser.isGenericSupplier(purchase.supplier_name))
+        continue;
+      genericCount += 1;
+      const key = (purchase.supplier_name || "").trim().toLowerCase() || "(vazio)";
+      groups.set(key, (groups.get(key) || 0) + 1);
+    }
+    if(this.parser.purchases.length > 0 && genericCount / this.parser.purchases.length >= 0.6)
+      return true;
+    return [...groups.values()].some(count => count > 10);
+  }
+
+  selectOutros() {
+    if(this.busy || this.extratoFile)
+      return;
+    this.selectedBank = 'outros';
+  }
+
+  changeBank() {
+    if(this.busy)
+      return;
+    this.reset();
+  }
+
+  retryUpload() {
+    if(this.busy || !this.extratoFile)
+      return;
+    this.processFile(this.extratoFile);
   }
 
   back() {
@@ -126,7 +159,8 @@ export class ParserComponent {
 
   onDragOver(evt: DragEvent) {
     evt.preventDefault();
-    this.dragOver = true;
+    if(!this.busy && !this.extratoFile)
+      this.dragOver = true;
   }
   onDragLeave() {
     this.dragOver = false;
@@ -134,34 +168,11 @@ export class ParserComponent {
   onDrop(evt: DragEvent) {
     evt.preventDefault();
     this.dragOver = false;
+    if(this.busy || this.extratoFile)
+      return;
     const file = evt.dataTransfer?.files?.[0];
     if(file)
       this.processFile(file);
-  }
-
-  bankChanged() {
-    switch(this.selectedBank) {
-    case("brb"): {
-      this.parser = new BrbParser();
-      break;
-    }
-    case("itau"): {
-      this.parser = new ItauParser();
-      break;
-    }
-    case("sicoob"): {
-      this.parser = new SicoobParser();
-      break;
-    }
-    case("sicredi"): {
-      this.parser = new SicrediParser();
-      break;
-    }
-    case("stone"): {
-      this.parser = new StoneParser();
-      break;
-    }
-    }
   }
 
   extratoFileChanged(evt: any) {
@@ -172,68 +183,213 @@ export class ParserComponent {
 
   processFile(file: File) {
     const extension = (file.name.split(".").pop() || "").toLowerCase();
-    const accepted = (this.parser.acceptedFormats || "")
-      .split(",")
-      .map(part => part.trim().replace(/^\./, "").toLowerCase())
-      .filter(Boolean);
 
     this.fileError = "";
     this.comprovanteSent = false;
-    if(accepted.length > 0 && !accepted.includes(extension)) {
-      this.extratoFile = undefined;
-      this.fileError = `Este banco aceita ${this.formatHint(this.parser.acceptedFormats)}`;
+    this.suppliersMissing = false;
+    this.showFeedbackModal = false;
+    this.feedbackGiven = undefined;
+    this.stopFeedbackTimer();
+    this.clearPendingExtrato();
+
+    if(!ACCEPTED_EXTENSIONS.includes(extension)) {
+      this.fileError = "Formatos aceitos: OFX, CSV, XLS ou XLSX";
       if(this.fileInput)
         this.fileInput.nativeElement.value = "";
       return;
     }
 
+    this.parser.applyResult({});
     this.extratoFile = file;
-    this.readingFile = true;
+    this.extratoId = undefined;
+    this.uploading = true;
+    this.uploadPercent = 0;
 
-    if(extension == "pdf") {
-      this._useArrayBuffer(file, extension);
-    } else {
-      this._useFileReader(file, extension);
-    }
+    this.api.uploadFile("extratos", file, "file", {
+      bank: this.selectedBank || "outros",
+      file_format: extension
+    }, (percent: number) => {
+      if(!this.destroyed)
+        this.uploadPercent = percent;
+    }).subscribe(
+      (res: any) => {
+        if(this.destroyed)
+          return;
+        this.uploading = false;
+        if(!res || !res.id) {
+          this.fileError = "Não foi possível enviar o extrato";
+          return;
+        }
+        this.extratoId = res.id;
+        this.parsing = true;
+        this.pollStartedAt = Date.now();
+        this.savePendingExtrato();
+        this.pollExtrato(res.id, 0);
+      },
+      (err: any) => {
+        if(this.destroyed)
+          return;
+        this.uploading = false;
+        this.fileError = parseApiError(err, "Não foi possível enviar o extrato");
+      }
+    );
   }
 
-  loadExtrato(file: File, fileContent: any, extension: string) {
-    switch(extension) {
-    case("xls"): {
-      this.loadExcel(fileContent);
-      break;
-    }
-    case("xlsx"): {
-      this.loadExcel(fileContent);
-      break;
-    }
-    case("ofx"): {
-      this.loadOFX(fileContent);
-      break;
-    }
-    case("pdf"): {
-      this.loadPDF(fileContent);
-      break;
-    }
+  private pollExtrato(id: number, attempt: number) {
+    if(this.destroyed)
+      return;
+    if(Date.now() - this.pollStartedAt > ParserComponent.POLL_GIVEUP_MS) {
+      this.parsing = false;
+      this.clearPendingExtrato();
+      this.fileError = 'A análise está demorando demais. Tente novamente.';
+      return;
     }
 
-    this.readingFile = false;
+    this.pollTimer = setTimeout(() => {
+      this.api.show('extratos', id).subscribe(
+        (res: any) => {
+          if(this.destroyed)
+            return;
+          if(res.status == 'parsed') {
+            this.applyParsedResult(res);
+            return;
+          }
+          if(res.status == 'failed') {
+            this.parsing = false;
+            this.clearPendingExtrato();
+            this.fileError = res.error || 'Não foi possível analisar o extrato';
+            return;
+          }
+          this.pollExtrato(id, attempt + 1);
+        },
+        (err: any) => {
+          if(this.destroyed)
+            return;
+          this.parsing = false;
+          this.clearPendingExtrato();
+          this.fileError = parseApiError(err, 'Erro ao consultar o extrato');
+        }
+      );
+    }, attempt == 0 ? 800 : 2000);
+  }
+
+  private applyParsedResult(res: any) {
+    this.parser.applyResult(res);
+    this.suppliersMissing = res.has_supplier_names === false;
+    this.parsing = false;
+    this.clearPendingExtrato();
     this.checkIfBoletosExist();
     this.checkIfIncomesExist();
     this.checkIfPurchasesExist();
+    this.startFeedbackTimer();
   }
-  loadExcel(fileContent: any) {
-    const workbook = XLSX.read(fileContent, { type: 'binary' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    this.excelData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
-    this.parser.parseExtrato(this.excelData, 'excel');
+
+  private stopPoll() {
+    if(this.pollTimer)
+      clearTimeout(this.pollTimer);
+    this.pollTimer = undefined;
   }
-  loadOFX(fileContent: any) {
-    this.parser.parseExtrato([fileContent], 'ofx');
+
+  // Gives the user a moment to actually look at the result before asking
+  // whether it's right. A thumbs down just logs that this parse attempt (this
+  // file + whichever GeneratedParser produced it) was disliked - the AI only
+  // gets asked to refine the parser later, when Salvar is clicked and there's
+  // real user-corrected data to refine it against (see refineParserAfterSave).
+  private startFeedbackTimer() {
+    this.stopFeedbackTimer();
+    this.showFeedbackModal = false;
+    this.feedbackGiven = undefined;
+    this.feedbackTimer = setTimeout(() => {
+      if(!this.destroyed && this.hasResults && !this.feedbackGiven)
+        this.showFeedbackModal = true;
+    }, ParserComponent.FEEDBACK_DELAY_MS);
   }
-  loadPDF(fileContent: any) {
-    this.parser.parseExtrato(fileContent, 'pdf');
+
+  private stopFeedbackTimer() {
+    if(this.feedbackTimer)
+      clearTimeout(this.feedbackTimer);
+    this.feedbackTimer = undefined;
+  }
+
+  giveFeedback(kind: 'up'|'down') {
+    this.feedbackGiven = kind;
+    this.showFeedbackModal = false;
+    if(kind == 'down')
+      this.logNegativeFeedback();
+  }
+
+  dismissFeedbackModal() {
+    this.showFeedbackModal = false;
+  }
+
+  private logNegativeFeedback() {
+    if(!this.extratoId)
+      return;
+    this.api.req("extratos", {}, { member: { id: this.extratoId, value: "failures" } }, "post").subscribe(
+      () => {},
+      (err: any) => console.error(err)
+    );
+  }
+
+  private savePendingExtrato() {
+    if(!this.extratoId)
+      return;
+    try {
+      localStorage.setItem(ParserComponent.PENDING_EXTRATO_KEY, JSON.stringify({
+        id: this.extratoId,
+        companyId: this.company?.id,
+        startedAt: this.pollStartedAt,
+        bank: this.selectedBank
+      }));
+    } catch { /* private mode / storage disabled - resuming after reload just won't work */ }
+  }
+
+  private clearPendingExtrato() {
+    try { localStorage.removeItem(ParserComponent.PENDING_EXTRATO_KEY); } catch { /* ignore */ }
+  }
+
+  private resumePendingExtrato() {
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(ParserComponent.PENDING_EXTRATO_KEY); } catch { return; }
+    if(!raw)
+      return;
+
+    let saved: {id?: number, companyId?: number, startedAt?: number, bank?: string};
+    try { saved = JSON.parse(raw); } catch { this.clearPendingExtrato(); return; }
+
+    if(!saved.id || !saved.startedAt || saved.companyId !== this.company?.id)
+      return;
+    if(Date.now() - saved.startedAt > ParserComponent.POLL_GIVEUP_MS) {
+      this.clearPendingExtrato();
+      return;
+    }
+
+    this.selectedBank = saved.bank;
+    this.extratoId = saved.id;
+    this.pollStartedAt = saved.startedAt;
+    this.parsing = true;
+    this.pollExtrato(saved.id, 0);
+  }
+
+  private reset() {
+    this.stopPoll();
+    this.stopFeedbackTimer();
+    this.clearPendingExtrato();
+    this.selectedBank = undefined;
+    this.parser = new AiParser();
+    this.extratoFile = undefined;
+    this.extratoId = undefined;
+    this.uploading = false;
+    this.uploadPercent = 0;
+    this.parsing = false;
+    this.fileError = '';
+    this.comprovanteText = '';
+    this.comprovanteSent = false;
+    this.suppliersMissing = false;
+    this.showFeedbackModal = false;
+    this.feedbackGiven = undefined;
+    if(this.fileInput)
+      this.fileInput.nativeElement.value = '';
   }
 
   setComprovante() {
@@ -246,21 +402,10 @@ export class ParserComponent {
     this.checkIfBoletosExist();
   }
 
-  changedPurchase(evt: {mode: 'create'|'edit'|'destroy', purchase: Purchase}) {
-    if(evt.mode == 'destroy') {
-
-    } else {
-      //this.sendPurchase(evt.purchase);
-    }
-  }
-
   changedIncome(evt: {mode: 'create'|'edit'|'destroy', income: Income}) {
     this.parser.recalculateIncome();
-    if(evt.mode == 'destroy') {
+    if(evt.mode == 'destroy')
       this.removeIncome(evt.income);
-    } else {
-      //this.sendIncome(evt.income);
-    }
   }
   removeIncome(income: Income) {
     if(income.id > 0) {
@@ -286,6 +431,7 @@ export class ParserComponent {
         this.savePurchases().then(res3 => {
           this.sendingCount -= this.parser.purchases.length;
           this.sending = false;
+          this.refineParserAfterSave();
         })
       })
     });
@@ -323,6 +469,25 @@ export class ParserComponent {
     });
   }
 
+  // Sends the user's corrected lançamentos back to the extrato so the
+  // AI-generated (or stored) parser functions for this bank+format get
+  // refined - but only when the user actually flagged the parse as wrong.
+  // A thumbs up (or no feedback at all) means the parser already did fine,
+  // so there's no reason to spend an AI call refining it.
+  private refineParserAfterSave() {
+    if(!this.extratoId || this.feedbackGiven != 'down')
+      return;
+    const payload = {
+      incomes: this.parser.incomes,
+      purchases: this.parser.purchases,
+      boletos: this.parser.boletos
+    };
+    this.api.req("extratos", payload, { member: { id: this.extratoId, value: "refine" } }, "post").subscribe(
+      () => {},
+      (err: any) => console.error(err)
+    );
+  }
+
   checkIfBoletosExist() {
     Boleto.arrayExists(this.api, this.parser.boletos).then((boletos: Boleto[]) => {
       this.parser.boletos = boletos;
@@ -346,84 +511,5 @@ export class ParserComponent {
     } else {
       location.href = '/login';
     }
-  }
-  private async _useArrayBuffer(file: File, extension: string) {
-    const buffer = await file.arrayBuffer();
-
-    try {
-      const rows = await this.extractTableRowsFromPDF(buffer);
-      this.loadExtrato(file, rows, extension);
-    } catch (error) {
-      console.error('PDF extraction error:', error);
-      this.readingFile = false;
-      this.fileError = 'Erro ao processar o PDF';
-    }
-  }
-
-  /**
-   * Extracts text and tries to group it into table rows (array of arrays)
-   */
-  private async extractTableRowsFromPDF(arrayBuffer: ArrayBuffer): Promise<any[][]> {
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const allRows: any[][] = [];
-
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-
-      // Group text items into rows by Y position
-      const rows = this.groupTextItemsIntoRows(textContent.items);
-      allRows.push(...rows);
-    }
-
-    return allRows;
-  }
-
-  /**
-   * Groups text items that are on roughly the same horizontal line into rows
-   */
-  private groupTextItemsIntoRows(items: any[]): any[][] {
-    const tolerance = 5; // pixels tolerance for same row
-    const sorted = [...items].sort((a, b) => b.transform[5] - a.transform[5]); // sort by Y descending
-
-    const rows: any[][] = [];
-    let currentRow: any[] = [];
-    let lastY = -9999;
-
-    for (const item of sorted) {
-      const y = item.transform[5];
-
-      if (Math.abs(y - lastY) > tolerance && currentRow.length > 0) {
-        // New row
-        rows.push(currentRow.map(i => i.str.trim()).filter(Boolean));
-        currentRow = [];
-      }
-
-      currentRow.push(item);
-      lastY = y;
-    }
-
-    if (currentRow.length > 0) {
-      rows.push(currentRow.map(i => i.str.trim()).filter(Boolean));
-    }
-
-    return rows;
-  }
-  private _useFileReader(file: File, extension: string) {
-    const self = this;
-    
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      self.loadExtrato(file, e.target.result, extension);
-    }
-    reader.onerror = () => {
-      self.readingFile = false;
-      self.fileError = 'Erro ao ler o arquivo';
-    };
-    
-    if(extension == "ofx")
-      reader.readAsText(file);
-    else
-      reader.readAsBinaryString(file);
   }
 }

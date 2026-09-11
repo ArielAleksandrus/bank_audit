@@ -7,59 +7,72 @@
 
 		<section class="parser-card">
 			<h2>Banco</h2>
-			<p class="parser-hint">Selecione o banco do arquivo para continuar.</p>
-			<div class="bank-grid" role="listbox" aria-label="Banco do extrato">
-				<button type="button" class="bank-tile" *ngFor="let bank of banks"
-								role="option"
-								[class.active]="selectedBank == bank.id"
-								[attr.aria-selected]="selectedBank == bank.id"
-								(click)="selectBank(bank.id)">
-					<span class="bank-name">{{bank.name}}</span>
-					<span class="bank-format">{{bank.formatLabel}}</span>
+			<p class="parser-hint">
+				Não encontrou o banco na lista? Selecione
+				<button type="button" class="link-outros" [disabled]="busy || !!extratoFile" (click)="selectOutros()">Outros</button>.
+			</p>
+			<div class="bank-picker-row">
+				<ng-select class="bank-picker"
+									 [items]="bankOptions"
+									 bindLabel="name"
+									 bindValue="id"
+									 [clearable]="false"
+									 [searchable]="true"
+									 [disabled]="busy || !!extratoFile"
+									 notFoundText="Banco não encontrado — selecione Outros"
+									 placeholder="Busque o banco do extrato"
+									 [(ngModel)]="selectedBank">
+				</ng-select>
+				<button type="button" class="btn-ghost btn-trocar-banco" *ngIf="selectedBank && (busy || extratoFile)"
+								(click)="changeBank()" [disabled]="busy">
+					Trocar banco
 				</button>
 			</div>
 		</section>
 
 		<section class="parser-card" *ngIf="selectedBank">
 			<h2>Arquivo</h2>
-			<p class="parser-hint">Formatos aceitos: {{formatHint(parser.acceptedFormats)}}</p>
+			<p class="parser-hint">Formatos aceitos: OFX, CSV, XLS ou XLSX</p>
 
 			<label class="dropzone"
 						 [class.has-file]="!!extratoFile"
-						 [class.is-reading]="readingFile"
+						 [class.is-busy]="busy"
 						 [class.is-dragover]="dragOver"
 						 (dragover)="onDragOver($event)"
 						 (dragleave)="onDragLeave()"
 						 (drop)="onDrop($event)">
 				<input #fileInput class="sr-only" id="extrato_file" type="file"
-							 [accept]="parser.acceptedFormats"
+							 accept=".ofx,.csv,.xls,.xlsx"
+							 [disabled]="busy || !!extratoFile"
 							 (change)="extratoFileChanged($event)"/>
 				<span class="dropzone-icon" aria-hidden="true">
 					<fa-icon [icon]="extratoFile ? checkIcon : uploadIcon"></fa-icon>
 				</span>
-				<span class="dropzone-title" *ngIf="readingFile">Lendo extrato...</span>
-				<span class="dropzone-title" *ngIf="!readingFile && extratoFile">{{extratoFile.name}}</span>
-				<span class="dropzone-title" *ngIf="!readingFile && !extratoFile">Arraste o extrato ou clique para escolher</span>
-				<span class="dropzone-sub" *ngIf="!readingFile && !extratoFile">{{formatHint(parser.acceptedFormats)}}</span>
-				<span class="dropzone-sub" *ngIf="!readingFile && extratoFile">Clique para trocar o arquivo</span>
+
+				<div class="progress-wrap" *ngIf="uploading">
+					<div class="progress-bar-track">
+						<div class="progress-bar-fill" [style.width.%]="uploadPercent"></div>
+					</div>
+					<span class="dropzone-title progress-message">Enviando arquivo... {{uploadPercent}}%</span>
+				</div>
+
+				<div class="parsing-wrap" *ngIf="parsing">
+					<span class="dropzone-spinner"></span>
+					<span class="dropzone-title">Analisando extrato...</span>
+				</div>
+
+				<ng-container *ngIf="!uploading && !parsing">
+					<span class="dropzone-title" *ngIf="extratoFile">{{extratoFile.name}}</span>
+					<span class="dropzone-title" *ngIf="!extratoFile">Arraste o extrato ou clique para escolher</span>
+					<span class="dropzone-sub" *ngIf="!extratoFile">OFX, CSV, XLS ou XLSX</span>
+				</ng-container>
 			</label>
 
-			<div class="parser-alert" *ngIf="fileError">{{fileError}}</div>
-		</section>
-
-		<section class="parser-card" *ngIf="selectedBank && parser.allowsComprovantes && extratoFile">
-			<h2>Comprovantes</h2>
-			<p class="parser-hint">Opcional — cole o texto dos comprovantes do mês para cruzar com o extrato.</p>
-			<textarea class="parser-textarea" rows="5"
-								placeholder="Cole aqui o texto dos comprovantes"
-								[(ngModel)]="comprovanteText"></textarea>
-			<div class="comprovante-row">
-				<button type="button" class="btn-solid btn-solid-sm"
-								(click)="setComprovante()"
-								[disabled]="!comprovanteText.trim()">
-					Enviar comprovantes
+			<div class="parser-alert" *ngIf="fileError">
+				{{fileError}}
+				<button type="button" class="btn-ghost btn-tentar-novamente" *ngIf="extratoFile" (click)="retryUpload()">
+					Tentar novamente
 				</button>
-				<p class="comprovante-ok" *ngIf="comprovanteSent">Comprovantes enviados. Confira se as informações estão corretas.</p>
 			</div>
 		</section>
 
@@ -69,6 +82,10 @@
 				<span *ngIf="parser.purchases.length">{{parser.purchases.length}} saída{{parser.purchases.length == 1 ? '' : 's'}}</span>
 				<span *ngIf="parser.boletos.length">{{parser.boletos.length}} boleto{{parser.boletos.length == 1 ? '' : 's'}}</span>
 			</div>
+
+			<p class="feedback-ack" *ngIf="feedbackGiven == 'down'">
+				Obrigado pelo retorno. Corrija o que estiver errado abaixo — ao clicar em Salvar, usamos suas correções para melhorar este parser.
+			</p>
 
 			<div class="parser-card parser-card-table" *ngIf="parser.incomeSummary.grandTotal > 0">
 				<app-income-sum [summary]="parser.incomeSummary"></app-income-sum>
@@ -86,6 +103,23 @@
 				<app-purchase [purchases]="parser.purchases" [collapse]="true"></app-purchase>
 			</div>
 		</div>
+
+		<section class="parser-card" *ngIf="showComprovantes">
+			<h2>Comprovantes</h2>
+			<p class="parser-hint" *ngIf="genericPurchaseHint">Este extrato não traz o nome do favorecido (ou veio só código/número). Cole os comprovantes (data, valor e beneficiário/favorecido) para cruzar com as saídas.</p>
+			<p class="parser-hint" *ngIf="!genericPurchaseHint">Opcional — cole o texto dos comprovantes do mês para cruzar com o extrato.</p>
+			<textarea class="parser-textarea" rows="5"
+								placeholder="Cole aqui o texto dos comprovantes"
+								[(ngModel)]="comprovanteText"></textarea>
+			<div class="comprovante-row">
+				<button type="button" class="btn-solid btn-solid-sm"
+								(click)="setComprovante()"
+								[disabled]="!comprovanteText.trim()">
+					Enviar comprovantes
+				</button>
+				<p class="comprovante-ok" *ngIf="comprovanteSent">Comprovantes enviados. Confira se as informações estão corretas.</p>
+			</div>
+		</section>
 	</div>
 
 	<div class="parser-actions">
@@ -98,6 +132,21 @@
 				<span class="parser-spinner" *ngIf="sending"></span>
 				{{ sending ? (sendingCount > 0 ? 'Salvando — faltam ' + sendingCount : 'Salvando...') : 'Salvar lançamentos' }}
 			</button>
+		</div>
+	</div>
+
+	<div class="feedback-overlay" *ngIf="showFeedbackModal" (click)="dismissFeedbackModal()">
+		<div class="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" (click)="$event.stopPropagation()">
+			<h3 id="feedback-title">O resultado está correto?</h3>
+			<p>Confira os lançamentos acima e diga se a análise ficou boa.</p>
+			<div class="feedback-buttons">
+				<button type="button" class="feedback-btn feedback-up" (click)="giveFeedback('up')" aria-label="Gostei do resultado">
+					👍
+				</button>
+				<button type="button" class="feedback-btn feedback-down" (click)="giveFeedback('down')" aria-label="Não gostei do resultado">
+					👎
+				</button>
+			</div>
 		</div>
 	</div>
 </div>
