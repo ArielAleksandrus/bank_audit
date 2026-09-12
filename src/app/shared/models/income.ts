@@ -120,8 +120,12 @@ export class Income {
 		  api.req('incomes', params, {collection: 'exists'}, 'post').subscribe(
 		    (res: {incomes: Income[]}) => {
 		      for(let i = 0; i < objs.length; i++) {
+		        // Only adopt the id, so Salvar updates the existing row instead
+		        // of duplicating it - replacing the whole object would silently
+		        // revert any local edit made since parsing back to whatever
+		        // was saved the last time around.
 		        if(res.incomes[i] && res.incomes[i].id > 0) {
-		          objs[i] = new Income(res.incomes[i]);
+		          objs[i].id = res.incomes[i].id;
 		        }
 		      }
 		      resolve(Income.fromJsonArray(objs));

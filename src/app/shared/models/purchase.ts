@@ -166,8 +166,12 @@ export class Purchase {
 		  api.req('purchases', params, {collection: 'exists'}, 'post').subscribe(
 		    (res: {purchases: Purchase[]}) => {
 		      for(let i = 0; i < objs.length; i++) {
+		        // Only adopt the id, so Salvar updates the existing row instead
+		        // of duplicating it - replacing the whole object would silently
+		        // revert any local edit made since parsing back to whatever
+		        // was saved the last time around.
 		        if(res.purchases[i] && res.purchases[i].id > 0) {
-		          objs[i] = new Purchase(res.purchases[i]);
+		          objs[i].id = res.purchases[i].id;
 		        }
 		      }
 		      Tag.loadSuggestions(api, Purchase.getSupplierNames(objs)).then((suggestions: {[supplierName: string]: Tag[]}) => {

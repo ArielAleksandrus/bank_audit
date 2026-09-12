@@ -1,4 +1,4 @@
-import { Component, model, input, output } from '@angular/core';
+import { Component, model, input, output, effect } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
@@ -75,6 +75,19 @@ export class BoletoComponent {
   constructor(private api: ApiService,
               private datePipe: DatePipe,
               private currencyPipe: CurrencyPipe) {
+    // The parent swaps `boletos` to a brand new array reference after this
+    // component already built its own visibleBoletos/pagedBoletos snapshot
+    // (e.g. parser.component's checkIfBoletosExist runs right after parsing
+    // AND again after a comprovante match, each time replacing the array).
+    // Without this, the rendered snapshot silently stays pointed at the old,
+    // now-disconnected array and never reflects the swap - a comprovante
+    // match applied to the new array is invisible on screen even though the
+    // underlying data is correct.
+    effect(() => {
+      this.boletos();
+      this.prepareFilter();
+      this._refreshView();
+    });
   }
   ngOnInit() {
     this.collapsed = this.collapse();

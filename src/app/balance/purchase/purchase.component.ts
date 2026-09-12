@@ -1,4 +1,4 @@
-import { Component, model, input, output } from '@angular/core';
+import { Component, model, input, output, effect } from '@angular/core';
 import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
@@ -76,6 +76,16 @@ export class PurchaseComponent {
   constructor(private api: ApiService,
               private datePipe: DatePipe,
               private currencyPipe: CurrencyPipe) {
+    // See the same effect() in boleto.component.ts - the parent swaps
+    // `purchases` to a new array reference (checkIfPurchasesExist runs after
+    // parsing AND after a comprovante match), which otherwise leaves this
+    // component's visiblePurchases/pagedPurchases snapshot disconnected and
+    // stuck showing pre-match data.
+    effect(() => {
+      this.purchases();
+      this.prepareFilter();
+      this._refreshView();
+    });
   }
   ngOnInit() {
     this.collapsed = this.collapse();

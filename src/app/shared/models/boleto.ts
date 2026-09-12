@@ -144,8 +144,12 @@ export class Boleto {
 		  api.req('boletos', params, {collection: 'exists'}, 'post').subscribe(
 		    (res: {boletos: Boleto[]}) => {
 		      for(let i = 0; i < objs.length; i++) {
+		        // Only adopt the id, so Salvar updates the existing row instead
+		        // of duplicating it - replacing the whole object would silently
+		        // revert any local edit (e.g. a comprovante-matched supplier
+		        // name) back to whatever was saved the last time around.
 		        if(res.boletos[i] && res.boletos[i].id > 0) {
-		          objs[i] = new Boleto(res.boletos[i]);
+		          objs[i].id = res.boletos[i].id;
 		        }
 		      }
 		      Tag.loadSuggestions(api, Boleto.getSupplierNames(objs)).then((suggestions: {[supplierName: string]: Tag[]}) => {

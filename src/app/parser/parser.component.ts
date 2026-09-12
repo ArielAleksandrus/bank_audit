@@ -120,16 +120,20 @@ export class ParserComponent implements OnInit, OnDestroy {
   get genericPurchaseHint(): boolean {
     if(this.suppliersMissing)
       return true;
+    // Boletos carry generic names ("DÉB.TIT.COMPE EFETIVADO") at least as
+    // often as purchases do, and parser.parseComprovantes() enriches both -
+    // so this hint has to look at both too.
+    const rows: {supplier_name: string}[] = [...this.parser.purchases, ...this.parser.boletos];
     const groups = new Map<string, number>();
     let genericCount = 0;
-    for(const purchase of this.parser.purchases) {
-      if(!this.parser.isGenericSupplier(purchase.supplier_name))
+    for(const row of rows) {
+      if(!this.parser.isGenericSupplier(row.supplier_name))
         continue;
       genericCount += 1;
-      const key = (purchase.supplier_name || "").trim().toLowerCase() || "(vazio)";
+      const key = (row.supplier_name || "").trim().toLowerCase() || "(vazio)";
       groups.set(key, (groups.get(key) || 0) + 1);
     }
-    if(this.parser.purchases.length > 0 && genericCount / this.parser.purchases.length >= 0.6)
+    if(rows.length > 0 && genericCount / rows.length >= 0.6)
       return true;
     return [...groups.values()].some(count => count > 10);
   }
@@ -492,19 +496,36 @@ export class ParserComponent implements OnInit, OnDestroy {
     );
   }
 
+  // These "does this already exist" lookups run right after parsing and
+  // again after setComprovante() edits the boletos in place - both async
+  // (tag-suggestion lookups over every supplier name can take a couple of
+  // seconds). Without a guard, whichever call happens to resolve LAST wins,
+  // so the earlier pre-comprovante call finishing after the later one would
+  // silently overwrite the corrected names with the original generic ones.
+  // A generation counter per array makes a stale resolution a no-op instead.
+  private boletosCheckGen = 0;
+  private purchasesCheckGen = 0;
+  private incomesCheckGen = 0;
+
   checkIfBoletosExist() {
+    const gen = ++this.boletosCheckGen;
     Boleto.arrayExists(this.api, this.parser.boletos).then((boletos: Boleto[]) => {
-      this.parser.boletos = boletos;
+      if(gen == this.boletosCheckGen)
+        this.parser.boletos = boletos;
     });
   }
   checkIfPurchasesExist() {
+    const gen = ++this.purchasesCheckGen;
     Purchase.arrayExists(this.api, this.parser.purchases).then((purchases: Purchase[]) => {
-      this.parser.purchases = purchases;
+      if(gen == this.purchasesCheckGen)
+        this.parser.purchases = purchases;
     });
   }
   checkIfIncomesExist() {
+    const gen = ++this.incomesCheckGen;
     Income.arrayExists(this.api, this.parser.incomes).then((incomes: Income[]) => {
-      this.parser.incomes = incomes;
+      if(gen == this.incomesCheckGen)
+        this.parser.incomes = incomes;
     });
   }
 
