@@ -5,13 +5,16 @@ import { Router } from '@angular/router';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
 import { faArrowLeft, faCheck, faFileArrowUp } from '@fortawesome/free-solid-svg-icons';
 import { NgSelectModule } from '@ng-select/ng-select';
+import * as XLSX from 'xlsx';
 
 import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { BoletoComponent } from '../balance/boleto/boleto.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
 
+import { BalanceParser } from '../shared/parsers/balance-parser';
 import { AiParser } from '../shared/parsers/ai-parser';
+import { OmniParser } from '../shared/parsers/omni-parser';
 
 import { Company } from '../shared/models/company';
 import { Boleto } from '../shared/models/boleto';
@@ -23,12 +26,15 @@ import { ApiService } from '../shared/services/api.service';
 import { parseApiError } from '../shared/helpers/api-errors';
 import { BRAZILIAN_BANKS } from '../shared/helpers/brazilian-banks';
 
-// There is no more bank-specific frontend parsing: every file, whatever the
-// bank, goes to the API, which tries a stored parser and falls back to an
-// AI-discovered one (see ExtratoParserService on the backend). The bank
-// picker below only feeds that lookup a hint - it never decides how the
-// file gets parsed.
+// Every file still goes to the API - but OmniParser (bank-agnostic OFX/Excel
+// conventions, no AI) gets first crack at it client-side, for free. Only
+// when that fails to find anything, or the user thumbs-downs its result, do
+// we spend an AI call (see ExtratoParserService on the backend). CSV has no
+// OmniParser support, so it always goes straight to the AI. The bank picker
+// only feeds the AI lookup a hint - it never decides how the file gets
+// parsed.
 const ACCEPTED_EXTENSIONS = ["ofx", "csv", "xls", "xlsx"];
+const OMNI_EXTENSIONS = ["ofx", "xls", "xlsx"];
 
 @Component({
   selector: 'app-parser',
@@ -51,7 +57,11 @@ export class ParserComponent implements OnInit, OnDestroy {
   bankOptions = BRAZILIAN_BANKS;
   selectedBank?: string;
 
-  parser: AiParser = new AiParser();
+  parser: BalanceParser = new AiParser();
+  // Whether `parser` currently holds an OmniParser result that was never
+  // sent through the AI - drives what a thumbs-down should do (see
+  // giveFeedback).
+  usingOmniParser: boolean = false;
 
   sending: boolean = false;
   sendingCount: number = 0;
@@ -114,7 +124,22 @@ export class ParserComponent implements OnInit, OnDestroy {
   }
 
   get showComprovantes(): boolean {
-    return this.hasResults && !this.busy && (this.parser.allowsComprovantes || this.genericPurchaseHint);
+    // The comprovante-matching regexes ("Número do agendamento", "Beneficiário
+    // final", etc.) were reverse-engineered from Sicoob's own layouts and
+    // don't generalize to other banks yet - keep the input hidden elsewhere
+    // rather than invite pasting text it can't actually parse.
+    if(this.selectedBank != 'sicoob')
+      return false;
+    if(!this.hasResults || this.busy)
+      return false;
+    // Once a batch has been sent, keep the input around instead of
+    // re-evaluating the heuristic below - Sicoob comprovantes come in
+    // differently-shaped batches (boletos, then PIX) pasted one at a time,
+    // and renaming the first batch's rows can bring genericPurchaseHint back
+    // down before the user has pasted the second one.
+    if(this.comprovanteSent)
+      return true;
+    return this.parser.allowsComprovantes || this.genericPurchaseHint;
   }
 
   get genericPurchaseHint(): boolean {
@@ -203,15 +228,23 @@ export class ParserComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.parser.applyResult({});
+    this.parser = new AiParser();
+    this.usingOmniParser = false;
     this.extratoFile = file;
     this.extratoId = undefined;
     this.uploading = true;
     this.uploadPercent = 0;
 
+    // OmniParser gets first crack at OFX/Excel - so there's no AI call to
+    // make yet. skip_parse leaves the extrato just stored (status "pending")
+    // until requestAiParsing() asks for one, which only happens if
+    // OmniParser comes up empty or the user thumbs-downs its result.
+    const tryOmni = OMNI_EXTENSIONS.includes(extension);
+
     this.api.uploadFile("extratos", file, "file", {
       bank: this.selectedBank || "outros",
-      file_format: extension
+      file_format: extension,
+      ...(tryOmni ? { skip_parse: "true" } : {})
     }, (percent: number) => {
       if(!this.destroyed)
         this.uploadPercent = percent;
@@ -225,6 +258,10 @@ export class ParserComponent implements OnInit, OnDestroy {
           return;
         }
         this.extratoId = res.id;
+        if(tryOmni) {
+          this.parseWithOmni(file, extension);
+          return;
+        }
         this.parsing = true;
         this.pollStartedAt = Date.now();
         this.savePendingExtrato();
@@ -235,6 +272,77 @@ export class ParserComponent implements OnInit, OnDestroy {
           return;
         this.uploading = false;
         this.fileError = parseApiError(err, "Não foi possível enviar o extrato");
+      }
+    );
+  }
+
+  // Reads the file the same way the old per-bank parsers used to (OFX as
+  // text, Excel as a binary workbook) and hands it to OmniParser. Any
+  // failure - a corrupt file, or OmniParser just not recognizing the layout
+  // (zero rows extracted) - falls back to the AI instead of showing the
+  // user an empty result.
+  private parseWithOmni(file: File, extension: string) {
+    this.parsing = true;
+
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      if(this.destroyed)
+        return;
+      try {
+        const omni = new OmniParser(this.selectedBank || 'outro');
+        if(extension == 'ofx') {
+          omni.parseExtrato([e.target.result], 'ofx');
+        } else {
+          const workbook = XLSX.read(e.target.result, { type: 'binary' });
+          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+          const grid = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: null, blankrows: false });
+          omni.parseExtrato(grid, 'excel');
+        }
+
+        if(omni.incomes.length + omni.purchases.length + omni.boletos.length == 0) {
+          this.requestAiParsing();
+          return;
+        }
+
+        this.parser = omni;
+        this.usingOmniParser = true;
+        this.finishParsing();
+      } catch(err) {
+        console.error('OmniParser: falha ao interpretar o arquivo: ', err);
+        this.requestAiParsing();
+      }
+    };
+    reader.onerror = () => {
+      if(this.destroyed)
+        return;
+      console.error('OmniParser: falha ao ler o arquivo: ', reader.error);
+      this.requestAiParsing();
+    };
+
+    if(extension == 'ofx')
+      reader.readAsText(file);
+    else
+      reader.readAsBinaryString(file);
+  }
+
+  // Asks the API for an AI parse of an extrato that was uploaded with
+  // skip_parse - either OmniParser couldn't make sense of it, or the user
+  // thumbs-downed its result (see giveFeedback).
+  private requestAiParsing() {
+    if(!this.extratoId)
+      return;
+    this.usingOmniParser = false;
+    this.parsing = true;
+    this.pollStartedAt = Date.now();
+    this.savePendingExtrato();
+    this.api.req("extratos", {}, { member: { id: this.extratoId, value: "parse" } }, "post").subscribe(
+      () => this.pollExtrato(this.extratoId as number, 0),
+      (err: any) => {
+        if(this.destroyed)
+          return;
+        this.parsing = false;
+        this.clearPendingExtrato();
+        this.fileError = parseApiError(err, "Não foi possível analisar o extrato");
       }
     );
   }
@@ -278,8 +386,14 @@ export class ParserComponent implements OnInit, OnDestroy {
   }
 
   private applyParsedResult(res: any) {
+    this.parser = new AiParser();
     this.parser.applyResult(res);
+    this.usingOmniParser = false;
     this.suppliersMissing = res.has_supplier_names === false;
+    this.finishParsing();
+  }
+
+  private finishParsing() {
     this.parsing = false;
     this.clearPendingExtrato();
     this.checkIfBoletosExist();
@@ -318,7 +432,13 @@ export class ParserComponent implements OnInit, OnDestroy {
   giveFeedback(kind: 'up'|'down') {
     this.feedbackGiven = kind;
     this.showFeedbackModal = false;
-    if(kind == 'down')
+    if(kind != 'down')
+      return;
+    // A thumbs-down on an OmniParser result means "this needs the AI", not
+    // "this AI-generated parser needs refining" - there isn't one yet.
+    if(this.usingOmniParser)
+      this.requestAiParsing();
+    else
       this.logNegativeFeedback();
   }
 
@@ -381,6 +501,7 @@ export class ParserComponent implements OnInit, OnDestroy {
     this.clearPendingExtrato();
     this.selectedBank = undefined;
     this.parser = new AiParser();
+    this.usingOmniParser = false;
     this.extratoFile = undefined;
     this.extratoId = undefined;
     this.uploading = false;
@@ -403,6 +524,10 @@ export class ParserComponent implements OnInit, OnDestroy {
 
     this.parser.parseComprovantes(value);
     this.comprovanteSent = true;
+    // Sicoob splits comprovantes into differently-shaped batches (boletos,
+    // then PIX) pasted one at a time - clear the box so the next paste
+    // doesn't have to start with deleting the previous one.
+    this.comprovanteText = '';
     this.checkIfBoletosExist();
   }
 

@@ -83,7 +83,10 @@
 				<span *ngIf="parser.boletos.length">{{parser.boletos.length}} boleto{{parser.boletos.length == 1 ? '' : 's'}}</span>
 			</div>
 
-			<p class="feedback-ack" *ngIf="feedbackGiven == 'down'">
+			<p class="feedback-ack" *ngIf="feedbackGiven == 'down' && parsing">
+				Obrigado pelo retorno. Buscando uma análise mais precisa...
+			</p>
+			<p class="feedback-ack" *ngIf="feedbackGiven == 'down' && !parsing">
 				Obrigado pelo retorno. Corrija o que estiver errado abaixo — ao clicar em Salvar, usamos suas correções para melhorar este parser.
 			</p>
 
@@ -128,7 +131,7 @@
 				<fa-icon [icon]="backIcon"></fa-icon>
 				Voltar
 			</button>
-			<button type="button" class="btn-solid" (click)="send()" [disabled]="sending || !hasResults">
+			<button type="button" class="btn-solid" (click)="send()" [disabled]="sending || parsing || !hasResults">
 				<span class="parser-spinner" *ngIf="sending"></span>
 				{{ sending ? (sendingCount > 0 ? 'Salvando — faltam ' + sendingCount : 'Salvando...') : 'Salvar lançamentos' }}
 			</button>
