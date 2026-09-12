@@ -1,5 +1,5 @@
 import { Component, model, input, output, effect } from '@angular/core';
-import { CommonModule, CurrencyPipe, DatePipe } from '@angular/common';
+import { CommonModule, CurrencyPipe, DatePipe, KeyValue } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { jsPDF } from "jspdf";
 import { autoTable } from 'jspdf-autotable';
@@ -42,6 +42,15 @@ export class PurchaseComponent {
   propagatePopover = "Se 'Copiar Tag' estiver ativo, todas as tags da despesa serão copiadas para todas as despesas deste fornecedor";
 
   paymentTranslation = PAYMENT_TRANSLATION;
+  // Alphabetical by the displayed label, except "Outro" - always the
+  // catch-all, so it belongs last regardless of where it'd alphabetize to.
+  paymentTypeOrder = (a: KeyValue<string, string>, b: KeyValue<string, string>): number => {
+    if(a.key == 'other')
+      return 1;
+    if(b.key == 'other')
+      return -1;
+    return a.value.localeCompare(b.value);
+  };
 
   referrals: string[] = [];
 
@@ -58,7 +67,7 @@ export class PurchaseComponent {
     value_max: null
   };
   availableBanks: string[] = [];
-  availablePaymentTypes: string[] = [];
+  availablePaymentTypes: {value: string, label: string}[] = [];
 
   total: number = 0;
   delayAFTimeout: any = null;
@@ -149,7 +158,7 @@ export class PurchaseComponent {
       if(!!obj.bank_name)
         Utils.pushIfNotExists(this.availableBanks, obj.bank_name);
       if(!!obj.payment_type)
-        Utils.pushIfNotExists(this.availablePaymentTypes, obj.payment_type);
+        Utils.pushIfNotExists(this.availablePaymentTypes, { value: obj.payment_type, label: this.paymentTranslation[obj.payment_type] || obj.payment_type }, 'value');
     }
   }
   changeFilter(field: 'bank_names'|'payment_types'|'value_min'|'value_max', value: any) {
@@ -167,7 +176,7 @@ export class PurchaseComponent {
     let filters = this.filters;
 
     let bankNames = (filters.bank_names && filters.bank_names.length > 0) ? filters.bank_names : this.availableBanks;
-    let paymentTypes = (filters.payment_types && filters.payment_types.length > 0) ? filters.payment_types : this.availablePaymentTypes;
+    let paymentTypes = (filters.payment_types && filters.payment_types.length > 0) ? filters.payment_types : this.availablePaymentTypes.map(t => t.value);
 
     for(let obj of objs) {
       if(bankNames.indexOf(obj.bank_name) == -1 ||

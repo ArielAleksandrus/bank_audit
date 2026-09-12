@@ -53,7 +53,8 @@
 							class="form-control" (keyup)="delayApplyFilter()"/>
 					</td>
 					<td>
-						<ng-select [items]="availablePaymentTypes" [(ngModel)]="filters.payment_types" multiple="true"
+						<ng-select [items]="availablePaymentTypes" bindLabel="label" bindValue="value"
+							[(ngModel)]="filters.payment_types" multiple="true"
 							(change)="changeFilter('payment_types', $event)"></ng-select>
 					</td>
 					<td></td>
@@ -89,7 +90,7 @@
 					</td>
 					<td>
 						<select *ngIf="!printMode" [(ngModel)]="purchase.payment_type" class="form-control">
-							<option *ngFor="let item of paymentTranslation | keyvalue" [value]="item.key">{{item.value}}</option>
+							<option *ngFor="let item of paymentTranslation | keyvalue:paymentTypeOrder" [value]="item.key">{{item.value}}</option>
 						</select>
 						<span *ngIf="printMode">{{paymentTranslation[purchase.payment_type]}}</span>
 					</td>

@@ -4,16 +4,16 @@ import { ApiService } from '../services/api.service';
 
 export type PAYMENT_TYPES = 'cash'|'boleto'|'check'|'credit_card'|'debit_card'|'pix'|'transfer'|'auto_debit'|'movimentacao_entre_contas'|'other';
 export var PAYMENT_TRANSLATION: {[english: string]: string} = {
-	'cash': 'dinheiro',
-	'boleto': 'boleto',
-	'check': 'cheque',
-	'credit_card': 'crédito',
-	'debit_card': 'débito',
-	'pix': 'pix',
-	'transfer': 'transferência',
-	'auto_debit': 'débito automático',
+	'cash': 'Dinheiro',
+	'boleto': 'Boleto',
+	'check': 'Cheque',
+	'credit_card': 'Crédito',
+	'debit_card': 'Débito',
+	'pix': 'Pix',
+	'transfer': 'Transferência',
+	'auto_debit': 'Débito automático',
 	'movimentacao_entre_contas': 'Movimentação Entre Contas',
-	'other': 'outro',
+	'other': 'Outro',
 };
 
 export class Purchase {
