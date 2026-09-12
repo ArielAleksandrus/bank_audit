@@ -23,6 +23,7 @@ import { ItauParser } from '../shared/parsers/itau-parser';
 import { SicoobParser } from '../shared/parsers/sicoob-parser';
 import { SicrediParser } from '../shared/parsers/sicredi-parser';
 import { StoneParser } from '../shared/parsers/stone-parser';
+import { OmniParser } from '../shared/parsers/omni-parser';
 
 import { Tag } from '../shared/models/tag';
 import { Company } from '../shared/models/company';
@@ -35,7 +36,7 @@ import { ApiService } from '../shared/services/api.service';
 import { Utils } from '../shared/helpers/utils';
 import { Filters } from '../shared/helpers/filters';
 
-type ParserBankId = 'brb'|'itau'|'sicoob'|'stone'|'sicredi';
+type ParserBankId = 'brb'|'itau'|'sicoob'|'stone'|'sicredi'|'outro';
 
 @Component({
   selector: 'app-parser',
@@ -76,7 +77,8 @@ export class ParserComponent {
     { id: 'itau', name: 'Itaú', formatLabel: 'PDF' },
     { id: 'sicoob', name: 'Sicoob', formatLabel: 'Excel' },
     { id: 'sicredi', name: 'Sicredi', formatLabel: 'OFX' },
-    { id: 'stone', name: 'Stone', formatLabel: 'Excel' }
+    { id: 'stone', name: 'Stone', formatLabel: 'Excel' },
+    { id: 'outro', name: 'Outro', formatLabel: 'Excel / OFX' }
   ];
 
   backIcon = faArrowLeft;
@@ -161,6 +163,10 @@ export class ParserComponent {
       this.parser = new StoneParser();
       break;
     }
+    case("outro"): {
+      this.parser = new OmniParser('outro');
+      break;
+    }
     }
   }
 
@@ -226,7 +232,9 @@ export class ParserComponent {
     const workbook = XLSX.read(fileContent, { type: 'binary' });
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
-    this.excelData = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+    this.excelData = this.parser.excelAsGrid
+      ? XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: null, blankrows: false })
+      : XLSX.utils.sheet_to_json(worksheet, { raw: true });
     this.parser.parseExtrato(this.excelData, 'excel');
   }
   loadOFX(fileContent: any) {
