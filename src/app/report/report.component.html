@@ -29,6 +29,12 @@
 				<span class="sidebar-label">Boletos</span>
 				<span class="sidebar-count" *ngIf="boletosLoaded">{{boletos.length}}</span>
 			</button>
+			<button type="button" class="sidebar-item" *ngIf="canViewAccountTransfers" [class.active]="selection == 'accountTransfers'"
+							[disabled]="!accountTransfersLoaded" (click)="selectSection('accountTransfers')">
+				<fa-icon class="sidebar-icon" [class.spinning]="!accountTransfersLoaded" [icon]="accountTransfersLoaded ? accountTransferIcon : spinnerIcon"></fa-icon>
+				<span class="sidebar-label">Movimentações</span>
+				<span class="sidebar-count" *ngIf="accountTransfersLoaded">{{accountTransfers.length}}</span>
+			</button>
 			<button type="button" class="sidebar-item" [class.active]="selection == 'tags'" *ngIf="isSingleCompany"
 							[disabled]="!tagsLoaded" (click)="selectSection('tags')">
 				<fa-icon class="sidebar-icon" [class.spinning]="!tagsLoaded" [icon]="tagsLoaded ? tagsIcon : spinnerIcon"></fa-icon>
@@ -78,6 +84,10 @@
 
 			<div class="content-pane" *ngIf="selection == 'boletos'">
 				<app-boleto [boletos]="boletos" [collapse]="false" [canSave]="isSingleCompany" [canDestroy]="isSingleCompany"></app-boleto>
+			</div>
+
+			<div class="content-pane" *ngIf="selection == 'accountTransfers' && canViewAccountTransfers">
+				<app-account-transfer [accountTransfers]="accountTransfers"></app-account-transfer>
 			</div>
 
 			<div class="content-pane" *ngIf="selection == 'tags' && isSingleCompany">

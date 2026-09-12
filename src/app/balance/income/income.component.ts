@@ -159,7 +159,9 @@ export class IncomeComponent {
 
     this.sending = true;
     Income.sendArray(this.api, this.incomes()).then(res => {
-      this.incomes.set(res);
+      // Rows the server reclassified as a same-titularidade transfer (see
+      // income_type "movimentacao_entre_contas") no longer belong here.
+      this.incomes.set(res.filter(income => income.auxStatus != 'converted'));
       this._refreshView();
       this.sending = false;
       alert("Recebimentos salvos");

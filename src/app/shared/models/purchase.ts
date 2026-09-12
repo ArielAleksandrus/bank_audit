@@ -2,7 +2,7 @@ import { Boleto, Tag } from './index';
 import { Utils } from '../helpers/utils';
 import { ApiService } from '../services/api.service';
 
-export type PAYMENT_TYPES = 'cash'|'boleto'|'check'|'credit_card'|'debit_card'|'pix'|'transfer'|'auto_debit'|'other';
+export type PAYMENT_TYPES = 'cash'|'boleto'|'check'|'credit_card'|'debit_card'|'pix'|'transfer'|'auto_debit'|'movimentacao_entre_contas'|'other';
 export var PAYMENT_TRANSLATION: {[english: string]: string} = {
 	'cash': 'dinheiro',
 	'boleto': 'boleto',
@@ -12,6 +12,7 @@ export var PAYMENT_TRANSLATION: {[english: string]: string} = {
 	'pix': 'pix',
 	'transfer': 'transferência',
 	'auto_debit': 'débito automático',
+	'movimentacao_entre_contas': 'Movimentação Entre Contas',
 	'other': 'outro',
 };
 
@@ -44,7 +45,10 @@ export class Purchase {
 	supplier_name: string;
 	supplier_cnpj: string;
 	tagsStr: string;
-	auxStatus: 'ok'|'error';
+	// 'converted' means the server reclassified this row as an
+	// AccountTransfer instead of saving it as a purchase (see payment_type
+	// "movimentacao_entre_contas"); the caller is expected to drop it.
+	auxStatus: 'ok'|'error'|'converted';
 	hidden: boolean = false;
 
 	constructor(jsonData: any) {
@@ -106,6 +110,11 @@ export class Purchase {
 
   					if(entry.errors) {
   						objs[i].auxStatus = 'error';
+  					} else if(entry.source_type) {
+  						// Reclassified server-side into an AccountTransfer (see
+  						// payment_type "movimentacao_entre_contas") - drop it here,
+  						// the caller filters out anything marked 'converted'.
+  						objs[i].auxStatus = 'converted';
   					} else {
   						objs[i] = new Purchase(entry);
   					}

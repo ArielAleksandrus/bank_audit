@@ -3,6 +3,7 @@ export type MembershipRole = 'owner'|'admin'|'buyer';
 export class Company {
 	id: number;
 	name: string;
+	cpf_cnpj: string;
 	token: string;
 
 	// the requesting user's role in this company - only present on
@@ -15,6 +16,7 @@ export class Company {
 	constructor(jsonData: any) {
 		this.id = jsonData.id;
 		this.name = jsonData.name;
+		this.cpf_cnpj = jsonData.cpf_cnpj;
 		this.token = jsonData.token;
 		this.role = jsonData.role;
 		this.created_at = jsonData.created_at;

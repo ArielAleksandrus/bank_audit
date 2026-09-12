@@ -252,7 +252,9 @@ export class PurchaseComponent {
 
     this.sending = true;
     Purchase.sendArray(this.api, this.purchases()).then(res => {
-      this.purchases.set(res);
+      // Rows the server reclassified as a same-titularidade transfer (see
+      // payment_type "movimentacao_entre_contas") no longer belong here.
+      this.purchases.set(res.filter(purchase => purchase.auxStatus != 'converted'));
       this.sending = false;
       alert("Compras salvas");
     }).catch(err => {

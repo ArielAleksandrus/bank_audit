@@ -45,6 +45,7 @@ export class CompanySelectComponent {
   errorMessage: string = '';
 
   newCompanyName: string = '';
+  newCompanyCnpj: string = '';
   creating: boolean = false;
 
   showAddMember: Record<number, boolean> = {};
@@ -267,12 +268,16 @@ export class CompanySelectComponent {
       this.errorMessage = 'Preencha o nome da empresa';
       return;
     }
+    if(!this.newCompanyCnpj) {
+      this.errorMessage = 'Preencha o CPF/CNPJ da empresa';
+      return;
+    }
 
     this.errorMessage = '';
     this.creating = true;
 
     this.api.create('companies', {
-      company: { name: this.newCompanyName }
+      company: { name: this.newCompanyName, cpf_cnpj: this.newCompanyCnpj }
     }).subscribe(
       (res: any) => {
         this.creating = false;
@@ -280,7 +285,7 @@ export class CompanySelectComponent {
       },
       (err: any) => {
         this.creating = false;
-        this.errorMessage = 'Não foi possível criar a empresa. O nome já pode estar em uso';
+        this.errorMessage = 'Não foi possível criar a empresa. O nome ou o CPF/CNPJ já pode estar em uso';
         console.error(err);
       }
     );

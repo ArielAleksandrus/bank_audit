@@ -30,7 +30,7 @@ export class Income {
 	id: number;
 	company_id: number;
 
-	income_type: 'cartao'|'pix'|'deposito'|'cheque'|'transferencia'|'outros';
+	income_type: 'cartao'|'pix'|'deposito'|'cheque'|'transferencia'|'resgate_investimento'|'movimentacao_entre_contas'|'outros';
 	date_received: string;
 	value: string|number;
 	origin: string;
@@ -41,8 +41,11 @@ export class Income {
 	created_at: string;
 	updated_at: string;
 
-	// set by our front end app
-	auxStatus: 'ok'|'error';
+	// set by our front end app - 'converted' means the server reclassified
+	// this row as an AccountTransfer instead of saving it as an income (see
+	// income_type "movimentacao_entre_contas"); the caller is expected to
+	// drop it from whatever list it's displaying.
+	auxStatus: 'ok'|'error'|'converted';
 
 	// front-end app's aux variables
 	hidden: boolean = false;
@@ -86,6 +89,11 @@ export class Income {
 
   					if(entry.errors) {
   						objs[i].auxStatus = 'error';
+  					} else if(entry.source_type) {
+  						// Reclassified server-side into an AccountTransfer (see
+  						// income_type "movimentacao_entre_contas") - drop it here,
+  						// the caller filters out anything marked 'converted'.
+  						objs[i].auxStatus = 'converted';
   					} else {
   						objs[i] = new Income(entry);
   					}

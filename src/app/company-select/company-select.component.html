@@ -108,6 +108,10 @@
 						<input type="text" placeholder="Nome da empresa"
 							[(ngModel)]="newCompanyName" (keyup.enter)="createCompany()"/>
 					</div>
+					<div class="create-input no-icon">
+						<input type="text" inputmode="numeric" placeholder="CPF/CNPJ (só números)"
+							[(ngModel)]="newCompanyCnpj" (keyup.enter)="createCompany()"/>
+					</div>
 					<button class="btn-solid" [disabled]="creating" (click)="createCompany()">
 						<span class="companies-spinner btn-spinner" *ngIf="creating"></span>
 						<fa-icon [icon]="plusIcon" *ngIf="!creating"></fa-icon>

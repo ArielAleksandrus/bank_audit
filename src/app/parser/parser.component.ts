@@ -450,7 +450,9 @@ export class ParserComponent implements OnInit, OnDestroy {
   saveIncomes(): Promise<boolean>  {
     return new Promise<boolean>((resolve, reject) => {
       Income.sendArray(this.api, this.parser.incomes).then(res => {
-        this.parser.incomes = res;
+        // Rows the server reclassified as a same-titularidade transfer (see
+        // income_type "movimentacao_entre_contas") no longer belong here.
+        this.parser.incomes = res.filter(income => income.auxStatus != 'converted');
         resolve(true);
       }).catch(err => {
         reject(err);
@@ -461,7 +463,9 @@ export class ParserComponent implements OnInit, OnDestroy {
   savePurchases(): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
       Purchase.sendArray(this.api, this.parser.purchases).then(res => {
-        this.parser.purchases = res;
+        // Rows the server reclassified as a same-titularidade transfer (see
+        // payment_type "movimentacao_entre_contas") no longer belong here.
+        this.parser.purchases = res.filter(purchase => purchase.auxStatus != 'converted');
         resolve(true);
       }).catch(err => {
         reject(err);

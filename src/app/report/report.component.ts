@@ -17,7 +17,8 @@ import {
   faChevronDown,
   faChevronUp,
   faTurnDown,
-  faSpinner
+  faSpinner,
+  faRightLeft
 } from '@fortawesome/free-solid-svg-icons';
 
 import { ApiService } from '../shared/services/api.service';
@@ -28,6 +29,7 @@ import { User } from '../shared/models/user';
 import { Boleto } from '../shared/models/boleto';
 import { Income, IncomeSummary } from '../shared/models/income';
 import { Purchase } from '../shared/models/purchase';
+import { AccountTransfer } from '../shared/models/account-transfer';
 import { Supplier } from '../shared/models/supplier';
 import { Tag } from '../shared/models/tag';
 
@@ -35,6 +37,7 @@ import { BoletoComponent } from '../balance/boleto/boleto.component';
 import { IncomeSumComponent } from '../balance/income-sum/income-sum.component';
 import { IncomeComponent } from '../balance/income/income.component';
 import { PurchaseComponent } from '../balance/purchase/purchase.component';
+import { AccountTransferComponent } from '../balance/account-transfer/account-transfer.component';
 import { TagChartComponent } from './tag-chart/tag-chart.component';
 import { TagManagerComponent } from './tag-manager/tag-manager.component';
 import { TagDescriptionComponent } from '../shared/components/tag-description/tag-description.component';
@@ -48,6 +51,7 @@ import { Filters } from '../shared/helpers/filters';
   selector: 'app-report',
   imports: [CommonModule, NgTemplateOutlet, FormsModule, FaIconComponent,
             BoletoComponent, IncomeComponent, IncomeSumComponent, PurchaseComponent,
+            AccountTransferComponent,
             TagChartComponent, TagManagerComponent, TagDescriptionComponent],
   templateUrl: './report.component.html',
   styleUrl: './report.component.scss'
@@ -70,6 +74,7 @@ export class ReportComponent {
   collapseIcon = faChevronUp;
   returnIcon = faTurnDown;
   spinnerIcon = faSpinner;
+  accountTransferIcon = faRightLeft;
 
   boletos: Boleto[] = [];
   boletosLoaded: boolean = false;
@@ -77,6 +82,8 @@ export class ReportComponent {
   incomesLoaded: boolean = false;
   purchases: Purchase[] = [];
   purchasesLoaded: boolean = false;
+  accountTransfers: AccountTransfer[] = [];
+  accountTransfersLoaded: boolean = false;
   suppliers: Supplier[] = [];
 
   // company-wide, not scoped to the selected date range
@@ -93,7 +100,7 @@ export class ReportComponent {
   purchaseTagData?: TagClassification;
   incomeSummary?: IncomeSummary;
 
-  selection: 'none'|'reports'|'incomes'|'purchases'|'boletos'|'charts'|'tags' = 'none';
+  selection: 'none'|'reports'|'incomes'|'purchases'|'boletos'|'accountTransfers'|'charts'|'tags' = 'none';
 
   selectedTag?: string;
   selectedPurchases: Purchase[] = [];
@@ -151,6 +158,9 @@ export class ReportComponent {
   get canViewIncomes(): boolean {
     return this.canViewAdminSections;
   }
+  get canViewAccountTransfers(): boolean {
+    return this.canViewAdminSections;
+  }
   get canViewCharts(): boolean {
     return this.canViewAdminSections;
   }
@@ -166,7 +176,7 @@ export class ReportComponent {
   }
 
   get isLoadingReportData(): boolean {
-    if(!this.boletosLoaded || !this.purchasesLoaded || !this.incomesLoaded)
+    if(!this.boletosLoaded || !this.purchasesLoaded || !this.incomesLoaded || !this.accountTransfersLoaded)
       return true;
     if(this.isSingleCompany && !this.tagsLoaded)
       return true;
@@ -182,7 +192,7 @@ export class ReportComponent {
     }
   }
 
-  selectSection(section: 'reports'|'incomes'|'purchases'|'boletos'|'charts'|'tags') {
+  selectSection(section: 'reports'|'incomes'|'purchases'|'boletos'|'accountTransfers'|'charts'|'tags') {
     this.selection = this.selection == section ? 'none' : section;
   }
 
@@ -200,6 +210,12 @@ export class ReportComponent {
       this.incomeSummary = Income.calculateIncomeSummary([]);
       this.incomesLoaded = true;
       this.setReports();
+    }
+    if(this.canViewAccountTransfers) {
+      this.accountTransferQuery();
+    } else {
+      this.accountTransfers = [];
+      this.accountTransfersLoaded = true;
     }
   }
 
@@ -304,6 +320,21 @@ export class ReportComponent {
       this.purchases = purchases;
       this.purchasesLoaded = true;
       this.setReports();
+    });
+  }
+  accountTransferQuery() {
+    let params: any = {
+      q: {
+        "date": this.from
+      }
+    };
+    if(this.to) {
+      params = QueryHelpers.queryIntervalParams("date", this.from, this.to);
+    }
+
+    this._queryAcrossCompanies('account_transfers', params, AccountTransfer.fromJsonArray).then((accountTransfers: AccountTransfer[]) => {
+      this.accountTransfers = accountTransfers;
+      this.accountTransfersLoaded = true;
     });
   }
 

@@ -1,0 +1,75 @@
+<div class="ledger">
+	<div class="ledger-toolbar">
+		<div class="ledger-heading">
+			<h3>Movimentações Mesma Titularidade</h3>
+			<span class="ledger-count">{{accountTransfers().length}}</span>
+		</div>
+		<div class="ledger-toolbar-actions">
+			<span class="ledger-total-chip">{{total | currency:'BRL'}}</span>
+		</div>
+	</div>
+
+	<p class="ledger-hint" *ngIf="accountTransfers().length == 0">
+		Nenhuma movimentação entre contas neste período.
+	</p>
+
+	<div class="ledger-table-wrap" *ngIf="accountTransfers().length > 0">
+		<table class="ledger-table">
+			<thead>
+				<tr>
+					<th>Banco</th>
+					<th>Data</th>
+					<th>Nome</th>
+					<th>Valor</th>
+					<th>Origem</th>
+					<th class="col-actions"></th>
+				</tr>
+			</thead>
+			<tbody>
+				<ng-container *ngFor="let transfer of accountTransfers()">
+					<tr>
+						<td>{{transfer.bank_name}}</td>
+						<td>{{transfer.date | date:'dd/MM/YYYY'}}</td>
+						<td>{{transfer.party_name}}</td>
+						<td>{{transfer.value | currency:'BRL'}}</td>
+						<td>{{transfer.source_type == 'income' ? 'Entrada' : 'Saída'}}</td>
+						<td class="col-actions">
+							<button type="button" class="btn-chip" (click)="resolving == transfer ? cancelResolve() : openResolve(transfer)">
+								{{resolving == transfer ? 'Cancelar' : 'Não é uma movimentação'}}
+							</button>
+						</td>
+					</tr>
+					<tr class="resolve-row" *ngIf="resolving == transfer">
+						<td colspan="6">
+							<div class="resolve-form">
+								<label class="resolve-kind">
+									<input type="radio" name="resolveKind" value="income" [(ngModel)]="resolveKind"/>
+									Entrada
+								</label>
+								<label class="resolve-kind">
+									<input type="radio" name="resolveKind" value="purchase" [(ngModel)]="resolveKind"/>
+									Saída
+								</label>
+
+								<select class="form-control" [(ngModel)]="resolveType">
+									<option value="" disabled>Selecione o tipo</option>
+									<ng-container *ngIf="resolveKind == 'income'">
+										<option *ngFor="let opt of incomeTypeOptions" [value]="opt.value">{{opt.label}}</option>
+									</ng-container>
+									<ng-container *ngIf="resolveKind == 'purchase'">
+										<option *ngFor="let opt of paymentTypeOptions" [value]="opt.value">{{opt.label}}</option>
+									</ng-container>
+								</select>
+
+								<button type="button" class="btn-solid btn-solid-sm" [disabled]="!resolveType || transfer.resolving" (click)="confirmResolve()">
+									{{transfer.resolving ? 'Salvando...' : 'Confirmar'}}
+								</button>
+							</div>
+							<p class="resolve-error" *ngIf="resolveError">{{resolveError}}</p>
+						</td>
+					</tr>
+				</ng-container>
+			</tbody>
+		</table>
+	</div>
+</div>

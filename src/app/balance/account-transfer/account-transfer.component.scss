@@ -1,0 +1,41 @@
+@use '../../shared/styles/ledger';
+
+.ledger-hint {
+	margin: 0.5rem 0 0;
+	color: #64748b;
+	font-size: 0.92rem;
+}
+
+.resolve-row td {
+	background: #f8fafc;
+	padding-top: 0.75rem;
+	padding-bottom: 0.9rem;
+}
+
+.resolve-form {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.9rem;
+}
+
+.resolve-kind {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.92rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.resolve-error {
+	margin: 0.6rem 0 0;
+	color: #b91c1c;
+	font-size: 0.88rem;
+}
+
+.btn-solid-sm {
+	min-height: 36px;
+	padding: 0.4rem 0.9rem;
+	font-size: 0.88rem;
+}

@@ -340,6 +340,10 @@
 	font-family: inherit;
 }
 
+.create-input.no-icon input {
+	padding-left: 0.9rem;
+}
+
 .add-member-input input::placeholder,
 .create-input input::placeholder {
 	color: #94a3b8;
