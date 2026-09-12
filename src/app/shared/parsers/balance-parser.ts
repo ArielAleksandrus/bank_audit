@@ -107,7 +107,10 @@ export abstract class BalanceParser {
 			return true;
 		if(/n[aã]o identificado|fornecedor n[aã]o/.test(n))
 			return true;
-		if(/d[eé]b\.?\s*tit\.?\s*compe/.test(n))
+		// Sicoob spells this differently depending on how the título was
+		// registered - "COMPE" (compensação) and "COBRANÇA" both mean the same
+		// "paid, no name in the extrato" as the INTERCREDIS wording below.
+		if(/d[eé]b\.?\s*tit\.?\s*(compe|cobran[cç]a)/.test(n))
 			return true;
 		if(/^(boletos?|pagto|pagamento|t[ií]tulos?|pix enviado|pix|ted|doc|transfer[eê]ncias?)$/.test(n))
 			return true;
@@ -218,6 +221,17 @@ export abstract class BalanceParser {
 			if(nameLine)
 				return nameLine;
 		}
+		// "Comprovante de efetivação de pagamento PIX": the recipient is a
+		// "Destinatário" section laid out the same way as Beneficiário above -
+		// "Nome<tabs>VALUE" on its own line, not "Destinatário: VALUE". The
+		// naive favorecido/destinatário fallback below would otherwise capture
+		// "Nome<tab>" itself as part of the value.
+		const destinatario = chunk.match(/destinat[aá]rio[\s\S]{0,400}/i);
+		if(destinatario) {
+			const nameLine = destinatario[0].match(/nome(?:\/raz[aã]o\s*social)?\s*[ \t]+([^\n]+)/i);
+			if(nameLine)
+				return nameLine;
+		}
 		// "Comprovante de transferência entre contas correntes": the
 		// recipient's account is listed under a "Crédito" section as
 		// "Conta    <number> / <name>" - no Beneficiário field at all.
@@ -227,7 +241,7 @@ export abstract class BalanceParser {
 			if(contaLine)
 				return contaLine;
 		}
-		return chunk.match(/(?:favorecido|destinat[aá]rio)\s*[:\n]\s*([^\n]+)/i);
+		return chunk.match(/favorecido\s*[:\n]\s*([^\n]+)/i);
 	}
 
 	recalculateIncome(): IncomeSummary {
