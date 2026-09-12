@@ -16,6 +16,7 @@ export abstract class BalanceParser {
 
 	acceptedFormats: string = ".xls,.xlsx";
 	allowsComprovantes: boolean = true;
+	excelAsGrid: boolean = false;
 
 	incomeSummary: IncomeSummary = Income.defaultIncomeSummary();
 

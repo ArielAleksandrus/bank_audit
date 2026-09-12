@@ -1,0 +1,20 @@
+yeah, it has some bugs, but that's not the point. i coded by hand all these bank parsers and they work. that's the beauty of it. i used my own extratos bancários as samples to understand the convention they used to format their data. i was thinking about escalating to ai banks to which i didn't have parsers or in case layout changed. then, something occurred to me. if i stick with xlsx and ofx formats, instead of pdf, finding the convention wouldn't be hard. perhaps i don't need ai to burn tokens at all.
+
+follow my logic.
+
+1. in an extrato, we will get an income (money coming in), a purchase (money going out, though 'purchase' is not the best word for it), and noise (informative rows, like Saldo do Dia, Saldo Anterior, etc).
+
+2. an income will have the date and the value (required). the origin (sender) may appear (if not, we consider "DESCONHECIDO"). the income type may also appear (pix, ted, deposit, etc). if not, we use use "outros". all the other fields are optional.
+
+3. a purchase will have the date, the value and the destination (required). the payment type may appear (if not, we consider "other").
+
+now, let's parse.
+for example, if we consider xlsx file, each row is a potential data.
+
+1. we extract the columns (there shouldn't be that many)
+2. for each column, we try to find the date. we use regex to find some possible formats (yyyy-mm-dd or dd/mm/yyyy). if none of them are, the row is noise. if we find the date, we now know the potential index of the date. potential because, let's say the first row has the bank name as a cell, the file type "EXTRATO BANCARIO" as the second cell, and the date the extrato was generated as the third cell. we would think the index of dates is 2, later on it would break because the actual income/purchase could start with date in the first cell, then the origin/supplier name, then the value. to be certain, the row must have date, value, and a non-noise description cell (we will get into description cells later on).
+3. in the same loop, we can try to find value cells. it should be a regex that removes any non-number characters. it should be a decimal with 2 digit precision, with "," or "." as separator. if such cell is not found, the row is noise.
+4. there should be a text cell that, once removed all non-letters characters, should have at least N (i'd say 7, because less than that could be some intern code for example) letters. if there is no cell description, it's noise.
+5. we can apply some heuristics, thinking of extrato bancário in portuguese. if any cell, for example, contains "pix", we can infer the payment type or income type is pix. if ted, it's transfer. some banks put these information in the description cell. in value cells, some banks put sign "-" before the value to say it's a purchase. surprisingly, some banks put after the value itself. others, put "D" or "C" before or after, being "C" for credit (positive value) and "D" for debit (negative value).
+
+so, to put it all together, maybe a very robust omni parser could handle all bank files.
