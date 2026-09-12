@@ -6,6 +6,7 @@ import {
 	MIN_DESC_LETTERS,
 	cardAdditionalInfo,
 	cellStr,
+	extractLabeledName,
 	foldPt,
 	hasTypeKeyword,
 	headerRoleOf,
@@ -198,6 +199,12 @@ export class OmniParser extends BalanceParser {
 
 	private pickName(preferred: string, fallback: string, _dir: 'in'|'out'): string {
 		const a = (preferred || '').trim();
+		// A multi-line "INFORMAÇÕES COMPLEMENTARES"-style cell packs several
+		// fields together - prefer the specific labeled line ("Fav.: <name>")
+		// over gluing the whole cell together as a name.
+		const labeled = extractLabeledName(a);
+		if(labeled && !isNoiseText(labeled))
+			return labeled;
 		if(a && !isNoiseText(a))
 			return a;
 		const b = (fallback || '').trim();

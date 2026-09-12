@@ -88,6 +88,54 @@ const NOISE_ROW = [
 	'agencia'
 ];
 
+// "INFORMAÇÕES COMPLEMENTARES"-style cells pack several newline-separated
+// fields into one - "FAV.: <name>\nTransferência Pix\n<pagador>\n<doc>" -
+// so using the whole cell as a name glues all of that together. Pull out
+// just the labeled line instead of falling back to the raw blob.
+const NAME_LINE_PATTERNS = [
+	/^fav(?:orecido)?\.?\s*:?\s*(.+)$/i,
+	/^benefici[aá]rio\.?\s*:?\s*(.+)$/i,
+	/^destinat[aá]rio\.?\s*:?\s*(.+)$/i,
+	// "REM.: <name>" - the sender, on an incoming transfer's complementary info.
+	/^rem(?:etente)?\.?\s*:?\s*(.+)$/i,
+];
+
+// Lines that are purely the transaction type, not a name - a cell that
+// leads with one of these and nothing else on that line.
+const TYPE_ONLY_LINES = [
+	'recebimento pix', 'pagamento pix', 'transferencia pix',
+	'pix recebido', 'pix enviado', 'credito pix', 'debito pix'
+];
+
+export function extractLabeledName(text: string): string|null {
+	const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+
+	for(const line of lines) {
+		for(const re of NAME_LINE_PATTERNS) {
+			const m = line.match(re);
+			if(m && m[1].trim())
+				return m[1].trim();
+		}
+	}
+
+	// No "Fav.:"/"Rem.:" label - a lot of PIX cells just lead with a bare type
+	// line ("Recebimento Pix") followed by the actual name, then a (masked)
+	// CPF/CNPJ line and sometimes a mangled alias key. Skip the type line and
+	// anything that's mostly digits (a real name always has some letters -
+	// a CPF/CNPJ, masked or not, has none) and take the first line left.
+	if(lines.length > 1) {
+		for(const line of lines) {
+			if(TYPE_ONLY_LINES.indexOf(foldPt(line)) > -1)
+				continue;
+			if(letterCount(line) < 3)
+				continue;
+			return line;
+		}
+	}
+
+	return null;
+}
+
 export function isNoiseText(text: string): boolean {
 	const folded = foldPt(text);
 	if(!folded)
