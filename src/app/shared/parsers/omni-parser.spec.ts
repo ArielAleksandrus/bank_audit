@@ -37,6 +37,22 @@ describe('OmniParser', () => {
 		expect(parser.boletos[0].bank_identification).toBe('124');
 	});
 
+	it('names Elo/Amex inside Sicoob "outras bandeiras" card credits', () => {
+		parser.parseExtrato([
+			['DATA', 'DOCUMENTO', 'HISTÓRICO', 'INFORMAÇÕES COMPLEMENTARES', 'VALOR'],
+			['29/09/2026', '1', 'CR COMPRAS CRE OUTRAS BANDEIRAS', 'SIPAG_Cred._Elo', 443.69],
+			['29/09/2026', '2', 'CR COMPRAS CRE OUTRAS BANDEIRAS', 'SIPAG_Cred._American Expre', 504.73],
+			['30/09/2026', '3', 'CR COMPRAS DEB OUTRAS BANDEIRAS', 'SIPAG_Deb._Elo Débito', 9.72],
+			['30/09/2026', '4', 'CR COMPRAS CRE OUTRAS BANDEIRAS', 'SIPAG_Cred._Hipercard', 10]
+		], 'excel');
+
+		const sum = parser.incomeSummary;
+		expect(sum.credit.elo).toBe(443.69);
+		expect(sum.credit.amex).toBe(504.73);
+		expect(sum.debit.elo).toBe(9.72);
+		expect(sum.other_cards).toBe(10);
+	});
+
 	it('parses a Stone-like Excel object sheet', () => {
 		parser.parseExtrato([
 			{

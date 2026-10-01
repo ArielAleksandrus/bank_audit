@@ -203,24 +203,34 @@ export function inferPaymentType(text: string): PAYMENT_TYPES {
 	return 'other';
 }
 
-const CARD_BRANDS: {[needle: string]: string} = {
-	'visa electron': 'visa débito',
-	'maestro': 'mastercard débito',
-	'deb outras bandeiras': 'outros débito',
-	'cre outras bandeiras': 'outros',
-	'mastercard': 'mastercard',
-	'mast': 'mastercard',
-	'visa': 'visa',
-	'elo': 'elo',
-	'amex': 'amex'
-};
+// Specific brands are checked before the generic "outras bandeiras" buckets:
+// Sicoob/SIPAG files Elo and Amex under "CR COMPRAS CRE OUTRAS BANDEIRAS"
+// and only name the brand in the complementary text ("SIPAG_Cred._Elo",
+// "SIPAG_Cred._American Expre" - truncated). Order matters: "visa electron"
+// and "maestro" before plain "visa"/"mastercard".
+const CARD_BRANDS: [RegExp, string][] = [
+	[/visa electron/, 'visa débito'],
+	[/maestro/, 'mastercard débito'],
+	[/american expr|(^|[^a-z])amex([^a-z]|$)/, 'amex'],
+	[/(^|[^a-z])elo([^a-z]|$)/, 'elo'],
+	[/mast/, 'mastercard'],
+	[/visa/, 'visa']
+];
+const DEBIT_CARD_HINT = /(^|[^a-z])deb([^a-z]|ito)/;
 
 export function cardAdditionalInfo(text: string): string|undefined {
 	const folded = foldPt(text);
-	for(const needle in CARD_BRANDS) {
-		if(folded.indexOf(needle) > -1)
-			return ' ((' + CARD_BRANDS[needle] + '))';
+	const isDebit = DEBIT_CARD_HINT.test(folded);
+	for(const [pattern, brand] of CARD_BRANDS) {
+		if(!pattern.test(folded))
+			continue;
+		const company = isDebit && brand.indexOf('débito') < 0 ? brand + ' débito' : brand;
+		return ' ((' + company + '))';
 	}
+	if(folded.indexOf('deb outras bandeiras') > -1)
+		return ' ((outros débito))';
+	if(folded.indexOf('cre outras bandeiras') > -1)
+		return ' ((outros))';
 	return undefined;
 }
 
